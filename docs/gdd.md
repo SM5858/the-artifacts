@@ -24,7 +24,7 @@ Nothing in this document is implemented or verified yet. Implemented and verifie
 
 ## 3. Platform and genre
 
-- **Genre:** location-based RPG with turn-based boss combat.
+- **Genre:** location-based RPG with real-time boss combat built on skill cooldowns.
 - **Platform:** mobile for the visit check-in; PC for dungeon and combat. One account links the two.
 - **Engine / stack:** **[OPEN]** not selected. See Q1.
 
@@ -37,7 +37,7 @@ Nothing in this document is implemented or verified yet. Implemented and verifie
 | Interpret | **Fight** | On PC, read the Guardian's tells and use the build to earn an artifact. |
 | Next action | **Equip and return** | Equip the reward, then retry the fight or seek another unlock. |
 
-Inside a fight, the turn loop is: the Guardian telegraphs a move (tell) → the player chooses an action → the engine resolves both → feedback shows what happened → next turn.
+Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegraphs a move (tell) → the player reacts with a basic attack, a skill off cooldown, or an artifact effect → the engine resolves hits and starts cooldowns → feedback shows what happened → the player reads the next tell.
 
 ## 5. Pillars
 
@@ -62,18 +62,20 @@ Inside a fight, the turn loop is: the Guardian telegraphs a move (tell) → the 
 
 ### 6.3 Combat
 
-- Turn-based, one player versus one Guardian.
+- **Real-time [DECIDED]**, one player versus one Guardian. The fight never pauses.
+- Both sides act through **basic attacks**, **skills with cooldowns**, and (for the player) **artifact effects**. The Guardian's skills have cooldowns too.
 - Each Guardian move has a **tell** shown before the player commits, and a **recovery window** after it resolves.
-- Player actions fall into three intents: commit (attack), defend, switch tactics. Exact action list: **[OPEN]** Q3.
+- Player choices fall into three intents: commit (attack or spend a skill), defend or evade, switch tactics. Exact skill list, cooldown lengths, and input scheme: **[OPEN]** Q3.
 - All damage, cooldowns, and stats are fixed and resolved by the engine. The Guardian never changes numbers; it only chooses which legal move to use.
-- Attempt cap per quest and fight length target: **[OPEN]** Q4. Planning assumption for budgets: about 10 Guardian decisions per battle.
+- Attempt cap per quest and fight length target: **[OPEN]** Q4. Planning assumption for budgets: about 10 Guardian move decisions per battle.
 
 ### 6.4 Guardian (in-game agent)
 
 - One Guardian, two policies with **identical stats, move list, tells, and reward rules**:
   - **Scripted baseline:** a fixed move sequence.
   - **Adaptive Guardian:** selects one move ID from the engine's legal-move list, based on a filtered combat snapshot.
-- The engine validates every selected move against the current turn and cooldowns. Invalid or late output (over 3 s) is replaced by a legal fallback move.
+- Because combat is real-time, the adaptive Guardian chooses its **next** move while its current move (tell, attack, recovery) is playing. The engine validates the selected move against the current fight state and the Guardian's cooldowns. If the answer is invalid, or has not arrived when the current move ends (3 s at most), the engine plays a legal fallback move. The player never waits on the model.
+- How often the Guardian decides (every move, or every few seconds): **[OPEN]** Q11.
 - What the Guardian may and may not know is specified in the Configuration Document, Section 2.
 
 ### 6.5 Rewards and progression
@@ -88,7 +90,7 @@ Inside a fight, the turn loop is: the Guardian telegraphs a move (tell) → the 
 - **Win:** Guardian HP reaches zero. The artifact is granted and stored on the account.
 - **Failure:** player HP reaches zero or the attempt cap is reached. The quest stays unlocked; the player may retry.
 - **Edge cases to specify before G2:**
-  - Model timeout or illegal move → legal fallback, turn state preserved, fallback recorded in the trace.
+  - Model timeout or illegal move → legal fallback, fight continues without a pause, fallback recorded in the trace.
   - Model service unavailable for the whole fight → the scripted policy runs and the session is flagged.
   - Player closes the PC client mid-fight → **[OPEN]** Q6 (resume or forfeit).
   - Check-in succeeds on mobile but the PC client does not show the quest → handoff failure; must be detectable in logs.
@@ -103,15 +105,15 @@ Inside a fight, the turn loop is: the Guardian telegraphs a move (tell) → the 
 ## 9. Controls and feedback [PROPOSED]
 
 - **Mobile:** one check-in action; confirmation of the unlocked quest.
-- **PC:** quest list; in combat, select an action per turn.
-- **Feedback the player must be able to read:** quest status, the Guardian's tell for the coming move, HP changes, cooldowns, and the reward.
+- **PC:** quest list; in combat, real-time inputs for movement or evasion, basic attack, skills, and artifact effects. Input scheme: **[OPEN]** Q3.
+- **Feedback the player must be able to read:** quest status, the Guardian's tell for the coming move, HP changes, their own skill cooldowns, and the reward.
 - Presentation scope is the minimum needed for a fair test: readable tells come before visual polish.
 
 ## 10. Content scope
 
 | | |
 |---|---|
-| **Included [DECIDED]** | 2–3 Columbia-area locations, mobile visit unlock, one PC dungeon, four artifact rarity tiers, one turn-based Guardian in two modes (scripted, adaptive). |
+| **Included [DECIDED]** | 2–3 Columbia-area locations, mobile visit unlock, one PC dungeon, four artifact rarity tiers, one real-time Guardian in two modes (scripted, adaptive). |
 | **Excluded [DECIDED]** | Multiplayer / PvP, open world, paid unlocks, trading, additional dungeon environments. |
 | **First cut [DECIDED]** | Simulate GPS visits; keep the unlock-to-combat loop. |
 | **Hold fallback** | One simulated location, one playable Guardian encounter, both policies running under the same rules. |
@@ -134,7 +136,7 @@ Inside a fight, the turn loop is: the Guardian telegraphs a move (tell) → the 
 | Reference | Specific moment or mechanic | Borrowed | Changed | Terms |
 |---|---|---|---|---|
 | *Pokémon GO* | PokéStop spin: a brief check-in at a real landmark | The short landmark interaction | The main encounter moves to PC; the visit only unlocks | Proprietary. Design reference only; no assets or code used. |
-| *Dark Souls* | A boss telegraphs an attack and leaves a recovery opening | The readable tell and punish window | Translated from real-time timing into turn-based choices | Proprietary. Design reference only; no assets or code used. |
+| *Dark Souls* | A boss telegraphs an attack and leaves a recovery opening | The readable tell and punish window | Stays real-time, but the fight is paced by basic attacks, skill cooldowns, and artifact effects in my own combat rules | Proprietary. Design reference only; no assets or code used. |
 
 - Cover illustration in the pitch deck: AI-generated concept art created for the pitch.
 - Prototype assets and code will be original or used under documented licenses, with terms recorded in this section before use.
@@ -148,10 +150,11 @@ Inside a fight, the turn loop is: the Guardian telegraphs a move (tell) → the 
 |---|---|---|---|
 | Q1 | Engine / stack for the PC client, the mobile check-in, and the shared account store | Before first prototype task | Tech Lead recommends; I decide |
 | Q2 | Check-in radius, cooldown, and how much anti-spoofing the prototype needs | Before mobile check-in task | Tech Lead / Design Lead |
-| Q3 | Ability lists, stats, artifact effects, and the player action list for the two builds | Before combat implementation | Design Lead |
-| Q4 | Attempt cap and target fight length (budget assumes ~10 Guardian decisions) | Before combat implementation | Design Lead |
+| Q3 | Skill lists, cooldown lengths, stats, artifact effects, and the input scheme for the two builds | Before combat implementation | Design Lead |
+| Q4 | Attempt cap and target fight length in seconds (budget assumes ~10 Guardian decisions) | Before combat implementation | Design Lead |
 | Q5 | Drop table for four rarity tiers; whether rarity changes power or only variety | Before G2 playtest | Design Lead |
 | Q6 | Mid-fight disconnect: resume or forfeit | Before G2 playtest | Design Lead / Tech Lead |
 | Q7 | Fairness and clear-rate thresholds that count as "fair and winnable" | Before the first comparison playtest | Design Lead / BI |
 | Q9 | Runtime model for the Guardian (budget uses planning rates) | Before adaptive policy task | Tech Lead recommends; I decide |
 | Q10 | Which 2–3 landmarks, and whether any are indoors (GPS accuracy) | Before mobile check-in task | Design Lead |
+| Q11 | Guardian decision cadence in real time: every move or every few seconds, and how long a tell must last to cover model latency | Before adaptive policy task | Design Lead / Tech Lead |

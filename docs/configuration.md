@@ -20,7 +20,7 @@ This document records how agents are configured: the **in-game agent** (the Guar
 
 ### 2.1 Purpose
 
-Select the Guardian's next move so that the fight responds to the current player's build and recent actions, within fixed rules and stats.
+Select the Guardian's next move in a real-time fight so that the fight responds to the current player's build and recent actions, within fixed rules and stats.
 
 ### 2.2 World state versus agent knowledge
 
@@ -42,14 +42,15 @@ The Guardian ships as a **function-calling interface**: the model must answer by
 
 ### 2.4 Permissions and prohibited actions
 
-- **Permitted:** propose exactly one move ID from the legal list for the current turn.
+- **Permitted:** propose exactly one move ID from the legal list for the Guardian's next move.
 - **Prohibited:** proposing moves outside the list; changing stats, damage, cooldowns, HP, or rewards; free-form text shown to the player; any tool other than `select_move`.
 
 ### 2.5 Validation and fallback
 
-1. The engine checks the returned `move_id` against the current turn's legal list and cooldowns.
+0. Combat is real-time and never pauses. The engine requests the next move while the Guardian's current move (tell, attack, recovery) is playing.
+1. The engine checks the returned `move_id` against the legal list and the Guardian's cooldowns at the moment the move would start.
 2. Valid → the engine resolves it with fixed stats.
-3. Invalid, malformed, or later than the **3 s** deadline → the engine uses a **legal fallback move** (the scripted policy's move for that turn), preserves turn state, and records the fallback in the trace.
+3. Invalid, malformed, or not back when the current move ends (**3 s** at most) → the engine plays a **legal fallback move** (the scripted policy's next move) without pausing the fight, and records the fallback in the trace.
 4. Service unavailable → the fight continues on the scripted policy and the session is flagged.
 
 ### 2.6 Memory policy
@@ -62,7 +63,7 @@ The Guardian ships as a **function-calling interface**: the model must answer by
 | Item | Value | Basis |
 |---|---|---|
 | Model | **[OPEN]** C3 — not selected | Budget uses planning rates |
-| Deadline per decision | 3 s, then fallback | Longest wait that still reads as "the boss is deciding" in a turn-based fight; to verify in playtest |
+| Deadline per decision | 3 s, then fallback | Planning length of one Guardian move cycle (tell, attack, recovery), during which the next move is chosen; the player never waits. To verify against measured latency. **[OPEN]** C8 |
 | Retries | 0 (fallback instead) | A retry would break the deadline |
 | Input cap | 1,500 tokens per call (target) | Needed to reach the cost target |
 | Output cap | 100 tokens per call | One tool call |
@@ -83,7 +84,7 @@ The Guardian ships as a **function-calling interface**: the model must answer by
 
 - **Deterministic tests** (rules and invariants): every resolved move is in the legal list; cooldowns respected; stats never change; fallback fires on forced timeout and on a forced illegal move; snapshot contains no blocked fields.
 - **Bounded live trials:** a fixed number of fights per build per policy, recording legality rate, fallback rate, end-to-end decision latency, and actual tokens and cost. Trial count: **[OPEN]** C5.
-- **Trace per decision:** turn, snapshot hash, legal list, returned move, valid / fallback, latency, tokens.
+- **Trace per decision:** fight timestamp, snapshot hash, legal list, returned move, valid / fallback, latency, tokens.
 - **Test command and CI workflow:** *(planned)* a single test command and `.github/workflows/ci.yml`. **[OPEN]** C6 — depends on the stack (GDD Q1).
 
 ### 2.10 Human override
@@ -111,7 +112,7 @@ All production roles are planned as **Claude Code subagents**, one definition fi
 
 Every handoff states what to use, what to produce, and how acceptance is judged. Example (planned):
 
-> Design Lead to Tech Lead: "Implement the Guardian turn so the adaptive policy receives only the allowed combat snapshot and the legal move list, and returns one move ID. The engine validates it. Include a forced-timeout test, a forced-illegal-move test, and a test that the snapshot contains no blocked fields."
+> Design Lead to Tech Lead: "Implement the Guardian's next-move request so the adaptive policy receives only the allowed combat snapshot and the legal move list, and returns one move ID. The engine validates it. Include a forced-timeout test, a forced-illegal-move test, and a test that the snapshot contains no blocked fields."
 
 ## 5. Configuration versions
 
@@ -130,3 +131,4 @@ Every handoff states what to use, what to produce, and how acceptance is judged.
 | C5 | Number of live trials per build per policy | Before live evaluation |
 | C6 | Test command and CI workflow path (depends on stack, GDD Q1) | With the first prototype task |
 | C7 | Which model each production role uses, and whether roles share one | When the subagent files are written |
+| C8 | Decision cadence in real time (every move or every few seconds) and whether 3 s fits inside one move cycle at measured latency (GDD Q11) | Before adaptive policy task |
