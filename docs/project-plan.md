@@ -18,7 +18,7 @@
 
 ## 2. Goal for the work cycle to G2
 
-By the G2/G3 review, a player can check in (live or simulated), see the dungeon unlocked on PC, and fight one Guardian under both the scripted and adaptive policies; and we will know whether adaptation changes how players win without making the fight feel unfair.
+By the G2/G3 review, a player can check in (live or simulated), see the dungeon unlocked on PC, and fight one Guardian under both the scripted and adaptive policies; and I will know whether a tuned Guardian lets starter and geared players each win in a few attempts without making the win feel unearned.
 
 ## 3. First tasks through G2
 
@@ -29,14 +29,14 @@ Order reflects dependencies. Combat comes before the visit, because the combat c
 | 1 | Create the GitHub repository; commit Initial GDD, Configuration Document, and this plan | Tech Lead | — | Docs are linked from the G1 post |
 | 2 | Choose the stack (GDD Q1) and runtime model (Q9) | Tech Lead recommends; I decide | 1 | Decision recorded in GDD and Configuration Document |
 | 3 | Write the production role subagent files in `.claude/agents/` | Producer / Tech Lead | 1 | Each role in the coverage table has an executable file |
-| 4 | Specify two builds, skills and cooldowns, Guardian moves, tells, and stats (GDD Q3–Q5, Q11) | Design Lead | — | Spec is complete enough to implement one fight |
+| 4 | Specify starter and geared builds, skills and cooldowns, and the Guardian's stat tiers, skill pool, strategies, and tuning ranges (GDD Q3–Q5, Q11) | Design Lead | — | Spec is complete enough to implement one fight |
 | 5 | Implement the real-time combat engine (basic attacks, skill cooldowns, artifact effects) and validator with the **scripted** Guardian | Tech Lead | 2, 4 | One fight is playable start to finish on PC; rule tests pass |
-| 6 | Implement the **adaptive** Guardian behind `select_move`, with snapshot filter, next-move request during the current move, 3 s deadline, and legal fallback without pausing | Tech Lead | 5 | Forced-timeout, forced-illegal-move, and no-blocked-fields tests pass |
-| 7 | Instrument traces: legality, fallback, latency, tokens, cost | Tech Lead / BI | 6 | Every decision writes a trace entry |
+| 6 | Implement the **adaptive** Guardian behind `configure_guardian`: snapshot filter, one call at fight start, range validation, 3 s deadline, default-Guardian fallback | Tech Lead | 5 | Forced-timeout, forced-out-of-range, and no-blocked-fields tests pass |
+| 7 | Instrument traces: setup validity, fallback, latency, tokens, cost | Tech Lead / BI | 6 | Every attempt writes a trace entry |
 | 8 | Account, quest unlock, and **simulated** visit → PC handoff | Tech Lead | 5 | A simulated visit makes the quest appear on PC and persists |
 | 9 | Minimum readable presentation: tells, HP, cooldowns, reward | Art Lead / Narrative and Audio | 5 | A new player can name the coming move from its tell |
 | 10 | Deterministic checks and a budgeted live evaluation run | QA / BI | 6, 7 | Results recorded, including failed and unavailable runs |
-| 11 | Set fairness and clear-rate thresholds (GDD Q7); write the playtest protocol | Design Lead / BI | 4 | Thresholds written down before any playtest |
+| 11 | Set the attempt target and fairness thresholds (GDD Q7); write the playtest protocol | Design Lead / BI | 4 | Thresholds written down before any playtest |
 | 12 | Observe at least one external player on the core loop; start the Playtest Log | Design Lead / QA | 8, 9, 11 | Observations recorded separately from interpretation |
 | 13 | Live mobile GPS check-in at 2–3 landmarks | Tech Lead | 8 | **Only if** tasks 5–12 are on track; otherwise stay simulated |
 | 14 | Update GDD, Configuration Document, plan, and Risk Register; record the first playable | Producer | 10, 12 | G2/G3 evidence is linked from the Asana gate task |
@@ -55,14 +55,14 @@ Order reflects dependencies. Combat comes before the visit, because the combat c
 |---|---|---|---|
 | IP / Concept | Low | References inform mechanics only; no third-party assets or code | Track provenance and terms for every prototype asset |
 | Business / Audience | Medium | The visit-to-PC handoff adds friction | Track how many testers open the dungeon after check-in |
-| Technology | **High** | Live calls may stall or return illegal moves, and a real-time fight cannot wait for them; stack and model not yet chosen | Choose the next move during the current one; validate move IDs; 3 s deadline with legal fallback; choose stack first |
+| Technology | **High** | Live calls may stall or return out-of-range setups; the real-time combat engine is unbuilt; stack and model not yet chosen | One call at fight start, none in combat; validate against engine ranges; default Guardian after 3 s; choose stack first |
 | Team | Medium | Individual project; role agents are planned, not yet configured or tested; my own review capacity is the limit | Write and exercise the subagent files early (task 3); QA agent independent of Tech Lead |
-| Genre / Mechanics | **High** | Adaptive counters may feel unfair; the tell-and-counter loop is untested | Always telegraph moves; test two builds; set thresholds first; watch clear rates by mode |
+| Genre / Mechanics | **High** | A Guardian tuned to the challenger may make gear feel pointless or wins unearned; tuning ranges are untested | Bound the ranges so gear still helps; test starter versus geared builds; set thresholds first |
 | Timeline | **High** | Mobile GPS plus PC plus account is a lot of integration for one person, and real-time combat needs more implementation and tuning than a turn-based fight | Combat first; simulate visits if the comparison slips |
 
-**Do the High ratings share a cause?** Technology and Genre / Mechanics share one: both depend on the unproven live adaptive Guardian. The scripted fallback covers both, since the game stays playable and fair without the model. Timeline has a separate cause, the mobile-to-PC integration, and a separate response, simulated visits. The two causes compound only if both are attempted at once, which is why combat is scheduled first.
+**Do the High ratings share a cause?** Technology and Genre / Mechanics share one: both depend on the unproven live adaptive Guardian. The default Guardian covers the technical side, since the game stays playable without the model; the design side needs the starter-versus-geared playtest. Timeline has a separate cause, the mobile-to-PC integration, and a separate response, simulated visits. The two causes compound only if both are attempted at once, which is why combat is scheduled first.
 
 ## 6. Decision requested at G1
 
-- **Approve authorizes:** build the mobile check-in and PC quest handoff; implement one Guardian with scripted and adaptive policies; instrument move legality, latency, cost, and playtest outcomes.
+- **Approve authorizes:** build the mobile check-in and PC quest handoff; implement one Guardian with scripted and adaptive policies; instrument setup validity, latency, cost, and playtest outcomes.
 - **A Hold would need:** reduce to one simulated location and one playable Guardian encounter; show that the unlock reaches PC and that both policies run under the same rules before expanding.

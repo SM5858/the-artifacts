@@ -43,7 +43,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 1. **Place unlocks play.** A brief real-world visit opens a quest on PC. The visit stays short; the play happens on PC.
 2. **Combat earns the artifact.** Players win by making effective choices with their build. Rewards are never bought or granted for the visit alone.
-3. **The Guardian responds.** Readable counters reward players who adjust their tactics.
+3. **The Guardian adapts.** It tunes itself to the challenger, so a newcomer who unlocks a dungeon can still win in a few attempts.
 
 ## 6. Mechanics [PROPOSED]
 
@@ -57,7 +57,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 ### 6.2 Build
 
 - A build is the character's abilities plus equipped artifacts.
-- The prototype tests at least two builds with different winning tactics: a **shield** build (bait a counter, punish after block) and a **mage** build (evade, punish the recovery window).
+- The prototype tests at least two builds of different strength: a **starter** build (a new account, no artifacts) and a **geared** build (artifacts equipped, stronger skills).
 - Ability lists, stats, and artifact effects: **[OPEN]** Q3.
 
 ### 6.3 Combat
@@ -66,16 +66,18 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 - Both sides act through **basic attacks**, **skills with cooldowns**, and (for the player) **artifact effects**. The Guardian's skills have cooldowns too.
 - Each Guardian move has a **tell** shown before the player commits, and a **recovery window** after it resolves.
 - Player choices fall into three intents: commit (attack or spend a skill), defend or evade, switch tactics. Exact skill list, cooldown lengths, and input scheme: **[OPEN]** Q3.
-- All damage, cooldowns, and stats are fixed and resolved by the engine. The Guardian never changes numbers; it only chooses which legal move to use.
-- Attempt cap per quest and fight length target: **[OPEN]** Q4. Planning assumption for budgets: about 10 Guardian move decisions per battle.
+- All damage and cooldowns are resolved by the engine. The Guardian's stats, skills, and strategy are set once before each attempt (Section 6.4) and do not change during the fight.
+- Attempt cap per quest and fight length target: **[OPEN]** Q4. Planning assumption for budgets: up to 10 attempts per session.
 
 ### 6.4 Guardian (in-game agent)
 
-- One Guardian, two policies with **identical stats, move list, tells, and reward rules**:
-  - **Scripted baseline:** a fixed move sequence.
-  - **Adaptive Guardian:** selects one move ID from the engine's legal-move list, based on a filtered combat snapshot.
-- Because combat is real-time, the adaptive Guardian chooses its **next** move while its current move (tell, attack, recovery) is playing. The engine validates the selected move against the current fight state and the Guardian's cooldowns. If the answer is invalid, or has not arrived when the current move ends (3 s at most), the engine plays a legal fallback move. The player never waits on the model.
-- How often the Guardian decides (every move, or every few seconds): **[OPEN]** Q11.
+- One Guardian, two modes with the **same skill pool, tells, and reward rules**:
+  - **Scripted baseline:** one fixed Guardian for everyone, with the same stats, skills, and strategy in every fight.
+  - **Adaptive Guardian:** before each attempt, the agent tunes the Guardian to the challenger. It proposes a **setup**: a stat tier, a skill set, and a strategy, each chosen from options the engine defines.
+- The agent sees a filtered challenger snapshot: the challenger's stats, skills, equipped artifacts, and attempts so far on this Guardian.
+- The engine validates the proposed setup against the allowed ranges for that challenger. A setup that is out of range, malformed, or later than 3 s is replaced by the **default Guardian** (the scripted baseline's setup).
+- The model is called once at fight start. During the real-time fight the Guardian follows its chosen strategy with no model calls, so the player never waits on the model in combat.
+- Allowed ranges, the list of stat tiers, the skill pool, and the strategy list: **[OPEN]** Q11.
 - What the Guardian may and may not know is specified in the Configuration Document, Section 2.
 
 ### 6.5 Rewards and progression
@@ -90,16 +92,16 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 - **Win:** Guardian HP reaches zero. The artifact is granted and stored on the account.
 - **Failure:** player HP reaches zero or the attempt cap is reached. The quest stays unlocked; the player may retry.
 - **Edge cases to specify before G2:**
-  - Model timeout or illegal move → legal fallback, fight continues without a pause, fallback recorded in the trace.
-  - Model service unavailable for the whole fight → the scripted policy runs and the session is flagged.
+  - Model timeout (over 3 s at fight start) or out-of-range setup → the default Guardian is used, the fight starts, and the fallback is recorded in the trace.
+  - Model service unavailable → the default Guardian is used for every attempt and the session is flagged.
   - Player closes the PC client mid-fight → **[OPEN]** Q6 (resume or forfeit).
   - Check-in succeeds on mobile but the PC client does not show the quest → handoff failure; must be detectable in logs.
   - Duplicate check-in at the same landmark → no duplicate quest.
 
 ## 8. Dynamics and intended aesthetics
 
-- **Intended dynamic:** shared guides can teach tells and counters, but victory still depends on how the player responds in this fight. Different builds should win in different ways.
-- **Risk to the dynamic:** adaptive counters may feel unfair. Mitigated by always telegraphing moves, keeping stats fixed, and measuring perceived fairness and clear rate.
+- **Intended dynamic:** public guides assume prerequisites (stats, skill levels, items, equipment). Here, a player at any strength, including a brand-new one, meets a Guardian tuned to them and can win a good artifact after a few attempts.
+- **Risk to the dynamic:** if the Guardian always matches the challenger, gear may feel pointless and wins unearned, which conflicts with Pillar 2. Mitigated by bounded tuning ranges (a geared build must still have an easier time than a starter build), and by measuring "I earned this" and "gear felt worth it" ratings.
 - **Aesthetic targets:** challenge (mastery of a readable opponent), discovery (a place has something behind it), expression (my build, my tactic).
 
 ## 9. Controls and feedback [PROPOSED]
@@ -120,16 +122,17 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 ## 11. Agent hypothesis and playtest question
 
-- **Hypothesis:** adaptive move selection increases the variety of winning tactics and makes a shared, copied sequence less reliable, while fights stay fair and winnable.
-- **Scripted baseline:** fixed move sequence with the same stats, moves, tells, and reward rules.
-- **What the player loses with only the scripted baseline:** with a fixed script, a player can win by memorized timing or a copied sequence, and has fewer reasons to adapt the build or tactics. The fight stops responding to *this* player.
-- **Playtest question:** will adaptation diversify winning strategies and make a shared sequence less reliable while keeping fights fair and winnable?
+- **Hypothesis:** tuning the Guardian's stats, skills, and strategy to the challenger lets players of different strength, including a brand-new one, each win within a few attempts, while the fight still feels fair and the artifact still feels earned.
+- **Scripted baseline:** one fixed Guardian for everyone, with the same stats, skills, and strategy.
+- **What the player loses with only the scripted baseline:** a new player meets a fight built for someone else's stats and gear. Public guides apply to everyone in the same way, and their prerequisites decide who can win.
+- **Playtest question:** can players with different builds, including a new one, each win within a few attempts and still feel the win was earned?
 - **Measures:**
-  - *Strategy diversity:* distinct winning tactics by build, from combat logs.
-  - *Strategy reuse:* clear rate with a shared sequence versus free adaptation, in each mode.
-  - *Fairness and achievability:* fairness and perceived-winnability ratings, clear rate, attempts to first win.
-- **Design of the comparison:** counterbalance which Guardian a player sees first; at least two builds; same encounter settings in both modes; same build-compatible guide within each build; fixed attempt cap. Record the clear-rate gap by mode so a uniformly harder boss does not count as evidence that strategy reuse declined.
-- **Thresholds:** acceptable fairness and clear-rate thresholds are set before testing. **[OPEN]** Q7.
+  - *Attempts to first win:* starter versus geared build, in each mode, from combat logs.
+  - *Clear-rate gap:* starter versus geared clear rate under one attempt cap, in each mode.
+  - *Fairness and earned reward:* fairness, winnability, and "I earned this" ratings, and whether gear still feels worth it.
+- **Design of the comparison:** counterbalance which mode a player sees first; a starter and a geared build; the same attempt cap in both modes; the same skill pool and reward rules.
+- **Reading the result:** the adaptive mode should narrow the starter-versus-geared gap without closing it. If the gap closes completely, or "gear felt worth it" drops, the tuning ranges are too wide and need retuning.
+- **Thresholds:** the target number of attempts and acceptable fairness ratings are set before testing. **[OPEN]** Q7.
 
 ## 12. References and attribution
 
@@ -151,10 +154,10 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 | Q1 | Engine / stack for the PC client, the mobile check-in, and the shared account store | Before first prototype task | Tech Lead recommends; I decide |
 | Q2 | Check-in radius, cooldown, and how much anti-spoofing the prototype needs | Before mobile check-in task | Tech Lead / Design Lead |
 | Q3 | Skill lists, cooldown lengths, stats, artifact effects, and the input scheme for the two builds | Before combat implementation | Design Lead |
-| Q4 | Attempt cap and target fight length in seconds (budget assumes ~10 Guardian decisions) | Before combat implementation | Design Lead |
+| Q4 | Attempt cap and target fight length in seconds (budget assumes up to 10 attempts per session) | Before combat implementation | Design Lead |
 | Q5 | Drop table for four rarity tiers; whether rarity changes power or only variety | Before G2 playtest | Design Lead |
 | Q6 | Mid-fight disconnect: resume or forfeit | Before G2 playtest | Design Lead / Tech Lead |
-| Q7 | Fairness and clear-rate thresholds that count as "fair and winnable" | Before the first comparison playtest | Design Lead / BI |
+| Q7 | How many attempts count as "a few", and the fairness and earned-reward thresholds | Before the first comparison playtest | Design Lead / BI |
 | Q9 | Runtime model for the Guardian (budget uses planning rates) | Before adaptive policy task | Tech Lead recommends; I decide |
 | Q10 | Which 2–3 landmarks, and whether any are indoors (GPS accuracy) | Before mobile check-in task | Design Lead |
-| Q11 | Guardian decision cadence in real time: every move or every few seconds, and how long a tell must last to cover model latency | Before adaptive policy task | Design Lead / Tech Lead |
+| Q11 | Stat tiers, skill pool, strategy list, and the allowed tuning range per challenger strength | Before adaptive Guardian task | Design Lead |
