@@ -1,6 +1,6 @@
 # The Artifacts
 
-A location-based RPG: visit real-world landmarks to unlock PC dungeons, then use your build to outplay Guardians and earn powerful artifacts.
+A location-based RPG for travelers: visit real-world landmarks to unlock themed PC dungeons, then use your build to outplay Guardians and earn powerful artifacts.
 
 Status: **G1 Concept** (Initial documents; nothing is implemented yet).
 

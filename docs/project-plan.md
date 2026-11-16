@@ -54,7 +54,7 @@ Order reflects dependencies. Combat comes before the visit, because the combat c
 | Dimension | Rating | Evidence | Mitigation |
 |---|---|---|---|
 | IP / Concept | Low | References inform mechanics only; no third-party assets or code | Track provenance and terms for every prototype asset |
-| Business / Audience | Medium | The visit-to-PC handoff adds friction | Track how many testers open the dungeon after check-in |
+| Business / Audience | Medium | The visit-to-PC handoff adds friction. The intended players are travelers, but prototype testers are Columbia students near campus, so the travel context is not tested | Track how many testers open the dungeon after check-in, and how long after; state the limit in the Playtest Log |
 | Technology | **High** | Live calls may stall or return out-of-range setups; the real-time combat engine is unbuilt; stack and model not yet chosen | One call at fight start, none in combat; validate against engine ranges; default Guardian after 3 s; choose stack first |
 | Team | Medium | Individual project; role agents are planned, not yet configured or tested; my own review capacity is the limit | Write and exercise the subagent files early (task 3); QA agent independent of Tech Lead |
 | Genre / Mechanics | **High** | A Guardian tuned to the challenger may make gear feel pointless or wins unearned; tuning ranges are untested | Each Guardian has its own tuning range: open Guardians welcome newcomers, gated Guardians keep a floor that needs stats and gear; test starter versus geared builds; set thresholds first |

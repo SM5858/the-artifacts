@@ -17,7 +17,8 @@ Nothing in this document is implemented or verified yet. Implemented and verifie
 
 ## 2. Player and motivation
 
-- **Player:** campus explorers who enjoy RPG buildcraft and learning boss fights. For the prototype, Columbia students who walk past the chosen landmarks anyway.
+- **Player:** travelers who enjoy RPG buildcraft and learning boss fights. They visit landmarks on a trip, and play later on PC at home or at their lodging.
+- **Prototype stand-in:** Columbia students and Columbia-area landmarks. This tests the visit-to-PC link and the combat, not the travel context itself.
 - **Intended experience:** the pleasure of mastering a readable opponent with a build that feels like your own, with a real place as the reason the fight exists.
 - **Observable hypothesis:** after earning a first artifact, players voluntarily retry a Guardian or seek another artifact, without being prompted.
 - **Secondary signal:** the share of testers who open the PC dungeon after checking in on mobile (the handoff is the main friction point).
@@ -25,23 +26,23 @@ Nothing in this document is implemented or verified yet. Implemented and verifie
 ## 3. Platform and genre
 
 - **Genre:** location-based RPG with real-time boss combat built on skill cooldowns.
-- **Platform:** mobile for the visit check-in; PC for dungeon and combat. One account links the two.
+- **Platform:** mobile for the visit check-in while out; PC for dungeon and combat later, at home or lodging. One account links the two.
 - **Engine / stack:** **[OPEN]** not selected. See Q1.
 
 ## 4. Core loop
 
 | Step | Player / game | Detail |
 |---|---|---|
-| Act | **Visit** | Check in on mobile at a Columbia-area landmark. |
-| Respond | **Unlock** | A verified visit adds a dungeon quest to the account. |
-| Interpret | **Fight** | On PC, read the Guardian's tells and use the build to earn an artifact. |
+| Act | **Visit** | Check in on mobile at a landmark visited on a trip (Columbia-area landmarks in the prototype). |
+| Respond | **Unlock** | A verified visit adds that landmark's themed dungeon to the account. |
+| Interpret | **Fight** | Back home or at the lodging, on PC, read the Guardian's tells and use the build to earn an artifact. |
 | Next action | **Equip and return** | Equip the reward, then retry the fight or seek another unlock. |
 
 Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegraphs a move (tell) → the player reacts with a basic attack, a skill off cooldown, or an artifact effect → the engine resolves hits and starts cooldowns → feedback shows what happened → the player reads the next tell.
 
 ## 5. Pillars
 
-1. **Place unlocks play.** A brief real-world visit opens a quest on PC. The visit stays short; the play happens on PC.
+1. **Place unlocks play.** A brief visit to a real landmark opens a dungeon themed on that place. The visit stays short so the trip stays about the place; the play happens later on PC.
 2. **Combat earns the artifact.** Players win by making effective choices with their build. Rewards are never bought or granted for the visit alone.
 3. **The Guardian adapts.** It tunes itself to the challenger, so a newcomer who unlocks a dungeon can still win in a few attempts.
 
@@ -50,7 +51,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 ### 6.1 Visit and unlock
 
 - The mobile check-in confirms the player is within a radius of a registered landmark and records the visit against the account.
-- A verified visit adds that landmark's dungeon quest to the account. The unlock persists.
+- A verified visit adds that landmark's themed dungeon quest to the account. The unlock persists, so the player can fight hours or days later from anywhere.
 - Radius, cooldown between check-ins, and anti-spoofing level: **[OPEN]** Q2.
 - **First cut [DECIDED]:** if live GPS verification slips, visits are simulated (a button or code) while account persistence and the PC unlock are kept.
 
@@ -122,6 +123,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 | **Included [DECIDED]** | 2–3 Columbia-area locations, mobile visit unlock, one PC dungeon, four artifact rarity tiers, one real-time **open** Guardian in two modes (scripted, adaptive). A gated variant of the same Guardian is a stretch test, not a commitment. |
 | **Excluded [DECIDED]** | Multiplayer / PvP, open world, paid unlocks, trading, additional dungeon environments. |
 | **First cut [DECIDED]** | Simulate GPS visits; keep the unlock-to-combat loop. |
+| **Full vision, not prototype scope** | Landmarks anywhere a player travels, each with a dungeon, Guardian, and artifacts themed on that place, collected over many trips. |
 | **Hold fallback** | One simulated location, one playable Guardian encounter, both policies running under the same rules. |
 
 ## 11. Agent hypothesis and playtest question
