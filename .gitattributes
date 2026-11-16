@@ -1,0 +1,41 @@
+# Unity YAML assets: merge as text, and use UnityYAMLMerge when configured.
+*.unity    text merge=unityyamlmerge eol=lf
+*.prefab   text merge=unityyamlmerge eol=lf
+*.asset    text merge=unityyamlmerge eol=lf
+*.mat      text merge=unityyamlmerge eol=lf
+*.anim     text merge=unityyamlmerge eol=lf
+*.controller text merge=unityyamlmerge eol=lf
+*.overrideController text merge=unityyamlmerge eol=lf
+*.physicMaterial text merge=unityyamlmerge eol=lf
+*.meta     text eol=lf
+*.cs       text diff=csharp eol=lf
+*.shader   text eol=lf
+*.hlsl     text eol=lf
+*.json     text eol=lf
+*.md       text eol=lf
+
+# Binary content tracked with Git LFS (Unity project only;
+# the G1 deck under deck/ stays a normal git file).
+game/**/*.png  filter=lfs diff=lfs merge=lfs -text
+game/**/*.jpg  filter=lfs diff=lfs merge=lfs -text
+game/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+game/**/*.tga  filter=lfs diff=lfs merge=lfs -text
+game/**/*.psd  filter=lfs diff=lfs merge=lfs -text
+game/**/*.tif  filter=lfs diff=lfs merge=lfs -text
+game/**/*.exr  filter=lfs diff=lfs merge=lfs -text
+game/**/*.hdr  filter=lfs diff=lfs merge=lfs -text
+game/**/*.fbx  filter=lfs diff=lfs merge=lfs -text
+game/**/*.obj  filter=lfs diff=lfs merge=lfs -text
+game/**/*.blend filter=lfs diff=lfs merge=lfs -text
+game/**/*.glb  filter=lfs diff=lfs merge=lfs -text
+game/**/*.wav  filter=lfs diff=lfs merge=lfs -text
+game/**/*.mp3  filter=lfs diff=lfs merge=lfs -text
+game/**/*.ogg  filter=lfs diff=lfs merge=lfs -text
+game/**/*.mp4  filter=lfs diff=lfs merge=lfs -text
+game/**/*.ttf  filter=lfs diff=lfs merge=lfs -text
+game/**/*.otf  filter=lfs diff=lfs merge=lfs -text
+game/**/*.dll  filter=lfs diff=lfs merge=lfs -text
+game/**/*.so   filter=lfs diff=lfs merge=lfs -text
+game/**/*.a    filter=lfs diff=lfs merge=lfs -text
+game/**/LightingData.asset filter=lfs diff=lfs merge=lfs -text
+game/**/*.cubemap filter=lfs diff=lfs merge=lfs -text
