@@ -77,7 +77,11 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 - The agent sees a filtered challenger snapshot: the challenger's stats, skills, equipped artifacts, and attempts so far on this Guardian.
 - The engine validates the proposed setup against the allowed ranges for that challenger. A setup that is out of range, malformed, or later than 3 s is replaced by the **default Guardian** (the scripted baseline's setup).
 - The model is called once at fight start. During the real-time fight the Guardian follows its chosen strategy with no model calls, so the player never waits on the model in combat.
-- Allowed ranges, the list of stat tiers, the skill pool, and the strategy list: **[OPEN]** Q11.
+- **Each Guardian has its own tuning range [DECIDED].** Not every Guardian adjusts all the way down to the challenger:
+  - An **open Guardian** has a wide range. A brand-new player can win its artifact after a few attempts.
+  - A **gated Guardian** has a floor. With the right base stats and equipment it is manageable; without them it is very hard. Its artifacts are the reason to build up a character.
+- The prototype builds one **open** Guardian. A gated variant is the same Guardian with a higher floor (a configuration change, not new content); it is tested only if time allows.
+- Allowed ranges per Guardian, the list of stat tiers, the skill pool, and the strategy list: **[OPEN]** Q11.
 - What the Guardian may and may not know is specified in the Configuration Document, Section 2.
 
 ### 6.5 Rewards and progression
@@ -101,7 +105,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 ## 8. Dynamics and intended aesthetics
 
 - **Intended dynamic:** public guides assume prerequisites (stats, skill levels, items, equipment). Here, a player at any strength, including a brand-new one, meets a Guardian tuned to them and can win a good artifact after a few attempts.
-- **Risk to the dynamic:** if the Guardian always matches the challenger, gear may feel pointless and wins unearned, which conflicts with Pillar 2. Mitigated by bounded tuning ranges (a geared build must still have an easier time than a starter build), and by measuring "I earned this" and "gear felt worth it" ratings.
+- **Risk to the dynamic:** if the Guardian always matches the challenger, gear may feel pointless and wins unearned, which conflicts with Pillar 2. Mitigated by giving each Guardian its own tuning range: open Guardians welcome newcomers, gated Guardians keep a floor that only stats and equipment overcome, so the best artifacts still require building a character. Checked with "I earned this" and "gear felt worth it" ratings.
 - **Aesthetic targets:** challenge (mastery of a readable opponent), discovery (a place has something behind it), expression (my build, my tactic).
 
 ## 9. Controls and feedback [PROPOSED]
@@ -115,7 +119,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 | | |
 |---|---|
-| **Included [DECIDED]** | 2–3 Columbia-area locations, mobile visit unlock, one PC dungeon, four artifact rarity tiers, one real-time Guardian in two modes (scripted, adaptive). |
+| **Included [DECIDED]** | 2–3 Columbia-area locations, mobile visit unlock, one PC dungeon, four artifact rarity tiers, one real-time **open** Guardian in two modes (scripted, adaptive). A gated variant of the same Guardian is a stretch test, not a commitment. |
 | **Excluded [DECIDED]** | Multiplayer / PvP, open world, paid unlocks, trading, additional dungeon environments. |
 | **First cut [DECIDED]** | Simulate GPS visits; keep the unlock-to-combat loop. |
 | **Hold fallback** | One simulated location, one playable Guardian encounter, both policies running under the same rules. |
@@ -131,7 +135,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
   - *Clear-rate gap:* starter versus geared clear rate under one attempt cap, in each mode.
   - *Fairness and earned reward:* fairness, winnability, and "I earned this" ratings, and whether gear still feels worth it.
 - **Design of the comparison:** counterbalance which mode a player sees first; a starter and a geared build; the same attempt cap in both modes; the same skill pool and reward rules.
-- **Reading the result:** the adaptive mode should narrow the starter-versus-geared gap without closing it. If the gap closes completely, or "gear felt worth it" drops, the tuning ranges are too wide and need retuning.
+- **Reading the result:** the adaptive mode should narrow the starter-versus-geared gap without closing it. If the gap closes completely, or "gear felt worth it" drops, the open Guardian's range is too wide and needs retuning. Across the full game, gear keeps its value through gated Guardians, which the prototype does not have to prove.
 - **Thresholds:** the target number of attempts and acceptable fairness ratings are set before testing. **[OPEN]** Q7.
 
 ## 12. References and attribution

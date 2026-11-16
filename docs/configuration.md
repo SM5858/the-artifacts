@@ -53,7 +53,7 @@ The Guardian ships as a **function-calling interface**: the model must answer by
 3. Out of range, malformed, or later than the **3 s** deadline → the engine uses the **default Guardian** (the scripted baseline's setup), starts the fight, and records the fallback in the trace.
 4. Service unavailable → every attempt uses the default Guardian and the session is flagged.
 
-The allowed range is the guard against the main design risk: a geared challenger must still face an easier fight than a starter challenger would with the same Guardian, so gear keeps its value.
+The allowed range belongs to each Guardian and is the guard against the main design risk, that tuning makes gear pointless. An **open** Guardian has a wide range, so a newcomer can win. A **gated** Guardian has a floor the agent cannot tune below, so it stays very hard without the right stats and equipment. The agent never sees or changes the range; it only chooses inside it. The prototype ships one open Guardian; a gated range is a configuration variant.
 
 ### 2.6 Memory policy
 

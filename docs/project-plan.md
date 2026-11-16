@@ -44,7 +44,7 @@ Order reflects dependencies. Combat comes before the visit, because the combat c
 
 ## 4. Scope
 
-- **Included:** 2–3 Columbia-area locations, mobile visit unlock, one PC dungeon, four artifact rarity tiers, one real-time Guardian in two modes.
+- **Included:** 2–3 Columbia-area locations, mobile visit unlock, one PC dungeon, four artifact rarity tiers, one real-time open (newcomer-accessible) Guardian in two modes. Stretch only: a gated variant of the same Guardian with a higher floor.
 - **Excluded:** multiplayer / PvP, open world, paid unlocks, trading, additional dungeon environments.
 - **First cut:** simulate GPS visits; keep the unlock-to-combat loop (task 13 is dropped).
 - **Trigger for the first cut:** the adaptive Guardian (task 6) is not passing its tests one week before the G2/G3 review. *(Adjust once the G2/G3 date is confirmed.)*
@@ -57,7 +57,7 @@ Order reflects dependencies. Combat comes before the visit, because the combat c
 | Business / Audience | Medium | The visit-to-PC handoff adds friction | Track how many testers open the dungeon after check-in |
 | Technology | **High** | Live calls may stall or return out-of-range setups; the real-time combat engine is unbuilt; stack and model not yet chosen | One call at fight start, none in combat; validate against engine ranges; default Guardian after 3 s; choose stack first |
 | Team | Medium | Individual project; role agents are planned, not yet configured or tested; my own review capacity is the limit | Write and exercise the subagent files early (task 3); QA agent independent of Tech Lead |
-| Genre / Mechanics | **High** | A Guardian tuned to the challenger may make gear feel pointless or wins unearned; tuning ranges are untested | Bound the ranges so gear still helps; test starter versus geared builds; set thresholds first |
+| Genre / Mechanics | **High** | A Guardian tuned to the challenger may make gear feel pointless or wins unearned; tuning ranges are untested | Each Guardian has its own tuning range: open Guardians welcome newcomers, gated Guardians keep a floor that needs stats and gear; test starter versus geared builds; set thresholds first |
 | Timeline | **High** | Mobile GPS plus PC plus account is a lot of integration for one person, and real-time combat needs more implementation and tuning than a turn-based fight | Combat first; simulate visits if the comparison slips |
 
 **Do the High ratings share a cause?** Technology and Genre / Mechanics share one: both depend on the unproven live adaptive Guardian. The default Guardian covers the technical side, since the game stays playable without the model; the design side needs the starter-versus-geared playtest. Timeline has a separate cause, the mobile-to-PC integration, and a separate response, simulated visits. The two causes compound only if both are attempted at once, which is why combat is scheduled first.
