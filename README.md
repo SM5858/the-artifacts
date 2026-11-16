@@ -7,4 +7,4 @@ Status: **G1 Concept** (Initial documents; nothing is implemented yet).
 - [Game Design Document](docs/gdd.md) — Initial
 - [Configuration Document](docs/configuration.md) — Initial
 - [Project Plan](docs/project-plan.md) — Initial
-- [G1 pitch deck](deck/The%20Artifacts%20-%20G1.pptx)
+- G1 pitch deck: [PDF](deck/The%20Artifacts%20-%20G1.pdf) · [PowerPoint](deck/The%20Artifacts%20-%20G1.pptx)
