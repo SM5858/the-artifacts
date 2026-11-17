@@ -59,7 +59,8 @@ Core may not use `UnityEngine` (its asmdef sets `noEngineReferences`), and Core.
 Implemented so far:
 
 - Guardian setup validator and challenger snapshot (Configuration Document 2.2 and 2.5): fields from the engine's options, the 3 s deadline, and default-Guardian fallback with a reason.
-- Combat engine (`Core/Combat`, Combat Spec): deterministic real-time simulation of one player versus one Guardian, all prototype content, the four strategies, and tuning ranges by gear score. Not yet connected to a Unity scene.
+- Combat engine (`Core/Combat`, Combat Spec): deterministic real-time simulation of one player versus one Guardian, all prototype content, the four strategies, and tuning ranges by gear score. Played in the graybox scene below.
+- Graybox PC fight (`PC/Combat`, scene `PC/Scenes/CombatSandbox.unity`): primitive arena and capsules, lock-on camera, WASD and 1–4 input, floor telegraphs, IMGUI HUD (tells, HP, cooldowns, outcome; R retry, B switch build). Recreate the scene with **The Artifacts → Create Combat Sandbox Scene**. Materials are made at runtime from URP shader names, which works in the editor; switch to material assets before making a player build.
 
 ## Open items
 
