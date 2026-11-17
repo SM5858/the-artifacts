@@ -177,6 +177,9 @@ The geared test build wears Keen Edge, Scaled Coat, and Iron Charm.
 
 ## 7. Still open
 
+- **Implementation defaults (in `Core/Combat/Content.cs`, not yet approved):** Guardian move speed 5 m/s (slower than the player's 7 m/s); Guardian stops chasing at 2.5 m; circular arena radius 20 m; player starts 12 m away; Charge leaves the Guardian at the end of its line; a strategy's first skill comes one interval into the fight.
+- **Bot result (first engine build, 2026-11-16):** a bot that dodges every telegraph wins every tier with both builds (starter T3 in 75 s, geared T5 in 70 s), even with a 0.6 s reaction delay, because the default skills' tells are long enough to escape. The "scripted default is very hard for a starter" reading in 4.7 depends on human mistakes; measure telegraph hits per attempt in the first playtest before retuning.
+
 - Exact animation timings will shift tells by ±0.2 s once the Guardian model is animated; recheck readability in a build.
 - Whether Guard should be usable during the GCD.
 - Theme and names of the first dungeon and Guardian (Narrative).

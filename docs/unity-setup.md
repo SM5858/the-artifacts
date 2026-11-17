@@ -56,7 +56,10 @@ Core rule tests live in `game/Assets/_Project/Core.Tests` and run two ways:
 
 Core may not use `UnityEngine` (its asmdef sets `noEngineReferences`), and Core.Tests may use only NUnit, so both runs see the same code.
 
-Implemented so far: the Guardian setup validator and challenger snapshot (Configuration Document 2.2 and 2.5) — fields from the engine's options, the 3 s deadline, and default-Guardian fallback with a reason. Combat rules wait on GDD Q3/Q4.
+Implemented so far:
+
+- Guardian setup validator and challenger snapshot (Configuration Document 2.2 and 2.5): fields from the engine's options, the 3 s deadline, and default-Guardian fallback with a reason.
+- Combat engine (`Core/Combat`, Combat Spec): deterministic real-time simulation of one player versus one Guardian, all prototype content, the four strategies, and tuning ranges by gear score. Not yet connected to a Unity scene.
 
 ## Open items
 
