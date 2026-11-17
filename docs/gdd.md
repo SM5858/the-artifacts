@@ -95,12 +95,24 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 ### 6.6 Item economy: general items and artifacts (full game) [DECIDED 2026-11-17]
 
-- **General items** come from ordinary play with no travel: field drops, shops, crafting, and event rewards. They go up to the **SSR-equivalent** grade, so a player who never travels can still build a strong character through time or money.
-- **Artifacts** are a separate category above the general ladder (Legendary-class power), not a grade on it. They are earned only by visiting a real landmark (unlock) and beating its Guardian on PC (Pillar 2). Even the lowest artifact grade sits above SSR.
+- **General items** come from ordinary play with no travel: field drops, shops, crafting, and event rewards. A player who never travels can still build a strong character through time or money.
+- **General-item grades [DECIDED 2026-11-17]**, lowest to highest. Grade names describe quality, not source, because crafting reaches every grade.
+
+  | Grade | Typical non-crafted source |
+  |---|---|
+  | Standard | Shops |
+  | Fine | Shops |
+  | Superior | Bosses in quests and other in-game content (no travel); stronger than Fine |
+  | Masterpiece | Crafting only: high crafting skill plus rare materials |
+
+- **Crafting, no fixed classes [DECIDED 2026-11-17]:** the full game has no fixed class system. Any player can raise a crafting skill; a highly skilled crafter works as a blacksmith and can make every general grade from Standard to Masterpiece, with the grade set by skill level and material quality. Skill thresholds and materials per grade: not yet designed.
+- **Artifacts** are a separate category (Legendary-class power), not a grade on the general ladder. They are earned only by visiting a real landmark (unlock) and beating its Guardian on PC (Pillar 2).
+- **Every artifact has a trait [DECIDED 2026-11-17].** A trait is something general items never have, for example a multiplicative stat boost, or a skill the player can use only while the artifact is equipped. Higher grades carry stronger traits; Treasure and Wonder traits change how an ability is used (Combat Spec Section 5.2).
+- **Masterpiece–artifact boundary [DECIDED 2026-11-17]:** Masterpiece overlaps the lower artifact grades on raw stats, so a player who never travels still has a reason to raise a crafting skill. A Masterpiece's stats can reach the Heirloom level, depending on crafting skill and materials. A Masterpiece never has a trait. Stats can overlap; traits are what travel adds, and the strongest traits (Treasure, Wonder) are out of the crafter's reach.
 - **Artifact grades:** Relic → Heirloom → Treasure → Wonder. The top artifact for a slot is a step above the best general item for that slot: better, but not so far above that non-travelers are shut out of content.
 - **Artifacts need not be equipment.** The full game may include very strong consumable artifacts. The prototype uses equippable artifacts only.
-- **Not yet decided [OPEN] Q12:** the general-item grade ladder (names and number of grades up to SSR), and the stat budget of each artifact grade relative to SSR.
-- **Prototype scope [OPEN] Q13:** which general-item sources, if any, the prototype builds, and whether the test builds (Section 6.2) change to "starter = basic general gear" and "geared = best general gear" with artifacts on top.
+- **Not yet decided [OPEN] Q12:** the stat budget of each general grade, and the crafting skill and materials that move a Masterpiece from below Relic up to Heirloom.
+- **Prototype scope [DECIDED 2026-11-17] (Q13):** the prototype builds no general-item sources (no drops, shop, crafting, or events). General gear appears only as a fixed loadout given to the test builds. Its exact stats wait on the Q12 budgets; until then the Combat Spec builds stand.
 
 ## 7. Win, failure, and edge cases [PROPOSED]
 
@@ -133,7 +145,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 | **Included [DECIDED]** | 2–3 Columbia-area locations, mobile visit unlock, one PC dungeon, four artifact grades, one real-time **open** Guardian in two modes (scripted, adaptive). A gated variant of the same Guardian is a stretch test, not a commitment. |
 | **Excluded [DECIDED]** | Multiplayer / PvP, open world, paid unlocks, trading, additional dungeon environments. |
 | **First cut [DECIDED]** | Simulate GPS visits; keep the unlock-to-combat loop. |
-| **Full vision, not prototype scope** | Landmarks anywhere a player travels, each with a dungeon, Guardian, and artifacts themed on that place, collected over many trips. A general-item economy (field drops, shops, crafting, events) up to SSR-equivalent, with artifacts as the travel-only Legendary tier (Section 6.6). Consumable artifacts. |
+| **Full vision, not prototype scope** | Landmarks anywhere a player travels, each with a dungeon, Guardian, and artifacts themed on that place, collected over many trips. A general-item economy (field drops, shops, crafting, events) with grades Standard to Masterpiece, classless crafting, and artifacts as the travel-only category above it (Section 6.6). Consumable artifacts. |
 | **Hold fallback** | One simulated location, one playable Guardian encounter, both policies running under the same rules. |
 
 ## 11. Agent hypothesis and playtest question
@@ -177,5 +189,6 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 | Q9 | ~~Runtime model for the Guardian (budget uses planning rates)~~ **Resolved 2026-11-16:** Claude Haiku 5.5 (Configuration Document 2.7) | Before adaptive policy task | Tech Lead recommends; I decide |
 | Q10 | Which 2–3 landmarks, and whether any are indoors (GPS accuracy) | Before mobile check-in task | Design Lead |
 | Q11 | ~~Stat tiers, skill pool, strategy list, and the allowed tuning range per challenger strength~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before adaptive Guardian task | Design Lead |
-| Q12 | General-item grade ladder up to SSR; the stat budget of each artifact grade relative to SSR (placement decided 2026-11-17: artifacts are a separate category, all grades above SSR) | Before item data is authored beyond the 8 prototype artifacts | Design Lead |
-| Q13 | Which general-item sources (drops, shop, crafting, events) the prototype builds, and whether the starter and geared test builds are redefined around general gear | Before G2 playtest | Design Lead / Producer |
+| Q12 | Stat budget of each general grade, and the crafting skill and materials that move a Masterpiece up to Heirloom (decided 2026-11-17: general grades are Standard, Fine, Superior, Masterpiece; artifacts are a separate category; Masterpiece stats reach up to Heirloom, with no effects) | Before item data is authored beyond the 8 prototype artifacts | Design Lead |
+| Q13 | ~~Which general-item sources the prototype builds, and whether the test builds are redefined around general gear~~ **Resolved 2026-11-17:** no sources built; general gear only as a fixed test-build loadout (Section 6.6) | Before G2 playtest | Design Lead / Producer |
+| Q14 | Traits for the four prototype Relic and Heirloom artifacts (they have stats only today); which trait kinds (multiplicative stat, granted skill, ability effect) each grade may carry; where a granted skill goes on the hotbar | Before the next combat content pass | Design Lead |

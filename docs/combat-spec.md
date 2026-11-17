@@ -144,10 +144,12 @@ The **first win** on a Guardian is at least Heirloom. Rolls are made by the engi
 
 Three slots: **weapon, armor, trinket.** One artifact per slot.
 
+Every artifact has a **trait**, which general items never have (GDD Section 6.6). The Effect column is that trait.
+
 | Rarity | Stats | Effect |
 |---|---|---|
-| Relic | one small stat bonus | — |
-| Heirloom | two stat bonuses, or one large | — |
+| Relic | one small stat bonus | one trait **[OPEN]** Q14 |
+| Heirloom | two stat bonuses, or one large | one trait **[OPEN]** Q14 |
 | Treasure | stat bonus | one minor effect (tunes an ability) |
 | Wonder | stat bonus | one signature effect (changes how an ability is used) |
 
@@ -155,10 +157,10 @@ Three slots: **weapon, armor, trinket.** One artifact per slot.
 
 | Artifact | Slot | Rarity | Stats | Effect |
 |---|---|---|---|---|
-| Worn Band | trinket | Relic | +5 Power | — |
-| Padded Vest | armor | Relic | +100 HP | — |
-| Iron Charm | trinket | Heirloom | +100 HP, +5% Armor | — |
-| Scaled Coat | armor | Heirloom | +200 HP, +10% Armor | — |
+| Worn Band | trinket | Relic | +5 Power | — (trait **[OPEN]** Q14) |
+| Padded Vest | armor | Relic | +100 HP | — (trait **[OPEN]** Q14) |
+| Iron Charm | trinket | Heirloom | +100 HP, +5% Armor | — (trait **[OPEN]** Q14) |
+| Scaled Coat | armor | Heirloom | +200 HP, +10% Armor | — (trait **[OPEN]** Q14) |
 | Keen Edge | weapon | Treasure | +20 Power | Heavy Strike cooldown 6 → 4.5 s |
 | Warden's Plate | armor | Treasure | +150 HP, +10% Armor | Guard also heals 5% max HP |
 | Echo Blade | weapon | Wonder | +25 Power | Punish in a recovery window resets Lunge |
@@ -166,7 +168,7 @@ Three slots: **weapon, armor, trinket.** One artifact per slot.
 
 The geared test build wears Keen Edge, Scaled Coat, and Iron Charm.
 
-> **Note (2026-11-17):** the full game adds general items up to SSR-equivalent. Artifacts are a separate category above that ladder, with the four grades Relic, Heirloom, Treasure, Wonder ([GDD](gdd.md) Section 6.6). Each grade's stat budget relative to SSR, and whether the test builds change, are open (GDD Q12, Q13). The numbers above stand until then.
+> **Note (2026-11-17):** the full game adds general items graded Standard, Fine, Superior, Masterpiece. Artifacts are a separate category with the four grades Relic, Heirloom, Treasure, Wonder. A Masterpiece's stats can reach Heirloom, but it never has a trait; every artifact does ([GDD](gdd.md) Section 6.6). The prototype gives the test builds a fixed general-gear loadout (Q13); its stats and each grade's budget are open (Q12). The numbers above stand until then.
 
 ## 6. Session rules (Q4, Q6, Q7)
 
