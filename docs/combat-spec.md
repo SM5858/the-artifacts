@@ -51,7 +51,7 @@ Both builds use the same abilities, so a tester learns one control scheme. The b
 | HP | 1000 | 1300 |
 | Power | 40 | 60 |
 | Armor | 0% | 15% |
-| Artifacts | none | Rare weapon, Uncommon armor, Uncommon trinket (Section 5.3) |
+| Artifacts | none | Treasure weapon, Heirloom armor, Heirloom trinket (Section 5.3) |
 | Gear score | 0 | 7 |
 | Expected DPS (ideal / realistic 70% uptime) | 54 / 38 | 89 / 63 |
 
@@ -105,7 +105,7 @@ Enrage is a **per-Guardian property, off by default.** The prototype's open Guar
 
 ### 4.6 Tuning range by challenger strength (open Guardian)
 
-Challenger strength is the **gear score**: the sum of equipped artifact rarity points (Common 1, Uncommon 2, Rare 3, Epic 4).
+Challenger strength is the **gear score**: the sum of equipped artifact rarity points (Relic 1, Heirloom 2, Treasure 3, Wonder 4).
 
 | Gear score | Allowed tiers | Allowed skills | Skill count | Allowed strategies |
 |---|---|---|---|---|
@@ -133,12 +133,12 @@ Reading: the scripted default is very hard for a starter and easy for a geared p
 
 | Rarity | Chance | Rarity points |
 |---|---|---|
-| Common | 50% | 1 |
-| Uncommon | 30% | 2 |
-| Rare | 15% | 3 |
-| Epic | 5% | 4 |
+| Relic | 50% | 1 |
+| Heirloom | 30% | 2 |
+| Treasure | 15% | 3 |
+| Wonder | 5% | 4 |
 
-The **first win** on a Guardian is at least Uncommon. Rolls are made by the engine and hidden from the Guardian agent.
+The **first win** on a Guardian is at least Heirloom. Rolls are made by the engine and hidden from the Guardian agent.
 
 ### 5.2 Slots and what rarity changes
 
@@ -146,25 +146,27 @@ Three slots: **weapon, armor, trinket.** One artifact per slot.
 
 | Rarity | Stats | Effect |
 |---|---|---|
-| Common | one small stat bonus | — |
-| Uncommon | two stat bonuses, or one large | — |
-| Rare | stat bonus | one minor effect (tunes an ability) |
-| Epic | stat bonus | one signature effect (changes how an ability is used) |
+| Relic | one small stat bonus | — |
+| Heirloom | two stat bonuses, or one large | — |
+| Treasure | stat bonus | one minor effect (tunes an ability) |
+| Wonder | stat bonus | one signature effect (changes how an ability is used) |
 
 ### 5.3 Prototype artifact list (8 artifacts)
 
 | Artifact | Slot | Rarity | Stats | Effect |
 |---|---|---|---|---|
-| Worn Band | trinket | Common | +5 Power | — |
-| Padded Vest | armor | Common | +100 HP | — |
-| Iron Charm | trinket | Uncommon | +100 HP, +5% Armor | — |
-| Scaled Coat | armor | Uncommon | +200 HP, +10% Armor | — |
-| Keen Edge | weapon | Rare | +20 Power | Heavy Strike cooldown 6 → 4.5 s |
-| Warden's Plate | armor | Rare | +150 HP, +10% Armor | Guard also heals 5% max HP |
-| Echo Blade | weapon | Epic | +25 Power | Punish in a recovery window resets Lunge |
-| Stillstone | trinket | Epic | +150 HP | Guard lasts 3 s and reflects 30% of blocked damage |
+| Worn Band | trinket | Relic | +5 Power | — |
+| Padded Vest | armor | Relic | +100 HP | — |
+| Iron Charm | trinket | Heirloom | +100 HP, +5% Armor | — |
+| Scaled Coat | armor | Heirloom | +200 HP, +10% Armor | — |
+| Keen Edge | weapon | Treasure | +20 Power | Heavy Strike cooldown 6 → 4.5 s |
+| Warden's Plate | armor | Treasure | +150 HP, +10% Armor | Guard also heals 5% max HP |
+| Echo Blade | weapon | Wonder | +25 Power | Punish in a recovery window resets Lunge |
+| Stillstone | trinket | Wonder | +150 HP | Guard lasts 3 s and reflects 30% of blocked damage |
 
 The geared test build wears Keen Edge, Scaled Coat, and Iron Charm.
+
+> **Note (2026-11-17):** the full game adds general items up to SSR-equivalent. Artifacts are a separate category above that ladder, with the four grades Relic, Heirloom, Treasure, Wonder ([GDD](gdd.md) Section 6.6). Each grade's stat budget relative to SSR, and whether the test builds change, are open (GDD Q12, Q13). The numbers above stand until then.
 
 ## 6. Session rules (Q4, Q6, Q7)
 

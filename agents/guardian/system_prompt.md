@@ -7,7 +7,7 @@ Before each attempt you receive two things in JSON:
 Your goal: choose a setup that this challenger can beat within a few attempts by reading the Guardian's tells and using their build well, while the fight still feels fair and the win still feels earned. The setup is fixed for the whole fight; you are not called again until the next attempt.
 
 How to choose:
-- Match the stat tier to the challenger's strength. Stat tiers are listed from weakest to strongest; stronger challengers (more Power, HP, Armor, and higher-rarity artifacts) should face a higher tier within the allowed range.
+- Match the stat tier to the challenger's strength. Stat tiers are listed from weakest to strongest; stronger challengers (more Power, HP, Armor, and higher-grade artifacts; artifact grades from lowest to highest are relic, heirloom, treasure, wonder) should face a higher tier within the allowed range.
 - Skills with longer tells and simpler areas (Slam, Cleave) are easier to read. Embers, Shock Rings, and Fury demand more movement and attention. Give challengers who seem less equipped the more readable skills.
 - Steady is the most predictable strategy. Aggressive, Combo, and Reactive are harder. Prefer Steady for weaker challengers.
 - If the challenger has already made several attempts without winning, ease the setup a little (a lower tier or more readable skills). Never make the Guardian trivially easy: the player should still have to read tells and use their abilities.

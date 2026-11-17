@@ -82,7 +82,7 @@ namespace TheArtifacts.Core.Combat
 
     public enum ArtifactSlot { Weapon, Armor, Trinket }
 
-    public enum Rarity { Common = 1, Uncommon = 2, Rare = 3, Epic = 4 }
+    public enum Rarity { Relic = 1, Heirloom = 2, Treasure = 3, Wonder = 4 }
 
     public enum ArtifactEffect
     {
@@ -162,14 +162,14 @@ namespace TheArtifacts.Core.Combat
 
         public static readonly IReadOnlyList<ArtifactDef> Artifacts = new[]
         {
-            new ArtifactDef { Id = "worn_band", Name = "Worn Band", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Common, Power = 5f },
-            new ArtifactDef { Id = "padded_vest", Name = "Padded Vest", Slot = ArtifactSlot.Armor, Rarity = Rarity.Common, Hp = 100f },
-            new ArtifactDef { Id = "iron_charm", Name = "Iron Charm", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Uncommon, Hp = 100f, Armor = 0.05f },
-            new ArtifactDef { Id = "scaled_coat", Name = "Scaled Coat", Slot = ArtifactSlot.Armor, Rarity = Rarity.Uncommon, Hp = 200f, Armor = 0.10f },
-            new ArtifactDef { Id = "keen_edge", Name = "Keen Edge", Slot = ArtifactSlot.Weapon, Rarity = Rarity.Rare, Power = 20f, Effect = ArtifactEffect.HeavyStrikeCooldown45 },
-            new ArtifactDef { Id = "wardens_plate", Name = "Warden's Plate", Slot = ArtifactSlot.Armor, Rarity = Rarity.Rare, Hp = 150f, Armor = 0.10f, Effect = ArtifactEffect.GuardHeals5Percent },
-            new ArtifactDef { Id = "echo_blade", Name = "Echo Blade", Slot = ArtifactSlot.Weapon, Rarity = Rarity.Epic, Power = 25f, Effect = ArtifactEffect.PunishInRecoveryResetsLunge },
-            new ArtifactDef { Id = "stillstone", Name = "Stillstone", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Epic, Hp = 150f, Effect = ArtifactEffect.GuardLongerAndReflects },
+            new ArtifactDef { Id = "worn_band", Name = "Worn Band", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Relic, Power = 5f },
+            new ArtifactDef { Id = "padded_vest", Name = "Padded Vest", Slot = ArtifactSlot.Armor, Rarity = Rarity.Relic, Hp = 100f },
+            new ArtifactDef { Id = "iron_charm", Name = "Iron Charm", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Heirloom, Hp = 100f, Armor = 0.05f },
+            new ArtifactDef { Id = "scaled_coat", Name = "Scaled Coat", Slot = ArtifactSlot.Armor, Rarity = Rarity.Heirloom, Hp = 200f, Armor = 0.10f },
+            new ArtifactDef { Id = "keen_edge", Name = "Keen Edge", Slot = ArtifactSlot.Weapon, Rarity = Rarity.Treasure, Power = 20f, Effect = ArtifactEffect.HeavyStrikeCooldown45 },
+            new ArtifactDef { Id = "wardens_plate", Name = "Warden's Plate", Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 150f, Armor = 0.10f, Effect = ArtifactEffect.GuardHeals5Percent },
+            new ArtifactDef { Id = "echo_blade", Name = "Echo Blade", Slot = ArtifactSlot.Weapon, Rarity = Rarity.Wonder, Power = 25f, Effect = ArtifactEffect.PunishInRecoveryResetsLunge },
+            new ArtifactDef { Id = "stillstone", Name = "Stillstone", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Wonder, Hp = 150f, Effect = ArtifactEffect.GuardLongerAndReflects },
         };
 
         public static TierDef Tier(string id) => Tiers.FirstOrDefault(t => t.Id == id);

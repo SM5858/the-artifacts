@@ -22,6 +22,7 @@ Nothing in this document is implemented or verified yet. Implemented and verifie
 - **Intended experience:** the pleasure of mastering a readable opponent with a build that feels like your own, with a real place as the reason the fight exists.
 - **Observable hypothesis:** after earning a first artifact, players voluntarily retry a Guardian or seek another artifact, without being prompted.
 - **Secondary signal:** the share of testers who open the PC dungeon after checking in on mobile (the handoff is the main friction point).
+- **Differentiator [DECIDED 2026-11-17]:** in most RPGs a character grows through money or play time. Here, real-world travel is a third axis of growth: the top tier of power (Legendary) is earned only by visiting places. See Section 6.6.
 
 ## 3. Platform and genre
 
@@ -43,7 +44,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 ## 5. Pillars
 
 1. **Place unlocks play.** A brief visit to a real landmark opens a dungeon themed on that place. The visit stays short so the trip stays about the place; the play happens later on PC.
-2. **Combat earns the artifact.** Players win by making effective choices with their build. Rewards are never bought or granted for the visit alone.
+2. **Combat earns the artifact.** Players win by making effective choices with their build. Artifacts are never bought or granted for the visit alone; the visit opens the fight, and the fight earns the artifact.
 3. **The Guardian adapts.** It tunes itself to the challenger, so a newcomer who unlocks a dungeon can still win in a few attempts.
 
 ## 6. Mechanics [PROPOSED]
@@ -87,10 +88,19 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 ### 6.5 Rewards and progression
 
-- Winning a fight grants an artifact from one of **four rarity tiers**.
+- Winning a fight grants an artifact from one of **four artifact grades**: Relic, Heirloom, Treasure, Wonder (lowest to highest).
 - Reward rolls are made by the engine and are hidden from the Guardian.
-- Drop table and rarity **[DECIDED]**: rarity changes both power and variety; first win on a Guardian is at least Uncommon. See [Combat Spec](combat-spec.md), Section 5.
+- Drop table and rarity **[DECIDED]**: rarity changes both power and variety; first win on a Guardian is at least Heirloom. See [Combat Spec](combat-spec.md), Section 5.
 - Progression in the prototype is: unlock → win → equip → retry or seek another unlock. No levels or currencies.
+
+### 6.6 Item economy: general items and artifacts (full game) [DECIDED 2026-11-17]
+
+- **General items** come from ordinary play with no travel: field drops, shops, crafting, and event rewards. They go up to the **SSR-equivalent** grade, so a player who never travels can still build a strong character through time or money.
+- **Artifacts** are a separate category above the general ladder (Legendary-class power), not a grade on it. They are earned only by visiting a real landmark (unlock) and beating its Guardian on PC (Pillar 2). Even the lowest artifact grade sits above SSR.
+- **Artifact grades:** Relic → Heirloom → Treasure → Wonder. The top artifact for a slot is a step above the best general item for that slot: better, but not so far above that non-travelers are shut out of content.
+- **Artifacts need not be equipment.** The full game may include very strong consumable artifacts. The prototype uses equippable artifacts only.
+- **Not yet decided [OPEN] Q12:** the general-item grade ladder (names and number of grades up to SSR), and the stat budget of each artifact grade relative to SSR.
+- **Prototype scope [OPEN] Q13:** which general-item sources, if any, the prototype builds, and whether the test builds (Section 6.2) change to "starter = basic general gear" and "geared = best general gear" with artifacts on top.
 
 ## 7. Win, failure, and edge cases [PROPOSED]
 
@@ -120,10 +130,10 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 | | |
 |---|---|
-| **Included [DECIDED]** | 2–3 Columbia-area locations, mobile visit unlock, one PC dungeon, four artifact rarity tiers, one real-time **open** Guardian in two modes (scripted, adaptive). A gated variant of the same Guardian is a stretch test, not a commitment. |
+| **Included [DECIDED]** | 2–3 Columbia-area locations, mobile visit unlock, one PC dungeon, four artifact grades, one real-time **open** Guardian in two modes (scripted, adaptive). A gated variant of the same Guardian is a stretch test, not a commitment. |
 | **Excluded [DECIDED]** | Multiplayer / PvP, open world, paid unlocks, trading, additional dungeon environments. |
 | **First cut [DECIDED]** | Simulate GPS visits; keep the unlock-to-combat loop. |
-| **Full vision, not prototype scope** | Landmarks anywhere a player travels, each with a dungeon, Guardian, and artifacts themed on that place, collected over many trips. |
+| **Full vision, not prototype scope** | Landmarks anywhere a player travels, each with a dungeon, Guardian, and artifacts themed on that place, collected over many trips. A general-item economy (field drops, shops, crafting, events) up to SSR-equivalent, with artifacts as the travel-only Legendary tier (Section 6.6). Consumable artifacts. |
 | **Hold fallback** | One simulated location, one playable Guardian encounter, both policies running under the same rules. |
 
 ## 11. Agent hypothesis and playtest question
@@ -167,3 +177,5 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 | Q9 | ~~Runtime model for the Guardian (budget uses planning rates)~~ **Resolved 2026-11-16:** Claude Haiku 5.5 (Configuration Document 2.7) | Before adaptive policy task | Tech Lead recommends; I decide |
 | Q10 | Which 2–3 landmarks, and whether any are indoors (GPS accuracy) | Before mobile check-in task | Design Lead |
 | Q11 | ~~Stat tiers, skill pool, strategy list, and the allowed tuning range per challenger strength~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before adaptive Guardian task | Design Lead |
+| Q12 | General-item grade ladder up to SSR; the stat budget of each artifact grade relative to SSR (placement decided 2026-11-17: artifacts are a separate category, all grades above SSR) | Before item data is authored beyond the 8 prototype artifacts | Design Lead |
+| Q13 | Which general-item sources (drops, shop, crafting, events) the prototype builds, and whether the starter and geared test builds are redefined around general gear | Before G2 playtest | Design Lead / Producer |
