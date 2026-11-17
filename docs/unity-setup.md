@@ -64,6 +64,6 @@ Implemented so far:
 
 ## Open items
 
-- Backend for accounts, quest unlocks, and the server-side Guardian call (PlayFab / Nakama / Supabase): **[OPEN]**
+- Backend: **decided 2026-11-16 — Unity Gaming Services** (Authentication, Cloud Save / Economy, Cloud Code C# for the Guardian call). To verify at setup: Cloud Code C# module limits (execution time, outbound HTTP to the Claude API) against the 3 s deadline, and free-tier quotas.
 - Map SDK for the mobile check-in: **[OPEN]** — check current Unity support status at decision time
 - When to split into a private release repository: before any paid asset or release-only code is added

@@ -65,12 +65,14 @@ The allowed range belongs to each Guardian and is the guard against the main des
 
 | Item | Value | Basis |
 |---|---|---|
-| Model | **[OPEN]** C3 — not selected | Budget uses planning rates |
+| Model **[DECIDED 2026-11-16]** | `claude-haiku-5-5` (Claude Haiku 5.5) | Fastest current model; the task is a choice among engine-defined options. Price $0.10 / $0.50 per 1M input / output tokens (API list price, checked 2026-11-03; re-check before live evaluation) |
+| Thinking | Disabled for the first build (Haiku 5.5 allows this at effort `high` or below), so the 300-token output cap holds and latency stays low; compare low-effort adaptive thinking in the live trials | Latency and validity measured per C5 |
+| Where it runs | Server side only, in a Unity Gaming Services Cloud Code C# module; the API key lives in UGS secrets, never in the game client | Section 2.4; GDD Q1 |
 | Deadline per call | 3 s at fight start, then default Guardian | A short loading wait before the fight; combat never waits. To verify against measured latency |
 | Retries | 0 (fallback instead) | A retry would break the deadline |
 | Input cap | 2,000 tokens per call | Snapshot plus options plus instructions |
 | Output cap | 300 tokens per call | One tool call with three fields |
-| Cost per session | **$0.035 estimate / $0.04 cap** | 1 call per attempt × up to 10 attempts = 10 calls. 2,000 in × $1/M + 300 out × $5/M = $0.0035/call = $0.035/session. |
+| Cost per session | **$0.0035 estimate / $0.04 cap** | 1 call per attempt × up to 10 attempts = 10 calls. 2,000 in × $0.10/M + 300 out × $0.50/M = $0.00035/call = $0.0035/session. The cap is kept from the G1 planning rates and leaves room for thinking or a larger model if trials need it. |
 | Spending limit | **[OPEN]** C4 — total evaluation cap | Set before live evaluation |
 
 ### 2.8 Failure modes
@@ -130,7 +132,7 @@ Every handoff states what to use, what to produce, and how acceptance is judged.
 |---|---|---|
 | C1 | Required fields of the common manifest for the extension artifact (check syllabus) | Before the Guardian interface task |
 | C2 | Should the snapshot include the previous attempt's outcome, beyond the attempt count? | Before adaptive Guardian task |
-| C3 | Runtime model and settings for the Guardian | Before adaptive policy task |
+| C3 | ~~Runtime model and settings for the Guardian~~ **Resolved 2026-11-16:** Claude Haiku 5.5, thinking off, server-side (Section 2.7) | Before adaptive policy task |
 | C4 | Per-session and total evaluation spending limits | Before live evaluation |
 | C5 | Number of live trials per build strength | Before live evaluation |
 | C6 | ~~Test command and CI workflow path (depends on stack, GDD Q1)~~ **Resolved 2026-11-16** (Section 2.9) | With the first prototype task |

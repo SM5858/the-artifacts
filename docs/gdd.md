@@ -27,7 +27,7 @@ Nothing in this document is implemented or verified yet. Implemented and verifie
 
 - **Genre:** location-based RPG with real-time boss combat built on skill cooldowns.
 - **Platform:** mobile for the visit check-in while out; PC for dungeon and combat later, at home or lodging. One account links the two.
-- **Engine / stack [DECIDED 2026-11-16]:** Unity 6.3 LTS (3D URP), one project for both the PC client and the mobile check-in, chosen for the release goal. See [Unity Setup](unity-setup.md). The account backend is still **[OPEN]** (Q1).
+- **Engine / stack [DECIDED 2026-11-16]:** Unity 6.3 LTS (3D URP), one project for both the PC client and the mobile check-in, chosen for the release goal. See [Unity Setup](unity-setup.md). Backend **[DECIDED 2026-11-16]:** Unity Gaming Services (Authentication with account linking for mobile and PC, Cloud Save / Economy for unlocks and artifacts, Cloud Code in C# so server logic can reuse the engine-free Core).
 
 ## 4. Core loop
 
@@ -157,13 +157,13 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 | # | Question | Needed by | Deciding role |
 |---|---|---|---|
-| Q1 | Engine / stack for the PC client, the mobile check-in, and the shared account store — **Engine resolved 2026-11-16:** Unity 6.3 LTS; account backend still open | Before first prototype task | Tech Lead recommends; I decide |
+| Q1 | Engine / stack for the PC client, the mobile check-in, and the shared account store — **Resolved 2026-11-16:** Unity 6.3 LTS; backend Unity Gaming Services | Before first prototype task | Tech Lead recommends; I decide |
 | Q2 | Check-in radius, cooldown, and how much anti-spoofing the prototype needs | Before mobile check-in task | Tech Lead / Design Lead |
 | Q3 | ~~Skill lists, cooldown lengths, stats, artifact effects, and the input scheme for the two builds~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before combat implementation | Design Lead |
 | Q4 | ~~Attempt cap and target fight length in seconds (budget assumes up to 10 attempts per session)~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before combat implementation | Design Lead |
 | Q5 | ~~Drop table for four rarity tiers; whether rarity changes power or only variety~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before G2 playtest | Design Lead |
 | Q6 | ~~Mid-fight disconnect: resume or forfeit~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before G2 playtest | Design Lead / Tech Lead |
 | Q7 | ~~How many attempts count as "a few", and the fairness and earned-reward thresholds~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before the first comparison playtest | Design Lead / BI |
-| Q9 | Runtime model for the Guardian (budget uses planning rates) | Before adaptive policy task | Tech Lead recommends; I decide |
+| Q9 | ~~Runtime model for the Guardian (budget uses planning rates)~~ **Resolved 2026-11-16:** Claude Haiku 5.5 (Configuration Document 2.7) | Before adaptive policy task | Tech Lead recommends; I decide |
 | Q10 | Which 2–3 landmarks, and whether any are indoors (GPS accuracy) | Before mobile check-in task | Design Lead |
 | Q11 | ~~Stat tiers, skill pool, strategy list, and the allowed tuning range per challenger strength~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before adaptive Guardian task | Design Lead |
