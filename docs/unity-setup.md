@@ -11,6 +11,7 @@ the-artifacts/
 ├── docs/                  GDD, Configuration Document, Project Plan, this file
 ├── deck/                  G1 pitch deck
 ├── agents/guardian/       Guardian extension artifact (manifest, prompt, tool schema)
+├── server/                UGS Cloud Code module for the adaptive Guardian (see server/README.md)
 └── game/                  Unity project (created from Unity Hub, see below)
     └── Assets/
         ├── _Project/

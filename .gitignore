@@ -63,3 +63,5 @@
 # .NET build output for tools/CoreTests
 /tools/**/bin/
 /tools/**/obj/
+/server/**/bin/
+/server/**/obj/

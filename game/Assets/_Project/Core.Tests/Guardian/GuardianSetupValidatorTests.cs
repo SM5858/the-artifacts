@@ -51,6 +51,15 @@ namespace TheArtifacts.Core.Tests.Guardian
         }
 
         [Test]
+        public void AbandonedAtDeadline_IsATimeout_EvenWithoutAProposal()
+        {
+            var decision = Decide(null, GuardianSetupValidator.Deadline + TimeSpan.FromMilliseconds(1));
+
+            Assert.That(decision.Reason, Is.EqualTo(FallbackReason.Timeout));
+            Assert.That(decision.Setup, Is.SameAs(Default));
+        }
+
+        [Test]
         public void NoProposal_UsesDefaultGuardian()
         {
             var decision = Decide(null);

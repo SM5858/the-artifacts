@@ -1,0 +1,45 @@
+{
+  "name": "guardian",
+  "version": "0.1.0",
+  "description": "Adaptive Guardian: before each attempt, proposes one Guardian setup (stat tier, skills, strategy) tuned to the challenger, chosen only from engine-defined options.",
+  "kind": "in-game agent",
+  "owner": "Tech Lead (student); approvals by the Executive Producer",
+  "model": {
+    "id": "claude-haiku-5-5",
+    "thinking": "disabled",
+    "max_output_tokens": 300,
+    "input_token_cap": 2000
+  },
+  "interface": {
+    "type": "function-calling",
+    "tool": "configure_guardian.schema.json",
+    "tool_choice": "configure_guardian (forced)",
+    "system_prompt": "system_prompt.md",
+    "calls": "once per attempt, at fight start; never during combat"
+  },
+  "context": {
+    "allowed": ["challenger stats", "challenger skills", "equipped artifacts", "attempts on this Guardian", "allowed setup options and their descriptions"],
+    "blocked": ["GPS and location history", "private player data", "reward rolls", "unequipped inventory"]
+  },
+  "permissions": {
+    "may": "propose exactly one setup with every field from the allowed options",
+    "may_not": ["raw numeric stats", "skills outside the pool", "change damage, cooldowns, HP, or rewards", "player-facing text", "any other tool"]
+  },
+  "validation": {
+    "validator": "game/Assets/_Project/Core/Guardian/GuardianSetupValidator.cs",
+    "deadline_seconds": 3,
+    "retries": 0,
+    "fallback": "default Guardian (scripted baseline), with the reason recorded in the trace"
+  },
+  "runtime": {
+    "host": "Unity Gaming Services Cloud Code C# module",
+    "source": "server/GuardianModule",
+    "secret": "Anthropic API key in UGS secrets; never in the game client or this repository"
+  },
+  "cost": {
+    "estimate_per_session_usd": 0.0035,
+    "cap_per_session_usd": 0.04
+  },
+  "evaluation": "server/GuardianModule.Tests (deterministic); bounded live trials per Configuration Document 2.9",
+  "x-open": "C1: confirm the required common-manifest fields against the syllabus and rename or add fields to match."
+}

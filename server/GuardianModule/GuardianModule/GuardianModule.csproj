@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+    Module name = this project's name ("GuardianModule"); Cloud Code requires the main project
+    name to match the deployed module. Core rules and the Guardian artifact files are linked
+    from the repo so the server uses exactly what the game and the tests use.
+  -->
+  <ItemGroup>
+    <Compile Include="../../../game/Assets/_Project/Core/**/*.cs" Link="Core/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../../agents/guardian/system_prompt.md" LogicalName="Guardian.system_prompt.md" />
+    <EmbeddedResource Include="../../../agents/guardian/configure_guardian.schema.json" LogicalName="Guardian.configure_guardian.schema.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Anthropic" Version="13.9.0" />
+    <PackageReference Include="Com.Unity.Services.CloudCode.Apis" Version="0.0.27" />
+    <PackageReference Include="Com.Unity.Services.CloudCode.Core" Version="0.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+</Project>

@@ -62,8 +62,9 @@ namespace TheArtifacts.Core.Guardian
 
         public static FallbackReason Check(GuardianSetup proposal, TimeSpan latency, AllowedSetupSpace space)
         {
-            if (proposal == null) return FallbackReason.ServiceUnavailable;
+            // Deadline first: a call abandoned at the deadline has no proposal but is a timeout.
             if (latency > Deadline) return FallbackReason.Timeout;
+            if (proposal == null) return FallbackReason.ServiceUnavailable;
 
             if (string.IsNullOrEmpty(proposal.StatTier)
                 || string.IsNullOrEmpty(proposal.StrategyId)

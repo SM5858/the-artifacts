@@ -3,7 +3,7 @@
 **Status: Initial (G1).** Next revision: Update at G2/G3. Final at G4.
 **Owner:** the student, in the Tech Lead role. **Gate Approver:** instructor.
 
-This document records how agents are configured: the **in-game agent** (the Guardian) and the **production agents** that perform delegated development work. Everything here is **planned**; no configuration exists in the repository yet. Paths marked *(planned)* are where each executable artifact will live. Open questions are marked **[OPEN]** and collected in Section 6.
+This document records how agents are configured: the **in-game agent** (the Guardian) and the **production agents** that perform delegated development work. The Guardian's configuration exists on the `unity-setup` branch (Section 2.3) but has not run against the live model yet; the production agents are still planned. Paths marked *(planned)* are where each executable artifact will live. Open questions are marked **[OPEN]** and collected in Section 6.
 
 **Authority.** I remain Executive Producer and Creative Director. Agents recommend; I decide what to propose; the instructor decides gates.
 
@@ -38,7 +38,7 @@ The Guardian ships as a **function-calling interface**: the model must answer by
 - **Input:** `{ "stat_tier": <one of allowed_tiers>, "skill_ids": [<from skill_pool>], "strategy_id": <one of strategies> }`
 - **Context per call:** system instructions + the allowed challenger snapshot + the allowed options.
 - **When:** once at the start of each attempt. No calls during combat.
-- **Location:** `agents/guardian/` *(planned)* — `manifest.json`, `system_prompt.md`, `configure_guardian.schema.json`.
+- **Location:** `agents/guardian/` — `manifest.json`, `system_prompt.md`, `configure_guardian.schema.json` (the tool's enums are filled per request with the challenger's allowed values). Runtime: `server/GuardianModule`, a UGS Cloud Code C# module that embeds these files; see `server/README.md`. Deterministic tests: `server/GuardianModule.Tests`.
 - **Manifest:** will carry the fields the syllabus requires for the common manifest. **[OPEN]** C1 — confirm the required field list against the syllabus.
 
 ### 2.4 Permissions and prohibited actions
@@ -125,6 +125,7 @@ Every handoff states what to use, what to produce, and how acceptance is judged.
 | Version | Date | Change | Approved by |
 |---|---|---|---|
 | 0.1 (Initial) | 2026-11-15 | First planned configuration for G1 | Pending G1 decision |
+| 0.2 | 2026-11-16 | Model Claude Haiku 5.5, UGS Cloud Code runtime, Guardian artifact files and server module with fake-model tests (branch `unity-setup`) | Student (Executive Producer); system prompt awaiting my review |
 
 ## 6. Open questions
 

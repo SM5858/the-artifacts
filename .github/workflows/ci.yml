@@ -17,3 +17,16 @@ jobs:
           dotnet-version: 8.0.x
       - name: Run Core tests
         run: dotnet test tools/CoreTests --logger "console;verbosity=normal"
+
+  guardian-module-tests:
+    name: Guardian server module tests (fake model, no API calls)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Run Guardian module tests
+        run: dotnet test server/GuardianModule.Tests --logger "console;verbosity=normal"

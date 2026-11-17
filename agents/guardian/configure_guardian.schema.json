@@ -1,0 +1,28 @@
+{
+  "name": "configure_guardian",
+  "description": "Set the Guardian's stat tier, skills, and strategy for the coming attempt. Call exactly once.",
+  "strict": true,
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "stat_tier": {
+        "type": "string",
+        "description": "One of allowed.stat_tiers.",
+        "enum": ["$ALLOWED_STAT_TIERS"]
+      },
+      "skill_ids": {
+        "type": "array",
+        "description": "Between allowed.min_skills and allowed.max_skills distinct ids from allowed.skills.",
+        "items": { "type": "string", "enum": ["$ALLOWED_SKILLS"] }
+      },
+      "strategy_id": {
+        "type": "string",
+        "description": "One of allowed.strategies.",
+        "enum": ["$ALLOWED_STRATEGIES"]
+      }
+    },
+    "required": ["stat_tier", "skill_ids", "strategy_id"],
+    "additionalProperties": false
+  },
+  "x-notes": "The three \"$ALLOWED_*\" enum placeholders are replaced per request with the values the engine allows for that challenger, so the model can only produce allowed ids. The engine still validates every field (Configuration Document 2.5); skill count and duplicates are checked there."
+}
