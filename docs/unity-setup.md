@@ -1,6 +1,6 @@
 # Unity Setup (branch `unity-setup`)
 
-**Status:** Planned. Stack decision for GDD Q1: **Unity 6 LTS**, one project for both the PC client (combat) and the mobile client (check-in), sharing C# code. Reason: release ambition — 3D third-person combat on PC and a map-based check-in app on mobile from one engine and one language.
+**Status:** Project created (Unity 6.3 LTS, 6000.3.28f1, 3D URP). Stack decision for GDD Q1: **Unity 6 LTS**, one project for both the PC client (combat) and the mobile client (check-in), sharing C# code. Reason: release ambition — 3D third-person combat on PC and a map-based check-in app on mobile from one engine and one language.
 
 This branch leaves `main` (the G1 submission) unchanged. It is merged to `main` only after the G1 decision.
 
@@ -43,6 +43,20 @@ Each `_Project` folder gets its own assembly definition (`.asmdef`). `Core` has 
 3. In Unity Hub: **New project → Universal 3D (URP)**, project name `game`, location = the repository root. `game/` must not exist beforehand.
 4. In the editor: **Edit → Project Settings → Editor**: Version Control = Visible Meta Files, Asset Serialization = Force Text (Unity defaults).
 5. Commit `game/Assets`, `game/Packages`, and `game/ProjectSettings` only. Everything else is ignored by `.gitignore`.
+
+## Tests
+
+Core rule tests live in `game/Assets/_Project/Core.Tests` and run two ways:
+
+- **In Unity:** Window → General → Test Runner → EditMode → Run All.
+- **Without Unity (CI):** `tools/CoreTests/CoreTests.csproj` compiles the same Core and Core.Tests sources with .NET 8 at C# 9 (Unity 6's language level), so no Unity license is needed. `.github/workflows/ci.yml` runs it on every push and pull request.
+  ```bash
+  dotnet test tools/CoreTests
+  ```
+
+Core may not use `UnityEngine` (its asmdef sets `noEngineReferences`), and Core.Tests may use only NUnit, so both runs see the same code.
+
+Implemented so far: the Guardian setup validator and challenger snapshot (Configuration Document 2.2 and 2.5) — fields from the engine's options, the 3 s deadline, and default-Guardian fallback with a reason. Combat rules wait on GDD Q3/Q4.
 
 ## Open items
 

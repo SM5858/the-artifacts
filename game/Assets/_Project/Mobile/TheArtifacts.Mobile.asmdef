@@ -1,0 +1,18 @@
+{
+    "name": "TheArtifacts.Mobile",
+    "rootNamespace": "TheArtifacts.Mobile",
+    "references": [
+        "TheArtifacts.Core",
+        "TheArtifacts.Shared",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
