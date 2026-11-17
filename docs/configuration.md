@@ -89,7 +89,7 @@ The allowed range belongs to each Guardian and is the guard against the main des
 - **Deterministic tests** (rules and invariants): every accepted setup is inside the allowed range; the default Guardian is used on forced timeout and on a forced out-of-range setup; the snapshot contains no blocked fields; no model call happens during combat.
 - **Bounded live trials:** a fixed number of calls per build strength, recording validity rate, fallback rate, latency, actual tokens and cost, and the setups chosen. Trial count: **[OPEN]** C5.
 - **Trace per attempt:** snapshot hash, allowed options, returned setup, valid / fallback, latency, tokens, fight outcome.
-- **Test command and CI workflow:** *(planned)* a single test command and `.github/workflows/ci.yml`. **[OPEN]** C6 — depends on the stack (GDD Q1).
+- **Test command and CI workflow [DECIDED]:** `dotnet test tools/CoreTests` (Core rules, no Unity license) and Unity Test Runner → EditMode; `.github/workflows/ci.yml` runs the .NET tests on every push and pull request. See [Unity Setup](unity-setup.md).
 
 ### 2.10 Human override
 
@@ -133,6 +133,6 @@ Every handoff states what to use, what to produce, and how acceptance is judged.
 | C3 | Runtime model and settings for the Guardian | Before adaptive policy task |
 | C4 | Per-session and total evaluation spending limits | Before live evaluation |
 | C5 | Number of live trials per build strength | Before live evaluation |
-| C6 | Test command and CI workflow path (depends on stack, GDD Q1) | With the first prototype task |
+| C6 | ~~Test command and CI workflow path (depends on stack, GDD Q1)~~ **Resolved 2026-11-16** (Section 2.9) | With the first prototype task |
 | C7 | Which model each production role uses, and whether roles share one | When the subagent files are written |
-| C8 | Whether 3 s at fight start is acceptable at measured latency, and the allowed tuning range per challenger strength (GDD Q11) | Before adaptive Guardian task |
+| C8 | Whether 3 s at fight start is acceptable at measured latency, and the allowed tuning range per challenger strength (GDD Q11) — tuning range resolved in the [Combat Spec](combat-spec.md), Section 4.6; latency still to measure | Before adaptive Guardian task |

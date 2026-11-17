@@ -27,7 +27,7 @@ Nothing in this document is implemented or verified yet. Implemented and verifie
 
 - **Genre:** location-based RPG with real-time boss combat built on skill cooldowns.
 - **Platform:** mobile for the visit check-in while out; PC for dungeon and combat later, at home or lodging. One account links the two.
-- **Engine / stack:** **[OPEN]** not selected. See Q1.
+- **Engine / stack [DECIDED 2026-11-16]:** Unity 6.3 LTS (3D URP), one project for both the PC client and the mobile check-in, chosen for the release goal. See [Unity Setup](unity-setup.md). The account backend is still **[OPEN]** (Q1).
 
 ## 4. Core loop
 
@@ -59,16 +59,16 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 - A build is the character's abilities plus equipped artifacts.
 - The prototype tests at least two builds of different strength: a **starter** build (a new account, no artifacts) and a **geared** build (artifacts equipped, stronger skills).
-- Ability lists, stats, and artifact effects: **[OPEN]** Q3.
+- Ability lists, stats, and artifact effects: **[DECIDED]** in the [Combat Spec](combat-spec.md), Section 3 and 5.
 
 ### 6.3 Combat
 
 - **Real-time [DECIDED]**, one player versus one Guardian. The fight never pauses.
 - Both sides act through **basic attacks**, **skills with cooldowns**, and (for the player) **artifact effects**. The Guardian's skills have cooldowns too.
 - Each Guardian move has a **tell** shown before the player commits, and a **recovery window** after it resolves.
-- Player choices fall into three intents: commit (attack or spend a skill), defend or evade, switch tactics. Exact skill list, cooldown lengths, and input scheme: **[OPEN]** Q3.
+- Player choices fall into three intents: commit (attack or spend a skill), defend or evade, switch tactics. Exact skill list, cooldown lengths, and input scheme: **[DECIDED]** in the [Combat Spec](combat-spec.md).
 - All damage and cooldowns are resolved by the engine. The Guardian's stats, skills, and strategy are set once before each attempt (Section 6.4) and do not change during the fight.
-- Attempt cap per quest and fight length target: **[OPEN]** Q4. Planning assumption for budgets: up to 10 attempts per session.
+- Attempt cap and fight length target **[DECIDED]**: 10 attempts per session per mode; 90–120 s per attempt; no fight timer. See [Combat Spec](combat-spec.md), Sections 1, 2 and 6.
 
 ### 6.4 Guardian (in-game agent)
 
@@ -82,14 +82,14 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
   - An **open Guardian** has a wide range. A brand-new player can win its artifact after a few attempts.
   - A **gated Guardian** has a floor. With the right base stats and equipment it is manageable; without them it is very hard. Its artifacts are the reason to build up a character.
 - The prototype builds one **open** Guardian. A gated variant is the same Guardian with a higher floor (a configuration change, not new content); it is tested only if time allows.
-- Allowed ranges per Guardian, the list of stat tiers, the skill pool, and the strategy list: **[OPEN]** Q11.
+- Allowed ranges per Guardian, the list of stat tiers, the skill pool, and the strategy list: **[DECIDED]** in the [Combat Spec](combat-spec.md), Section 4. Enrage is a per-Guardian property, off for the prototype Guardian, and the agent cannot change it.
 - What the Guardian may and may not know is specified in the Configuration Document, Section 2.
 
 ### 6.5 Rewards and progression
 
 - Winning a fight grants an artifact from one of **four rarity tiers**.
 - Reward rolls are made by the engine and are hidden from the Guardian.
-- Drop table and whether rarity affects power or only variety: **[OPEN]** Q5.
+- Drop table and rarity **[DECIDED]**: rarity changes both power and variety; first win on a Guardian is at least Uncommon. See [Combat Spec](combat-spec.md), Section 5.
 - Progression in the prototype is: unlock → win → equip → retry or seek another unlock. No levels or currencies.
 
 ## 7. Win, failure, and edge cases [PROPOSED]
@@ -99,7 +99,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 - **Edge cases to specify before G2:**
   - Model timeout (over 3 s at fight start) or out-of-range setup → the default Guardian is used, the fight starts, and the fallback is recorded in the trace.
   - Model service unavailable → the default Guardian is used for every attempt and the session is flagged.
-  - Player closes the PC client mid-fight → **[OPEN]** Q6 (resume or forfeit).
+  - Player closes the PC client mid-fight → forfeit; the attempt is not counted **[DECIDED]** (Q6).
   - Check-in succeeds on mobile but the PC client does not show the quest → handoff failure; must be detectable in logs.
   - Duplicate check-in at the same landmark → no duplicate quest.
 
@@ -112,7 +112,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 ## 9. Controls and feedback [PROPOSED]
 
 - **Mobile:** one check-in action; confirmation of the unlocked quest.
-- **PC:** quest list; in combat, real-time inputs for movement or evasion, basic attack, skills, and artifact effects. Input scheme: **[OPEN]** Q3.
+- **PC:** quest list; in combat, real-time inputs for movement or evasion, basic attack, skills, and artifact effects. Input scheme **[DECIDED]**: tab-target, hotbar keys 1–4, WASD to move out of telegraphs. See [Combat Spec](combat-spec.md), Section 3.2.
 - **Feedback the player must be able to read:** quest status, the Guardian's tell for the coming move, HP changes, their own skill cooldowns, and the reward.
 - Presentation scope is the minimum needed for a fair test: readable tells come before visual polish.
 
@@ -138,7 +138,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
   - *Fairness and earned reward:* fairness, winnability, and "I earned this" ratings, and whether gear still feels worth it.
 - **Design of the comparison:** counterbalance which mode a player sees first; a starter and a geared build; the same attempt cap in both modes; the same skill pool and reward rules.
 - **Reading the result:** the adaptive mode should narrow the starter-versus-geared gap without closing it. If the gap closes completely, or "gear felt worth it" drops, the open Guardian's range is too wide and needs retuning. Across the full game, gear keeps its value through gated Guardians, which the prototype does not have to prove.
-- **Thresholds:** the target number of attempts and acceptable fairness ratings are set before testing. **[OPEN]** Q7.
+- **Thresholds [DECIDED]:** median attempts to first win ≤ 5 for both builds in adaptive mode; mean ≥ 4/5 on fairness and "I earned this"; geared testers' "gear felt worth it" no lower than in scripted mode. See [Combat Spec](combat-spec.md), Section 6.
 
 ## 12. References and attribution
 
@@ -157,13 +157,13 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 | # | Question | Needed by | Deciding role |
 |---|---|---|---|
-| Q1 | Engine / stack for the PC client, the mobile check-in, and the shared account store | Before first prototype task | Tech Lead recommends; I decide |
+| Q1 | Engine / stack for the PC client, the mobile check-in, and the shared account store — **Engine resolved 2026-11-16:** Unity 6.3 LTS; account backend still open | Before first prototype task | Tech Lead recommends; I decide |
 | Q2 | Check-in radius, cooldown, and how much anti-spoofing the prototype needs | Before mobile check-in task | Tech Lead / Design Lead |
-| Q3 | Skill lists, cooldown lengths, stats, artifact effects, and the input scheme for the two builds | Before combat implementation | Design Lead |
-| Q4 | Attempt cap and target fight length in seconds (budget assumes up to 10 attempts per session) | Before combat implementation | Design Lead |
-| Q5 | Drop table for four rarity tiers; whether rarity changes power or only variety | Before G2 playtest | Design Lead |
-| Q6 | Mid-fight disconnect: resume or forfeit | Before G2 playtest | Design Lead / Tech Lead |
-| Q7 | How many attempts count as "a few", and the fairness and earned-reward thresholds | Before the first comparison playtest | Design Lead / BI |
+| Q3 | ~~Skill lists, cooldown lengths, stats, artifact effects, and the input scheme for the two builds~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before combat implementation | Design Lead |
+| Q4 | ~~Attempt cap and target fight length in seconds (budget assumes up to 10 attempts per session)~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before combat implementation | Design Lead |
+| Q5 | ~~Drop table for four rarity tiers; whether rarity changes power or only variety~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before G2 playtest | Design Lead |
+| Q6 | ~~Mid-fight disconnect: resume or forfeit~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before G2 playtest | Design Lead / Tech Lead |
+| Q7 | ~~How many attempts count as "a few", and the fairness and earned-reward thresholds~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before the first comparison playtest | Design Lead / BI |
 | Q9 | Runtime model for the Guardian (budget uses planning rates) | Before adaptive policy task | Tech Lead recommends; I decide |
 | Q10 | Which 2–3 landmarks, and whether any are indoors (GPS accuracy) | Before mobile check-in task | Design Lead |
-| Q11 | Stat tiers, skill pool, strategy list, and the allowed tuning range per challenger strength | Before adaptive Guardian task | Design Lead |
+| Q11 | ~~Stat tiers, skill pool, strategy list, and the allowed tuning range per challenger strength~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before adaptive Guardian task | Design Lead |
