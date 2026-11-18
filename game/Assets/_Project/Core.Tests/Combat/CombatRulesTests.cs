@@ -247,6 +247,80 @@ namespace TheArtifacts.Core.Tests.Combat
         }
 
         [Test]
+        public void WardensPlate_GuardHealsFivePercentOfMaxHp()
+        {
+            // Max HP 1150 after the plate; standing in Slam leaves the player well below full.
+            var sim = Sim(PrototypeContent.Build("wardens_plate"), "T3", "steady", "slam", "cleave", "charge");
+            Engage(sim);
+            RunUntil(sim, s => s.Phase == GuardianPhase.Recovery, 15f);
+
+            Use(sim, Ability.Guard);
+
+            Assert.That(DamageTo(sim, CombatEventType.PlayerHealed, "wardens_plate"), Is.EqualTo(57.5f).Within(1e-3));
+        }
+
+        // ---------- Guardian statuses (Combat Spec 4.5, 5.4) ----------
+
+        [Test]
+        public void Status_InterruptsTheTell_ThenTheGuardianRecovers()
+        {
+            var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
+            Engage(sim);
+            RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 15f);
+
+            sim.ApplyGuardianStatus(GuardianStatus.Petrify, 1f);
+
+            Assert.That(sim.Phase, Is.EqualTo(GuardianPhase.Incapacitated));
+            Assert.That(sim.ActiveTelegraphs, Is.Empty);
+            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.TellInterrupted && e.Id == "cleave"), Is.True);
+
+            RunFor(sim, 1.1f);
+            Assert.That(sim.ActiveStatus, Is.Null);
+            Assert.That(sim.Phase, Is.Not.EqualTo(GuardianPhase.Incapacitated));
+            Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "cleave"), Is.Zero);
+        }
+
+        [Test]
+        public void Status_IsResisted_ByAnImmuneGuardian()
+        {
+            var sim = new CombatSim(PrototypeContent.StarterBuild, PrototypeContent.DefaultSetup, seed: 1,
+                immunities: new[] { GuardianStatus.Petrify });
+            Engage(sim);
+            RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 15f);
+
+            sim.ApplyGuardianStatus(GuardianStatus.Petrify, 1f);
+
+            Assert.That(sim.Phase, Is.EqualTo(GuardianPhase.Tell));
+            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.StatusResisted), Is.True);
+        }
+
+        [Test]
+        public void HitTakenTrait_PetrifiesAndCancelsTheRestOfTheSkill()
+        {
+            // A test-only artifact: every hit taken petrifies the Guardian for 1 s.
+            var aegis = new ArtifactDef
+            {
+                Id = "test_aegis", Name = "Test Aegis", Slot = ArtifactSlot.LeftHand, Rarity = Rarity.Wonder,
+                Trait = new[]
+                {
+                    new TraitPart
+                    {
+                        Mode = TraitMode.Triggered, Trigger = TraitTrigger.HitTaken,
+                        Effects = new[] { new TraitEffect { Kind = TraitEffectKind.ApplyStatus, Status = GuardianStatus.Petrify, Value = 1f } },
+                    },
+                },
+            };
+            var sim = Sim(new PlayerBuild(1000f, 40f, 0f, new[] { aegis }), "T3", "steady", "embers", "slam", "cleave");
+
+            // Stand still: the first of three Embers circles lands on the player and interrupts the rest.
+            RunUntil(sim, s => s.Events.Any(e => e.Type == CombatEventType.TellInterrupted && e.Id == "embers"), 20f);
+
+            Assert.That(sim.Events.Count(e => e.Type == CombatEventType.PlayerDamaged && e.Id == "embers"), Is.EqualTo(1));
+            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.RecoveryStarted && e.Id == "embers"), Is.False);
+            Assert.That(sim.Phase, Is.EqualTo(GuardianPhase.Incapacitated));
+        }
+
+        [Test]
         public void Fury_RaisesGuardianAutoAttacks()
         {
             var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "fury", "slam", "cleave");

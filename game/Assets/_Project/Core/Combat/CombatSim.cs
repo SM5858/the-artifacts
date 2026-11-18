@@ -32,6 +32,8 @@ namespace TheArtifacts.Core.Combat
         Recovery,
         /// <summary>Combo: short pause before the second skill's tell.</summary>
         ComboGap,
+        /// <summary>Under a player-applied status (stun, petrify, fear): no skills, chase, or auto-attacks.</summary>
+        Incapacitated,
     }
 
     public enum CombatOutcome { Ongoing, Win, Loss }
@@ -51,6 +53,9 @@ namespace TheArtifacts.Core.Combat
         RecoveryStarted,
         Win,
         Loss,
+        StatusApplied,
+        StatusResisted,
+        TellInterrupted,
     }
 
     /// <summary>Feedback for the UI and the per-attempt trace.</summary>
@@ -113,6 +118,8 @@ namespace TheArtifacts.Core.Combat
         public GuardianPhase Phase { get; private set; } = GuardianPhase.Idle;
         public GuardianSkillDef CurrentSkill { get; private set; }
         public bool IsFuryActive => Time < _furyEnd;
+        public GuardianStatus? ActiveStatus { get; private set; }
+        public IReadOnlyCollection<GuardianStatus> GuardianImmunities { get; }
 
         public IReadOnlyList<Telegraph> ActiveTelegraphs => _telegraphs;
         public IReadOnlyList<CombatEvent> Events => _events;
@@ -137,8 +144,10 @@ namespace TheArtifacts.Core.Combat
         float _furyEnd = float.NegativeInfinity;
         float _furyMultiplier = 1f;
 
-        public CombatSim(PlayerBuild build, GuardianSetup setup, int seed)
+        /// <param name="immunities">The Guardian's status immunities; defaults to the prototype Guardian's (none).</param>
+        public CombatSim(PlayerBuild build, GuardianSetup setup, int seed, IReadOnlyCollection<GuardianStatus> immunities = null)
         {
+            GuardianImmunities = immunities ?? PrototypeContent.GuardianImmunities;
             Build = build ?? throw new ArgumentNullException(nameof(build));
             Setup = setup ?? throw new ArgumentNullException(nameof(setup));
             Tier = PrototypeContent.Tier(setup.StatTier) ?? throw new ArgumentException($"Unknown tier '{setup.StatTier}'.");
@@ -215,17 +224,17 @@ namespace TheArtifacts.Core.Combat
                 return;
             }
 
+            var inRecovery = Phase == GuardianPhase.Recovery;
             switch (ability)
             {
                 case Ability.HeavyStrike:
                     DamageGuardian(PlayerRules.HeavyStrikeCoefficient * Build.Power, "heavy_strike");
-                    _cooldowns[ability] = Build.Has(ArtifactEffect.HeavyStrikeCooldown45) ? 4.5f : PlayerRules.HeavyStrikeCooldown;
+                    _cooldowns[ability] = Cooldown(ability, PlayerRules.HeavyStrikeCooldown);
                     break;
 
                 case Ability.Guard:
-                    GuardRemaining = Build.Has(ArtifactEffect.GuardLongerAndReflects) ? 3f : PlayerRules.GuardDuration;
-                    if (Build.Has(ArtifactEffect.GuardHeals5Percent)) HealPlayer(0.05f * Build.MaxHp, "wardens_plate");
-                    _cooldowns[ability] = PlayerRules.GuardCooldown;
+                    GuardRemaining = Build.Passive(TraitEffectKind.SetGuardDuration)?.Value ?? PlayerRules.GuardDuration;
+                    _cooldowns[ability] = Cooldown(ability, PlayerRules.GuardCooldown);
                     break;
 
                 case Ability.Lunge:
@@ -234,24 +243,26 @@ namespace TheArtifacts.Core.Combat
                     var travel = Math.Max(0f, Math.Min(PlayerRules.LungeDistance, toGuardian.Length - 2f));
                     PlayerPosition = ClampToArena(PlayerPosition + toGuardian.Normalized() * travel);
                     if (InMeleeRange) DamageGuardian(PlayerRules.LungeCoefficient * Build.Power, "lunge");
-                    _cooldowns[ability] = PlayerRules.LungeCooldown;
+                    _cooldowns[ability] = Cooldown(ability, PlayerRules.LungeCooldown);
                     break;
                 }
 
                 case Ability.Punish:
                 {
-                    var inRecovery = Phase == GuardianPhase.Recovery;
                     var mult = inRecovery ? PlayerRules.PunishRecoveryMultiplier : 1f;
                     DamageGuardian(PlayerRules.PunishCoefficient * Build.Power * mult, inRecovery ? "punish_recovery" : "punish");
-                    _cooldowns[ability] = PlayerRules.PunishCooldown;
-                    if (inRecovery && Build.Has(ArtifactEffect.PunishInRecoveryResetsLunge)) _cooldowns[Ability.Lunge] = 0f;
+                    _cooldowns[ability] = Cooldown(ability, PlayerRules.PunishCooldown);
                     break;
                 }
             }
 
             GcdRemaining = PlayerRules.GlobalCooldown;
             Emit(CombatEventType.AbilityUsed, ability.ToString(), 0f);
+            FireTraits(TraitTrigger.AbilityUsed, ability, 0f, inRecovery);
         }
+
+        float Cooldown(Ability ability, float baseCooldown) =>
+            Build.Passive(TraitEffectKind.SetCooldown, ability)?.Value ?? baseCooldown;
 
         void PlayerAutoAttack()
         {
@@ -283,10 +294,68 @@ namespace TheArtifacts.Core.Combat
             {
                 var blocked = amount * PlayerRules.GuardReduction;
                 amount -= blocked;
-                if (Build.Has(ArtifactEffect.GuardLongerAndReflects)) DamageGuardian(blocked * 0.3f, "stillstone_reflect");
+                FireTraits(TraitTrigger.DamageBlocked, Ability.None, blocked, Phase == GuardianPhase.Recovery);
             }
             PlayerHp = Math.Max(0f, PlayerHp - amount);
             Emit(CombatEventType.PlayerDamaged, source, amount);
+            FireTraits(TraitTrigger.HitTaken, Ability.None, amount, Phase == GuardianPhase.Recovery);
+        }
+
+        // ---------------- Traits (Combat Spec 5.4) ----------------
+
+        /// <param name="amount">The trigger's amount: damage taken or blocked, 0 for an ability.</param>
+        void FireTraits(TraitTrigger trigger, Ability ability, float amount, bool guardianInRecovery)
+        {
+            foreach (var (artifact, part) in Build.TraitParts)
+            {
+                if (part.Mode != TraitMode.Triggered || part.Trigger != trigger) continue;
+                if (trigger == TraitTrigger.AbilityUsed && part.Ability != ability) continue;
+                if (part.RequiresGuardianRecovery && !guardianInRecovery) continue;
+                if (part.Chance < 1f && _rng.NextDouble() >= part.Chance) continue;
+                foreach (var effect in part.Effects) ApplyTraitEffect(artifact, effect, amount);
+            }
+        }
+
+        void ApplyTraitEffect(ArtifactDef artifact, TraitEffect effect, float amount)
+        {
+            switch (effect.Kind)
+            {
+                case TraitEffectKind.HealPercentMaxHp:
+                    HealPlayer(effect.Value * Build.MaxHp, artifact.Id);
+                    break;
+                case TraitEffectKind.ResetCooldown:
+                    _cooldowns[effect.Ability] = 0f;
+                    break;
+                case TraitEffectKind.ReflectPercent:
+                    DamageGuardian(effect.Value * amount, $"{artifact.Id}_reflect");
+                    break;
+                case TraitEffectKind.ApplyStatus:
+                    ApplyGuardianStatus(effect.Status, effect.Value);
+                    break;
+                // SetCooldown and SetGuardDuration are passive and read where the rule applies.
+            }
+        }
+
+        /// <summary>A status interrupts the Guardian's current skill unless the Guardian is immune (Combat Spec 4.5).</summary>
+        public void ApplyGuardianStatus(GuardianStatus status, float duration)
+        {
+            if (GuardianImmunities.Contains(status))
+            {
+                Emit(CombatEventType.StatusResisted, status.ToString(), 0f);
+                return;
+            }
+
+            if (Phase == GuardianPhase.Tell) Emit(CombatEventType.TellInterrupted, CurrentSkill.Id, 0f);
+            _telegraphs.Clear();
+            _queued.Clear();
+            _pulsesLeft = 0;
+            CurrentSkill = null;
+
+            var end = Time + duration;
+            _phaseEnd = Phase == GuardianPhase.Incapacitated ? Math.Max(_phaseEnd, end) : end;
+            Phase = GuardianPhase.Incapacitated;
+            ActiveStatus = status;
+            Emit(CombatEventType.StatusApplied, status.ToString(), duration);
         }
 
         // ---------------- Guardian ----------------
@@ -337,6 +406,14 @@ namespace TheArtifacts.Core.Combat
 
                 case GuardianPhase.ComboGap:
                     if (Time >= _phaseEnd) StartSkill(_queued.Dequeue());
+                    break;
+
+                case GuardianPhase.Incapacitated:
+                    if (Time >= _phaseEnd)
+                    {
+                        Phase = GuardianPhase.Idle;
+                        ActiveStatus = null;
+                    }
                     break;
             }
         }
@@ -414,7 +491,8 @@ namespace TheArtifacts.Core.Combat
                 if (t.HitTime > Time) { i++; continue; }
                 _telegraphs.RemoveAt(i);
                 Resolve(t);
-                if (PlayerHp <= 0f) return;
+                // A hit can kill the player, or a trait can interrupt the tell with a status.
+                if (PlayerHp <= 0f || Phase != GuardianPhase.Tell) return;
             }
 
             if (_telegraphs.Count == 0 && _pulsesLeft == 0)

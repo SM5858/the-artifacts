@@ -115,6 +115,8 @@ A strategy decides only **when** and **which** skill is used. Tells, damage, and
 
 Enrage is a **per-Guardian property, off by default.** The prototype's open Guardian has no enrage. Special Guardians in the full game may set an enrage timer as part of their identity; it belongs to that Guardian's configuration, never to the adaptive setup, so the agent cannot turn it on or change it.
 
+**Status immunities [DECIDED 2026-11-18]** work the same way: a per-Guardian property that fits its identity (for example, a Lich immune to fear, a Golem immune to petrify), never part of the adaptive setup. The prototype Guardian has none.
+
 ### 4.6 Tuning range by challenger strength (open Guardian)
 
 Challenger strength is the **gear score**: the sum of equipped artifact rarity points (Relic 1, Heirloom 2, Treasure 3, Wonder 4).
@@ -195,7 +197,17 @@ A new artifact usually only combines existing parts; a truly new effect adds one
 
 **Always hit [DECIDED 2026-11-17]:** an ability with "always hit" has no range limit; its range becomes the whole arena. There is no hit-chance roll, because the Guardian has no evasion.
 
-Still open (GDD Q14): which modes and effects each grade may use; status rules against Guardians (diminishing returns or immunity, and whether a status interrupts a tell); a power budget per grade.
+**What each grade may use [DECIDED 2026-11-18]:**
+
+| Grade | Trait range |
+|---|---|
+| Relic, Heirloom | Passive numeric effects (multiplicative stats, conditional bonuses) |
+| Treasure | Triggered effects or an equipment skill |
+| Wonder | Rule-breaking effects (for example, 100% reflect, survive at 1 HP, always hit) |
+
+**Statuses on a Guardian [DECIDED 2026-11-18]:** a status (stun, petrify, fear) interrupts the Guardian's current skill: its telegraphs are removed, the rest of the skill (and any queued combo skill) is cancelled, and there is no recovery window. While the status lasts the Guardian does nothing, then returns to its normal rhythm. A Guardian immune to a status ignores it (Section 4.5). No diminishing returns for now; revisit if a playtest shows a status locking a Guardian down. In the prototype all three statuses behave the same; distinct behavior (such as fear making the Guardian flee) is later work.
+
+Still open (GDD Q14): a power budget per grade, and traits for the four Relic and Heirloom prototype artifacts.
 
 ## 6. Session rules (Q4, Q6, Q7)
 

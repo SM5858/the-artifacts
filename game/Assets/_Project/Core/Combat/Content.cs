@@ -87,19 +87,6 @@ namespace TheArtifacts.Core.Combat
 
     public enum Rarity { Relic = 1, Heirloom = 2, Treasure = 3, Wonder = 4 }
 
-    public enum ArtifactEffect
-    {
-        None,
-        /// <summary>Keen Edge: Heavy Strike cooldown 6 → 4.5 s.</summary>
-        HeavyStrikeCooldown45,
-        /// <summary>Warden's Plate: Guard also heals 5% max HP.</summary>
-        GuardHeals5Percent,
-        /// <summary>Echo Blade: Punish in a recovery window resets Lunge.</summary>
-        PunishInRecoveryResetsLunge,
-        /// <summary>Stillstone: Guard lasts 3 s and reflects 30% of blocked damage.</summary>
-        GuardLongerAndReflects,
-    }
-
     public sealed class ArtifactDef
     {
         public string Id;
@@ -109,7 +96,8 @@ namespace TheArtifacts.Core.Combat
         public float Hp;
         public float Power;
         public float Armor;
-        public ArtifactEffect Effect;
+        /// <summary>The artifact's trait (Combat Spec 5.4). Empty for the four Relic/Heirloom artifacts until Q14.</summary>
+        public IReadOnlyList<TraitPart> Trait = new TraitPart[0];
     }
 
     /// <summary>A player's final numbers after artifacts (Combat Spec 3.3).</summary>
@@ -132,7 +120,15 @@ namespace TheArtifacts.Core.Combat
             Armor = Math.Min(PlayerRules.ArmorCap, baseArmor + Artifacts.Sum(a => a.Armor));
         }
 
-        public bool Has(ArtifactEffect effect) => Artifacts.Any(a => a.Effect == effect);
+        /// <summary>Every trait part from equipped artifacts, with the artifact it came from.</summary>
+        public IEnumerable<(ArtifactDef Artifact, TraitPart Part)> TraitParts =>
+            Artifacts.SelectMany(a => a.Trait.Select(p => (a, p)));
+
+        /// <summary>The last passive effect of this kind (and ability, if given), or null.</summary>
+        public TraitEffect Passive(TraitEffectKind kind, Ability ability = Ability.None) =>
+            TraitParts.Where(t => t.Part.Mode == TraitMode.Passive)
+                .SelectMany(t => t.Part.Effects)
+                .LastOrDefault(e => e.Kind == kind && (ability == Ability.None || e.Ability == ability));
 
         public static int SlotCapacity(ArtifactSlot slot) => slot == ArtifactSlot.Trinket ? 2 : 1;
     }
@@ -171,11 +167,30 @@ namespace TheArtifacts.Core.Combat
             new ArtifactDef { Id = "padded_vest", Name = "Padded Vest", Slot = ArtifactSlot.Armor, Rarity = Rarity.Relic, Hp = 100f },
             new ArtifactDef { Id = "iron_charm", Name = "Iron Charm", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Heirloom, Hp = 100f, Armor = 0.05f },
             new ArtifactDef { Id = "scaled_coat", Name = "Scaled Coat", Slot = ArtifactSlot.Armor, Rarity = Rarity.Heirloom, Hp = 200f, Armor = 0.10f },
-            new ArtifactDef { Id = "keen_edge", Name = "Keen Edge", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Treasure, Power = 20f, Effect = ArtifactEffect.HeavyStrikeCooldown45 },
-            new ArtifactDef { Id = "wardens_plate", Name = "Warden's Plate", Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 150f, Armor = 0.10f, Effect = ArtifactEffect.GuardHeals5Percent },
-            new ArtifactDef { Id = "echo_blade", Name = "Echo Blade", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Wonder, Power = 25f, Effect = ArtifactEffect.PunishInRecoveryResetsLunge },
-            new ArtifactDef { Id = "stillstone", Name = "Stillstone", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Wonder, Hp = 150f, Effect = ArtifactEffect.GuardLongerAndReflects },
+            new ArtifactDef { Id = "keen_edge", Name = "Keen Edge", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Treasure, Power = 20f,
+                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.SetCooldown, Ability = Ability.HeavyStrike, Value = 4.5f }) } },
+            new ArtifactDef { Id = "wardens_plate", Name = "Warden's Plate", Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 150f, Armor = 0.10f,
+                Trait = new[] { OnAbility(Ability.Guard, new TraitEffect { Kind = TraitEffectKind.HealPercentMaxHp, Value = 0.05f }) } },
+            new ArtifactDef { Id = "echo_blade", Name = "Echo Blade", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Wonder, Power = 25f,
+                Trait = new[] { OnAbility(Ability.Punish, new TraitEffect { Kind = TraitEffectKind.ResetCooldown, Ability = Ability.Lunge }, inRecovery: true) } },
+            new ArtifactDef { Id = "stillstone", Name = "Stillstone", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Wonder, Hp = 150f,
+                Trait = new[]
+                {
+                    Passive(new TraitEffect { Kind = TraitEffectKind.SetGuardDuration, Value = 3f }),
+                    new TraitPart { Mode = TraitMode.Triggered, Trigger = TraitTrigger.DamageBlocked,
+                        Effects = new[] { new TraitEffect { Kind = TraitEffectKind.ReflectPercent, Value = 0.3f } } },
+                } },
         };
+
+        static TraitPart Passive(TraitEffect effect) =>
+            new TraitPart { Mode = TraitMode.Passive, Effects = new[] { effect } };
+
+        static TraitPart OnAbility(Ability ability, TraitEffect effect, bool inRecovery = false) =>
+            new TraitPart { Mode = TraitMode.Triggered, Trigger = TraitTrigger.AbilityUsed, Ability = ability,
+                RequiresGuardianRecovery = inRecovery, Effects = new[] { effect } };
+
+        /// <summary>The prototype Guardian's status immunities: none. Immunity is a per-Guardian property (Combat Spec 4.5).</summary>
+        public static readonly IReadOnlyCollection<GuardianStatus> GuardianImmunities = new GuardianStatus[0];
 
         public static TierDef Tier(string id) => Tiers.FirstOrDefault(t => t.Id == id);
         public static GuardianSkillDef Skill(string id) => Skills.FirstOrDefault(s => s.Id == id);
