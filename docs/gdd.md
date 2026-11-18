@@ -134,7 +134,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 ## 9. Controls and feedback [PROPOSED]
 
 - **Mobile:** one check-in action; confirmation of the unlocked quest.
-- **PC:** quest list; in combat, real-time inputs for movement or evasion, basic attack, skills, and artifact effects. Input scheme **[DECIDED]**: tab-target, hotbar keys 1–4, WASD to move out of telegraphs. See [Combat Spec](combat-spec.md), Section 3.2.
+- **PC:** quest list; in combat, real-time inputs for movement or evasion, basic attack, skills, and artifact effects. Input scheme **[DECIDED]**: tab-target, hotbar keys 1–4, right-click to move out of telegraphs, and Q W E / A S D / X C for equipment skills by slot (changed 2026-11-17 from WASD movement). See [Combat Spec](combat-spec.md), Section 3.2.
 - **Feedback the player must be able to read:** quest status, the Guardian's tell for the coming move, HP changes, their own skill cooldowns, and the reward.
 - Presentation scope is the minimum needed for a fair test: readable tells come before visual polish.
 
@@ -191,4 +191,5 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 | Q11 | ~~Stat tiers, skill pool, strategy list, and the allowed tuning range per challenger strength~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before adaptive Guardian task | Design Lead |
 | Q12 | Stat budget of each general grade, and the crafting skill and materials that move a Masterpiece up to Heirloom (decided 2026-11-17: general grades are Standard, Fine, Superior, Masterpiece; artifacts are a separate category; Masterpiece stats reach up to Heirloom, with no effects) | Before item data is authored beyond the 8 prototype artifacts | Design Lead |
 | Q13 | ~~Which general-item sources the prototype builds, and whether the test builds are redefined around general gear~~ **Resolved 2026-11-17:** no sources built; general gear only as a fixed test-build loadout (Section 6.6) | Before G2 playtest | Design Lead / Producer |
-| Q14 | Traits for the four prototype Relic and Heirloom artifacts (they have stats only today); which trait kinds (multiplicative stat, granted skill, ability effect) each grade may carry; where a granted skill goes on the hotbar | Before the next combat content pass | Design Lead |
+| Q14 | Traits for the four prototype Relic and Heirloom artifacts (they have stats only today); which trait kinds (multiplicative stat, granted skill, ability effect) each grade may carry (skill keys decided 2026-11-17: by slot, Combat Spec 3.2) | Before the next combat content pass | Design Lead |
+| Q15 | Prototype content for the five new slots (helm, gloves, boots, left hand, second trinket): artifacts, the fixed general-gear loadout, and the rebalance they need (test-build stats, gear-score bands, the Combat Spec 4.7 outcome table) | Before the next combat content pass | Design Lead |

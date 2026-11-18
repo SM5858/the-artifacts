@@ -44,12 +44,13 @@ namespace TheArtifacts.PC.Combat
         CombatSim _sim;
         float _accumulator;
         Ability _pendingAbility;
+        Vec2? _moveTarget;
         int _eventCursor;
         readonly List<string> _log = new List<string>();
 
         Camera _camera;
         Vector3 _cameraBack = Vector3.back;
-        Transform _player, _guardian;
+        Transform _player, _guardian, _moveMarker;
         Material _guardianMaterial, _telegraphTemplate;
         readonly Dictionary<Telegraph, (GameObject go, Material mat)> _telegraphViews =
             new Dictionary<Telegraph, (GameObject, Material)>();
@@ -74,6 +75,7 @@ namespace TheArtifacts.PC.Combat
             _eventCursor = 0;
             _accumulator = 0f;
             _pendingAbility = Ability.None;
+            _moveTarget = null;
             _sim = new CombatSim(CurrentBuild, CurrentSetup, seed);
             SyncViews();
         }
@@ -104,11 +106,11 @@ namespace TheArtifacts.PC.Combat
                 else if (kb.digit4Key.wasPressedThisFrame) _pendingAbility = Ability.Punish;
             }
 
-            var move = ReadMove(kb);
+            ReadMoveTarget();
             _accumulator = Mathf.Min(_accumulator + Time.deltaTime, 0.25f);
             while (_accumulator >= SimStep && _sim.Outcome == CombatOutcome.Ongoing)
             {
-                _sim.Step(SimStep, new PlayerInput(move, _pendingAbility));
+                _sim.Step(SimStep, new PlayerInput(MoveTowardTarget(), _pendingAbility));
                 _pendingAbility = Ability.None;
                 _accumulator -= SimStep;
             }
@@ -117,17 +119,32 @@ namespace TheArtifacts.PC.Combat
             CollectEvents();
         }
 
-        /// <summary>WASD relative to the camera: W toward the Guardian, A/D strafe around it.</summary>
-        Vec2 ReadMove(Keyboard kb)
+        /// <summary>Right-click (or hold) sets the move target on the arena floor. QWE/ASD/XC are equipment-skill keys.</summary>
+        void ReadMoveTarget()
         {
-            var x = (kb.dKey.isPressed ? 1f : 0f) - (kb.aKey.isPressed ? 1f : 0f);
-            var y = (kb.wKey.isPressed ? 1f : 0f) - (kb.sKey.isPressed ? 1f : 0f);
-            if (x == 0f && y == 0f) return Vec2.Zero;
+            var mouse = Mouse.current;
+            if (mouse == null || !mouse.rightButton.isPressed) return;
 
-            var fwd = -_cameraBack;
-            var right = new Vector3(fwd.z, 0f, -fwd.x);
-            var dir = (fwd * y + right * x).normalized;
-            return new Vec2(dir.x, dir.z);
+            var ray = _camera.ScreenPointToRay(mouse.position.ReadValue());
+            if (new Plane(Vector3.up, Vector3.zero).Raycast(ray, out var enter))
+            {
+                var hit = ray.GetPoint(enter);
+                _moveTarget = new Vec2(hit.x, hit.z);
+            }
+        }
+
+        /// <summary>Unit direction to the target, shortened on the last step so the player stops on it.</summary>
+        Vec2 MoveTowardTarget()
+        {
+            if (_moveTarget is not Vec2 target) return Vec2.Zero;
+            var delta = target - _sim.PlayerPosition;
+            var step = PlayerRules.RunSpeed * SimStep;
+            if (delta.Length <= step)
+            {
+                _moveTarget = null;
+                return delta * (1f / step);
+            }
+            return delta.Normalized();
         }
 
         void LateUpdate()
@@ -174,6 +191,9 @@ namespace TheArtifacts.PC.Combat
             nose.localPosition = new Vector3(0f, 0.3f, 0.5f);
             nose.localScale = new Vector3(0.3f, 0.2f, 0.4f);
 
+            _moveMarker = Primitive(PrimitiveType.Cylinder, "Move Target", Lit(lit, PlayerColor));
+            _moveMarker.localScale = new Vector3(0.5f, 0.01f, 0.5f);
+
             _telegraphTemplate = new Material(unlit != null ? unlit : lit);
         }
 
@@ -198,6 +218,9 @@ namespace TheArtifacts.PC.Combat
         {
             _player.position = TelegraphMeshes.ToWorld(_sim.PlayerPosition, 1f);
             _guardian.position = TelegraphMeshes.ToWorld(_sim.GuardianPosition, 2f);
+            _moveMarker.gameObject.SetActive(_moveTarget.HasValue);
+            if (_moveTarget is Vec2 target) _moveMarker.position = TelegraphMeshes.ToWorld(target, TelegraphY);
+
             var f = _sim.GuardianFacing;
             if (f.LengthSquared > 1e-6f) _guardian.rotation = Quaternion.LookRotation(new Vector3(f.X, 0f, f.Y));
 
@@ -318,7 +341,7 @@ namespace TheArtifacts.PC.Combat
             GUI.Label(new Rect(16f, 16f, 420f, 90f),
                 $"{build} (gear {_sim.Build.GearScore})   {_sim.Time:0.0}s\n" +
                 $"Guardian: {_sim.Setup}\n" +
-                "WASD move   1 Heavy  2 Guard  3 Lunge  4 Punish", _label);
+                "Right-click move   1 Heavy  2 Guard  3 Lunge  4 Punish", _label);
             GUI.Label(new Rect(16f, h - 190f, 360f, 170f), string.Join("\n", _log), _label);
 
             if (_sim.Outcome != CombatOutcome.Ongoing)

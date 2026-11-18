@@ -80,7 +80,8 @@ namespace TheArtifacts.Core.Combat
         public float DamageMultiplier;
     }
 
-    public enum ArtifactSlot { Weapon, Armor, Trinket }
+    /// <summary>Equipment slots (Combat Spec 5.2). Each has an equipment-skill key; Trinket has two slots (D, C).</summary>
+    public enum ArtifactSlot { Helm, Armor, LeftHand, RightHand, Gloves, Trinket, Boots }
 
     public enum Rarity { Relic = 1, Heirloom = 2, Treasure = 3, Wonder = 4 }
 
@@ -121,8 +122,8 @@ namespace TheArtifacts.Core.Combat
         public PlayerBuild(float baseHp, float basePower, float baseArmor, IEnumerable<ArtifactDef> artifacts)
         {
             Artifacts = (artifacts ?? Enumerable.Empty<ArtifactDef>()).ToArray();
-            if (Artifacts.GroupBy(a => a.Slot).Any(g => g.Count() > 1))
-                throw new ArgumentException("At most one artifact per slot.");
+            if (Artifacts.GroupBy(a => a.Slot).Any(g => g.Count() > SlotCapacity(g.Key)))
+                throw new ArgumentException("At most one artifact per slot (two trinkets).");
 
             MaxHp = baseHp + Artifacts.Sum(a => a.Hp);
             Power = basePower + Artifacts.Sum(a => a.Power);
@@ -130,6 +131,8 @@ namespace TheArtifacts.Core.Combat
         }
 
         public bool Has(ArtifactEffect effect) => Artifacts.Any(a => a.Effect == effect);
+
+        public static int SlotCapacity(ArtifactSlot slot) => slot == ArtifactSlot.Trinket ? 2 : 1;
     }
 
     /// <summary>All prototype content from the Combat Spec, in one place.</summary>
@@ -166,9 +169,9 @@ namespace TheArtifacts.Core.Combat
             new ArtifactDef { Id = "padded_vest", Name = "Padded Vest", Slot = ArtifactSlot.Armor, Rarity = Rarity.Relic, Hp = 100f },
             new ArtifactDef { Id = "iron_charm", Name = "Iron Charm", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Heirloom, Hp = 100f, Armor = 0.05f },
             new ArtifactDef { Id = "scaled_coat", Name = "Scaled Coat", Slot = ArtifactSlot.Armor, Rarity = Rarity.Heirloom, Hp = 200f, Armor = 0.10f },
-            new ArtifactDef { Id = "keen_edge", Name = "Keen Edge", Slot = ArtifactSlot.Weapon, Rarity = Rarity.Treasure, Power = 20f, Effect = ArtifactEffect.HeavyStrikeCooldown45 },
+            new ArtifactDef { Id = "keen_edge", Name = "Keen Edge", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Treasure, Power = 20f, Effect = ArtifactEffect.HeavyStrikeCooldown45 },
             new ArtifactDef { Id = "wardens_plate", Name = "Warden's Plate", Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 150f, Armor = 0.10f, Effect = ArtifactEffect.GuardHeals5Percent },
-            new ArtifactDef { Id = "echo_blade", Name = "Echo Blade", Slot = ArtifactSlot.Weapon, Rarity = Rarity.Wonder, Power = 25f, Effect = ArtifactEffect.PunishInRecoveryResetsLunge },
+            new ArtifactDef { Id = "echo_blade", Name = "Echo Blade", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Wonder, Power = 25f, Effect = ArtifactEffect.PunishInRecoveryResetsLunge },
             new ArtifactDef { Id = "stillstone", Name = "Stillstone", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Wonder, Hp = 150f, Effect = ArtifactEffect.GuardLongerAndReflects },
         };
 

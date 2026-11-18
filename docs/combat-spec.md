@@ -7,7 +7,7 @@ Labels as in the GDD: **[DECIDED]** chosen by me as Design Lead; **[OPEN]** unre
 
 | Choice | Decision | Why |
 |---|---|---|
-| Control scheme | **Tab-target + movement evasion.** The Guardian is auto-targeted; skills are on a hotbar; the player avoids telegraphed attacks by walking out of their marked area. No dodge roll. | Simplest to build; puts the weight on build choices and reading tells (Pillars 2, 3). |
+| Control scheme | **Tab-target + click-to-move evasion** (changed 2026-11-17 from WASD). The Guardian is auto-targeted; skills are on a hotbar; the player avoids telegraphed attacks by right-clicking out of their marked area. No dodge roll. | Simplest to build; puts the weight on build choices and reading tells (Pillars 2, 3). |
 | Player character | **One melee class.** | Fighting at the Guardian's feet makes tell → move → punish the clearest. |
 | Fight length target | **90–120 s** per attempt. | Two or three passes through the Guardian's pattern; 10 attempts fit one 20–30 min playtest session. |
 | Rarity | **Power and variety.** Higher rarity gives larger stats and adds a unique effect. | Keeps "gear felt worth it" measurable. |
@@ -42,7 +42,17 @@ Both builds use the same abilities, so a tester learns one control scheme. The b
 | 2 | Guard | 12 s | 60% less damage taken for 2 s | defend |
 | 3 | Lunge | 10 s | Dash up to 8 m to the Guardian, 1.0 × Power | switch tactics (re-engage after evading) |
 | 4 | Punish | 15 s | 4.0 × Power; **×2 if the Guardian is in a recovery window** | commit (rewards reading tells) |
-| WASD | Move | — | Walk out of telegraphed areas | evade |
+| Right-click | Move | — | Run to the clicked point (hold to steer); walk out of telegraphed areas | evade |
+
+**Equipment-skill keys [DECIDED 2026-11-17].** A skill granted by an equipped artifact (GDD Section 6.6) is cast with the key of the slot it is worn in. The keys follow the body: top row head and hands, middle row torso, bottom row feet. WASD is no longer movement.
+
+| Key | Slot | | Key | Slot | | Key | Slot |
+|---|---|---|---|---|---|---|---|
+| Q | Left hand | | W | Helm | | E | Right hand |
+| A | Gloves | | S | Armor | | D | Trinket 1 |
+| — | — | | X | Boots | | C | Trinket 2 |
+
+A slot with no granted skill leaves its key unused.
 
 ### 3.3 Test builds
 
@@ -51,7 +61,7 @@ Both builds use the same abilities, so a tester learns one control scheme. The b
 | HP | 1000 | 1300 |
 | Power | 40 | 60 |
 | Armor | 0% | 15% |
-| Artifacts | none | Treasure weapon, Heirloom armor, Heirloom trinket (Section 5.3) |
+| Artifacts | none | Treasure right-hand weapon, Heirloom armor, Heirloom trinket (Section 5.3) |
 | Gear score | 0 | 7 |
 | Expected DPS (ideal / realistic 70% uptime) | 54 / 38 | 89 / 63 |
 
@@ -142,7 +152,7 @@ The **first win** on a Guardian is at least Heirloom. Rolls are made by the engi
 
 ### 5.2 Slots and what rarity changes
 
-Three slots: **weapon, armor, trinket.** One artifact per slot.
+Eight slots **[DECIDED 2026-11-17]**: **helm, armor, left hand, right hand, gloves, boots,** and **two trinket slots.** One item per slot; a trinket fits either trinket slot. Each slot has an equipment-skill key (Section 3.2). The eight prototype artifacts below cover only right hand, armor, and trinket; content for the other slots and the rebalance it needs are open (GDD Q15).
 
 Every artifact has a **trait**, which general items never have (GDD Section 6.6). The Effect column is that trait.
 
@@ -161,9 +171,9 @@ Every artifact has a **trait**, which general items never have (GDD Section 6.6)
 | Padded Vest | armor | Relic | +100 HP | — (trait **[OPEN]** Q14) |
 | Iron Charm | trinket | Heirloom | +100 HP, +5% Armor | — (trait **[OPEN]** Q14) |
 | Scaled Coat | armor | Heirloom | +200 HP, +10% Armor | — (trait **[OPEN]** Q14) |
-| Keen Edge | weapon | Treasure | +20 Power | Heavy Strike cooldown 6 → 4.5 s |
+| Keen Edge | right hand | Treasure | +20 Power | Heavy Strike cooldown 6 → 4.5 s |
 | Warden's Plate | armor | Treasure | +150 HP, +10% Armor | Guard also heals 5% max HP |
-| Echo Blade | weapon | Wonder | +25 Power | Punish in a recovery window resets Lunge |
+| Echo Blade | right hand | Wonder | +25 Power | Punish in a recovery window resets Lunge |
 | Stillstone | trinket | Wonder | +150 HP | Guard lasts 3 s and reflects 30% of blocked damage |
 
 The geared test build wears Keen Edge, Scaled Coat, and Iron Charm.
