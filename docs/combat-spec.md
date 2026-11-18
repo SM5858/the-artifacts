@@ -14,7 +14,7 @@ Labels as in the GDD: **[DECIDED]** chosen by me as Design Lead; **[OPEN]** unre
 
 ## 2. Rules [DECIDED 2026-11-16]
 
-- **Damage dealt by the player** = skill coefficient × Power.
+- **Damage dealt by the player** = skill coefficient × Power × (1 − Guardian Armor). Guardian Armor applies to all player damage, reflected damage included **[DECIDED 2026-11-17]**. The Guardian has no evasion stat.
 - **Damage taken by the player** = base damage × Guardian tier multiplier × (1 − Armor).
 - **Global cooldown (GCD):** 1.0 s after any hotbar skill.
 - **Movement:** run speed 7 m/s. Turning and moving never stop auto-attack, but attacking requires melee range (≤ 3 m).
@@ -69,13 +69,15 @@ A slot with no granted skill leaves its key unused.
 
 ### 4.1 Stat tiers (Q11)
 
-| Tier | HP | Damage multiplier |
-|---|---|---|
-| T1 | 3000 | 0.80 |
-| T2 | 3600 | 0.90 |
-| **T3 (default)** | 4300 | 1.00 |
-| T4 | 5200 | 1.15 |
-| T5 | 6200 | 1.30 |
+| Tier | HP | Damage multiplier | Armor |
+|---|---|---|---|
+| T1 | 3000 | 0.80 | 0% |
+| T2 | 3600 | 0.90 | 0% |
+| **T3 (default)** | 4300 | 1.00 | 0% |
+| T4 | 5200 | 1.15 | 0% |
+| T5 | 6200 | 1.30 | 0% |
+
+Guardian Armor is a decided stat; its values are 0% until the rebalance in GDD Q15 sets them, so the outcomes in 4.7 still hold.
 
 The Guardian auto-attacks the player for 20 base damage every 2.5 s when in range.
 
@@ -179,6 +181,21 @@ Every artifact has a **trait**, which general items never have (GDD Section 6.6)
 The geared test build wears Keen Edge, Scaled Coat, and Iron Charm.
 
 > **Note (2026-11-17):** the full game adds general items graded Standard, Fine, Superior, Masterpiece. Artifacts are a separate category with the four grades Relic, Heirloom, Treasure, Wonder. A Masterpiece's stats can reach Heirloom, but it never has a trait; every artifact does ([GDD](gdd.md) Section 6.6). The prototype gives the test builds a fixed general-gear loadout (Q13); its stats and each grade's budget are open (Q12). The numbers above stand until then.
+
+### 5.4 Trait model [DECIDED 2026-11-17]
+
+Traits are meant to be very varied and themed on their place (for example, an Athena's Shield from a Greco-Roman dungeon that petrifies an attacker). So a trait is **data built from shared parts**, not code written per artifact:
+
+- **Mode:** *passive* (always on), *equipment skill* (cast with its slot key, Section 3.2, with a cooldown), or *triggered* (fires on an event).
+- **Trigger** (triggered only): on hit taken, on hit dealt, on lethal damage, on skill cast, at fight start, and more as needed.
+- **Conditions:** chance, HP threshold, internal cooldown, once per fight.
+- **Effects:** add or multiply a stat, reflect damage, ignore Guardian Armor, always hit, heal, shield, apply a status (petrify, stun, slow), teleport, survive at 1 HP, change or reset a cooldown.
+
+A new artifact usually only combines existing parts; a truly new effect adds one part.
+
+**Always hit [DECIDED 2026-11-17]:** an ability with "always hit" has no range limit; its range becomes the whole arena. There is no hit-chance roll, because the Guardian has no evasion.
+
+Still open (GDD Q14): which modes and effects each grade may use; status rules against Guardians (diminishing returns or immunity, and whether a status interrupts a tell); a power budget per grade.
 
 ## 6. Session rules (Q4, Q6, Q7)
 

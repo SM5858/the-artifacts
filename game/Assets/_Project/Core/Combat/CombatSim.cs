@@ -260,8 +260,10 @@ namespace TheArtifacts.Core.Combat
             _playerAutoTimer = PlayerRules.AutoSwing;
         }
 
+        /// <summary>All player damage, reflects included, is reduced by the Guardian's armor (Combat Spec 2).</summary>
         void DamageGuardian(float amount, string source)
         {
+            amount *= 1f - Tier.Armor;
             GuardianHp = Math.Max(0f, GuardianHp - amount);
             Emit(CombatEventType.GuardianDamaged, source, amount);
         }

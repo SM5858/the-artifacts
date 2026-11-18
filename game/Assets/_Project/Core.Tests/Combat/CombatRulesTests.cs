@@ -80,6 +80,25 @@ namespace TheArtifacts.Core.Tests.Combat
         }
 
         [Test]
+        public void GuardianArmor_ReducesPlayerDamage()
+        {
+            var tier = PrototypeContent.Tier("T3");
+            tier.Armor = 0.25f;
+            try
+            {
+                var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
+                Engage(sim);
+
+                Use(sim, Ability.HeavyStrike);
+                Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(75f));
+            }
+            finally
+            {
+                tier.Armor = 0f;
+            }
+        }
+
+        [Test]
         public void GlobalCooldown_BlocksTheNextSkillForOneSecond()
         {
             var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");

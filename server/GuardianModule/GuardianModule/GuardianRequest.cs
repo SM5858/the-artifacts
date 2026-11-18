@@ -73,7 +73,7 @@ namespace GuardianModule
                 },
                 allowed = new
                 {
-                    stat_tiers = tiers.Select(t => new { id = t.Id, max_hp = t.MaxHp, damage_multiplier = t.DamageMultiplier }),
+                    stat_tiers = tiers.Select(t => new { id = t.Id, max_hp = t.MaxHp, damage_multiplier = t.DamageMultiplier, armor = t.Armor }),
                     skills = skills.Select(s => new { id = s.Id, name = s.Name, tell_seconds = s.Tell, base_damage = s.BaseDamage, recovery_seconds = s.Recovery, avoid = HowToAvoid(s) }),
                     strategies = strategies.Select(id => new { id, behavior = StrategyBehavior(id) }),
                     min_skills = space.MinSkills,

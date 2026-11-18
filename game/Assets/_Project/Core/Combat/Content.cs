@@ -78,6 +78,8 @@ namespace TheArtifacts.Core.Combat
         public string Id;
         public float MaxHp;
         public float DamageMultiplier;
+        /// <summary>Percent reduction of player damage taken (Combat Spec 2). 0 for every tier until tuned (Q15).</summary>
+        public float Armor;
     }
 
     /// <summary>Equipment slots (Combat Spec 5.2). Each has an equipment-skill key; Trinket has two slots (D, C).</summary>
