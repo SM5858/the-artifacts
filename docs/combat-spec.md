@@ -166,20 +166,18 @@ Bands overlap at their edges, and a geared player can never get a weaker tier th
 
 ### 4.7 Expected outcomes (bot simulation, 2026-11-19)
 
-> **Superseded:** the table below was measured with the earlier damage-scaling tiers. Tell scaling (4.1) replaced it the same day; a new table follows the next tuning pass.
-
-From the balance report in CI (`Report_BotFightsAcrossGuardiansTiersAndBuilds`): a bot that reacts in 0.6 s and fails to notice a share of telegraphs, standing in for human mistakes. Steady strategy, physical skill set (the scripted default's skills). **Columbia Lion** (the comparison Guardian); cells are *time to kill / HP left*, or L for a loss.
+From the balance report in CI (`Report_BotFightsAcrossGuardiansTiersAndBuilds`) with the tell curve in 4.1: a bot that reacts in 0.6 s and fails to notice a share of telegraphs, standing in for human mistakes. Its miss rate does not drop when tells get longer, so low tiers play easier for people than shown here. Steady strategy, physical skill set (the scripted default's skills), **Columbia Lion** (the comparison Guardian). Cells are *time to kill / HP left*, or L for a loss.
 
 | Build | Missed telegraphs | T1 | T2 | **T3 (default)** | T4 | T5 |
 |---|---|---|---|---|---|---|
-| Starter | 0% | 78 s / 75% | 99 s / 58% | 117 s / 28% | L (auto-attacks) | L |
-| Starter | 30% | 80 s / 62% | 99 s / 25% | L | L | L |
-| Starter | 60% | 80 s / 40% | L | L | L | L |
-| Geared | 0% | 49 s / 87% | 58 s / 80% | 66 s / 67% | 87 s / 45% | 111 s / 14% |
-| Geared | 30% | 49 s / 78% | 58 s / 66% | 70 s / 44% | 90 s / 17% | L |
-| Geared | 60% | 49 s / 60% | 58 s / 42% | 70 s / 9% | L | L |
+| Starter | 0% | 75 s / 54% | 99 s / 40% | 117 s / 28% | 152 s / 10% | L |
+| Starter | 30% | 75 s / 29% | L | L | L | L |
+| Starter | 60% | L | L | L | L | L |
+| Geared | 0% | 44 s / 76% | 58 s / 72% | 66 s / 67% | 90 s / 57% | L |
+| Geared | 30% | 44 s / 57% | 58 s / 52% | 70 s / 44% | 90 s / 37% | L |
+| Geared | 60% | 44 s / 21% | 58 s / 17% | 70 s / 9% | 90 s / 2% | L |
 
-Reading: T1 is winnable even when most telegraphs are missed; the scripted default (T3) is hard for a starter and comfortable for the geared build; inside their bands a starter at T1–T2 and a geared player at T4–T5 land at 80–120 s. The Book Keeper plays the same for a starter and about 15% slower for the geared build (no Lion's Fang bonus); Alma Mater runs about 25–30% longer (Lightning Bolt barely hurts it). With the mixed skill set (Slam, Shock Rings, Embers) the magic skills land far more often, and a starter loses from T3 even with perfect dodging.
+Reading: the scripted default (T3) is hard for a starter and comfortable for the geared build, the gap the hypothesis targets. T5 is out of reach for a 0.6 s reaction even with no misses (its shortest tells leave about 0.35 s to move), so it is for fast players; the playtest decides whether to keep it. The Book Keeper plays the same for a starter and about 15–20% slower for the geared build (no Lion's Fang bonus); Alma Mater runs about 25–50% longer (Lightning Bolt barely hurts it). With the mixed skill set (Slam, Shock Rings, Embers) a starter loses from T3 even without misses, because Embers lands on the player three times in a row.
 
 ## 5. Rewards (Q5)
 
