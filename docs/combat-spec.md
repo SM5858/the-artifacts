@@ -18,7 +18,7 @@ Labels as in the GDD: **[DECIDED]** chosen by me as Design Lead; **[OPEN]** unre
 - **Damage types [DECIDED 2026-11-19]:** every skill, the player's and the Guardian's, is **physical** or **magic**. Def reduces physical damage, Res reduces magic damage.
 - **Damage dealt by the player** = skill coefficient × Strength (physical) or Intelligence (magic) × (1 − the Guardian's Def or Res rating). This applies to all player damage, reflected damage included (reflects count as physical). The Guardian has no evasion stat.
 - **Critical hits [DECIDED 2026-11-19]:** a player attack crits with chance = Precision rating and deals **×1.5**. Reflects never crit. Guardians do not crit.
-- **Damage taken by the player** = base damage × Guardian tier multiplier × (1 − the player's Def or Res rating).
+- **Damage taken by the player** = base damage × (1 − the player's Def or Res rating). Tiers do not scale damage; they scale tell times (Section 4.1) **[DECIDED 2026-11-19]**.
 - **Cooldowns:** every ability cooldown is shortened by the Agility rating.
 - **Global cooldown (GCD):** 1.0 s after any hotbar skill.
 - **Movement:** run speed 7 m/s × (1 + Speed / 100). Turning and moving never stop auto-attack, but attacking requires melee range (≤ 3 m).
@@ -87,15 +87,15 @@ A slot with no granted skill leaves its key unused. Equipment skills cost no MP 
 
 ### 4.1 Stat tiers (Q11)
 
-Tiers scale HP, damage, and defense together, so low tiers forgive missed dodges and high tiers punish them **[tuned by bot simulation 2026-11-19; retune after playtests]**:
+Tiers scale HP, defense, and **tell time** **[DECIDED 2026-11-19]**: damage stays the same at every tier, but low tiers give long tells (easy to dodge) and high tiers short ones (fast reactions needed). A tell never drops below the skill's fair minimum (Section 4.2). Values tuned by bot simulation; retune after playtests:
 
-| Tier | HP | Damage multiplier | Def / Res added |
+| Tier | HP | Tell multiplier | Def / Res added |
 |---|---|---|---|
-| T1 | 5500 | 0.50 | 0 |
-| T2 | 6400 | 0.70 | 5 |
-| **T3 (default)** | 7500 | 1.00 | 10 |
-| T4 | 8700 | 1.30 | 20 |
-| T5 | 9800 | 1.60 | 30 |
+| T1 | 5500 | ×1.30 | 0 |
+| T2 | 6400 | ×1.15 | 5 |
+| **T3 (default)** | 7500 | ×1.00 | 10 |
+| T4 | 8700 | ×0.85 | 20 |
+| T5 | 9800 | ×0.70 | 30 |
 
 The tier's Def and Res add to the Guardian's own (Section 4.5); for example, Alma Mater at T3 has Res 410.
 
@@ -105,14 +105,16 @@ The Guardian auto-attacks the player for 20 base damage every 2.5 s when in rang
 
 Each skill: **tell** (telegraph shown, player reacts) → **hit** → **recovery** (Guardian idle, Punish deals double).
 
-| ID | Skill | Area | Tell | Base damage | Type | Recovery | How to avoid |
-|---|---|---|---|---|---|---|---|
-| `cleave` | Cleave | 90° cone in front, 6 m | 1.2 s | 200 | physical | 1.0 s | Step to the side or behind |
-| `slam` | Slam | Circle around the Guardian, 5 m | 1.6 s | 250 | physical | 1.5 s | Run out (0.7 s at run speed) |
-| `charge` | Charge | Line toward the player, 15 m × 3 m | 1.4 s | 220 | physical | 2.0 s | Sidestep |
-| `rings` | Shock Rings | Ring 4–12 m from the Guardian (safe up close) | 1.8 s | 180 | magic | 1.2 s | Move **in** to the Guardian |
-| `embers` | Embers | Three 3 m circles placed on the player, 0.6 s apart | 1.0 s each | 120 each | magic | 0.8 s | Keep moving |
-| `fury` | Fury | Self-buff: auto-attacks +50% for 8 s | 1.0 s | — | — | 0 s | Use Guard; back off |
+Tell is the T3 value; tiers scale it (4.1). Minimum tell = worst-case escape from melee range at run speed + 0.4 s to react.
+
+| ID | Skill | Area | Tell (T3) | Min tell | Base damage | Type | Recovery | How to avoid |
+|---|---|---|---|---|---|---|---|---|
+| `cleave` | Cleave | 90° cone in front, 6 m | 1.2 s | 0.7 s | 200 | physical | 1.0 s | Step to the side or behind |
+| `slam` | Slam | Circle around the Guardian, 5 m | 1.6 s | 0.8 s | 250 | physical | 1.5 s | Run out (0.7 s at run speed) |
+| `charge` | Charge | Line toward the player, 15 m × 3 m | 1.4 s | 0.7 s | 220 | physical | 2.0 s | Sidestep |
+| `rings` | Shock Rings | Ring 4–12 m from the Guardian (safe up close) | 1.8 s | 1.0 s | 180 | magic | 1.2 s | Move **in** to the Guardian |
+| `embers` | Embers | Three 3 m circles placed on the player, 0.6 s apart | 1.0 s each | 0.9 s | 120 each | magic | 0.8 s | Keep moving |
+| `fury` | Fury | Self-buff: auto-attacks +50% for 8 s | 1.0 s | 0.5 s | — | — | 0 s | Use Guard; back off |
 
 Guardian auto-attacks are physical.
 
@@ -120,7 +122,7 @@ A setup picks **3 or 4** skills from the pool.
 
 ### 4.3 Strategies (Q11)
 
-A strategy decides only **when** and **which** skill is used. Tells, damage, and recovery belong to the skill and never change.
+A strategy decides only **when** and **which** skill is used. Damage and recovery belong to the skill and never change; tells change only with the tier (4.1), the same way in scripted and adaptive mode.
 
 | ID | Strategy | Behavior |
 |---|---|---|
@@ -163,6 +165,8 @@ Bands overlap at their edges, and a geared player can never get a weaker tier th
 **Gated variant (stretch):** allowed tiers T4–T5 for every gear score.
 
 ### 4.7 Expected outcomes (bot simulation, 2026-11-19)
+
+> **Superseded:** the table below was measured with the earlier damage-scaling tiers. Tell scaling (4.1) replaced it the same day; a new table follows the next tuning pass.
 
 From the balance report in CI (`Report_BotFightsAcrossGuardiansTiersAndBuilds`): a bot that reacts in 0.6 s and fails to notice a share of telegraphs, standing in for human mistakes. Steady strategy, physical skill set (the scripted default's skills). **Columbia Lion** (the comparison Guardian); cells are *time to kill / HP left*, or L for a loss.
 
