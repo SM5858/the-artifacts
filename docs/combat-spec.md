@@ -211,7 +211,7 @@ A new artifact usually only combines existing parts; a truly new effect adds one
 
 **Passive numeric traits [DECIDED 2026-11-19]:**
 
-- *Multiplicative stat:* multiplies HP, Power, or Armor after flat bonuses. One artifact may multiply a stat by at most **×2**; multipliers from different artifacts multiply together. The Armor cap (50%) still applies.
+- *Multiplicative stat:* multiplies HP, Power, or Armor after flat bonuses. One artifact may multiply a stat by at most **×2**. This is a ceiling for designing future artifacts, so new content cannot break balance, not a target: prototype values stay well below it (Relic ×1.05). CI checks every artifact against the cap. Multipliers from different artifacts multiply together. The Armor cap (50%) still applies.
 - *Conditional by creature type:* more damage dealt to, or less damage taken from, one creature type (Guardians and field monsters). Effects of this kind from different artifacts multiply together.
 
 **Statuses on a Guardian [DECIDED 2026-11-18]:** a status (stun, petrify, fear) interrupts the Guardian's current skill: its telegraphs are removed, the rest of the skill (and any queued combo skill) is cancelled, and there is no recovery window. While the status lasts the Guardian does nothing, then returns to its normal rhythm. A Guardian immune to a status ignores it (Section 4.5). No diminishing returns for now; revisit if a playtest shows a status locking a Guardian down. In the prototype all three statuses behave the same; distinct behavior (such as fear making the Guardian flee) is later work.

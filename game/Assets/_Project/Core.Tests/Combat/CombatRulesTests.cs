@@ -36,6 +36,14 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That(PrototypeContent.Build("padded_vest").MaxHp, Is.EqualTo(1100f * 1.05f).Within(1e-3));
         }
 
+        /// <summary>Design guardrail: every authored artifact stays within the ×2 per-artifact multiplier cap.</summary>
+        [Test]
+        public void EveryArtifact_RespectsTheMultiplierCap()
+        {
+            foreach (var artifact in PrototypeContent.Artifacts)
+                Assert.DoesNotThrow(() => new PlayerBuild(1000f, 40f, 0f, new[] { artifact }), artifact.Id);
+        }
+
         [Test]
         public void OneArtifact_CannotMultiplyAStatPastTwo()
         {
