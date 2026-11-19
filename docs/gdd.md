@@ -22,7 +22,7 @@ Nothing in this document is implemented or verified yet. Implemented and verifie
 - **Intended experience:** the pleasure of mastering a readable opponent with a build that feels like your own, with a real place as the reason the fight exists.
 - **Observable hypothesis:** after earning a first artifact, players voluntarily retry a Guardian or seek another artifact, without being prompted.
 - **Secondary signal:** the share of testers who open the PC dungeon after checking in on mobile (the handoff is the main friction point).
-- **Differentiator [DECIDED 2026-11-17]:** in most RPGs a character grows through money or play time. Here, real-world travel is a third axis of growth: the top tier of power (Legendary) is earned only by visiting places. See Section 6.6.
+- **Differentiator [DECIDED 2026-11-17, extended 2026-11-19]:** in most RPGs a character grows through skill, play time, or money (in-game purchases, experience boosters). Here, real-world travel is another axis of growth, in two ways: **power**, because the top tier (artifacts) is earned only by visiting places (Section 6.6); and **knowledge**, because each dungeon is built from its place's history, myths, and features, so knowing the place helps beat its Guardian (Section 6.7).
 
 ## 3. Platform and genre
 
@@ -46,6 +46,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 1. **Place unlocks play.** A brief visit to a real landmark opens a dungeon themed on that place. The visit stays short so the trip stays about the place; the play happens later on PC.
 2. **Combat earns the artifact.** Players win by making effective choices with their build. Artifacts are never bought or granted for the visit alone; the visit opens the fight, and the fight earns the artifact.
 3. **The Guardian adapts.** It tunes itself to the challenger, so a newcomer who unlocks a dungeon can still win in a few attempts.
+4. **The place is the puzzle [DECIDED 2026-11-19].** A Guardian's mechanics come from its real place. What a traveler learns there, or already knows, is an advantage in the fight.
 
 ## 6. Mechanics [PROPOSED]
 
@@ -148,6 +149,14 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
   The budget is set by one rule: **the strongest single hit (a critical Overpower, the ultimate on key 4) may take at most half of a T1 Guardian's HP.** Eight top Masterpieces with every point in Strength give 224 Strength, a 2688 hit against T1's 5500 HP (49%). CI checks this rule, and that every Heirloom-or-better artifact has more points than the best Masterpiece. **Artifacts may exceed this cap [DECIDED 2026-11-19]:** it binds general items only; an artifact's stats and traits (for example Columbia Lion's Fang against a Beast) can push the strongest hit past half, as a reward for travel. Artifacts stay bounded by the ×2 per-artifact multiplier cap (Combat Spec 5.4). For comparison, the prototype artifacts are worth 10–20 points (Relic), 25 (Heirloom), 33 (Treasure), and 47 (Mythic), plus their traits.
 - **Prototype scope [DECIDED 2026-11-17] (Q13):** the prototype builds no general-item sources (no drops, shop, crafting, or events). General gear appears only as a fixed loadout given to the test builds. Its exact stats wait on the Q12 budgets; until then the Combat Spec builds stand.
 
+### 6.7 Place-based Guardian mechanics [DECIDED 2026-11-19 as direction]
+
+- Each Guardian carries at least one mechanic taken from its place's history, myth, or physical features. Example: at the site of Troy, the spirit of Achilles appears as a giant Guardian that takes damage **only at the heel**. A player who knows the story goes for the ankle at once; one who does not has to discover it.
+- Artifacts follow the same idea (for example, Athena's Shield from a Greco-Roman dungeon petrifying attackers, Section 5.4 of the Combat Spec).
+- Building blocks the engine needs: **weak points** (damage only from a direction or body zone, or much more there), **immunities** (exist: status immunities, Def/Res per Guardian), and **lore hints**.
+- **Fairness [PROPOSED]:** knowledge is an advantage, never a hard gate. Every lore mechanic must be learnable in the game too, for example a short story card at the mobile check-in and a visual hint in the fight (the heel glows when struck), so a player without the background can still win after a few attempts. The adaptive Guardian cannot change a lore mechanic; it belongs to the Guardian, like enrage and immunities.
+- **Prototype mechanics [OPEN] Q18:** one lore mechanic per Columbia Guardian. Candidate for Alma Mater: the small owl hidden in the folds of the statue's robe (a campus legend) as a hidden weak point.
+
 ## 7. Win, failure, and edge cases [PROPOSED]
 
 - **Win:** Guardian HP reaches zero. The artifact is granted and stored on the account.
@@ -230,3 +239,4 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 | Q15 | Prototype content for the five new slots (helm, gloves, boots, left hand, second trinket): artifacts, the fixed general-gear loadout, and the rebalance they need (tier HP, damage, and Def/Res were set by bot simulation on 2026-11-19, Combat Spec 4.1 and 4.7; still open: the fixed general-gear loadout, gear-score bands, content for the new slots, the Combat Spec 4.7 outcome table) | Before the next combat content pass | Design Lead |
 | Q16 | ~~Which of the three Guardians hosts the scripted-versus-adaptive comparison~~ **Resolved 2026-11-19:** the Columbia Lion | Before the first comparison playtest | Design Lead |
 | Q17 | ~~Formulas for the new stats, damage types, mana, and which stats the prototype implements~~ **Resolved 2026-11-19:** ratings as value / (value + 100), physical and magic damage per skill, crits ×1.5, one learned magic skill (Lightning Bolt, key 5); all nine stats implemented (Combat Spec 2, 3) | Before the artifact list is replaced | Design Lead |
+| Q18 | One lore-based mechanic for each Columbia Guardian (Alma Mater, Columbia Lion, Book Keeper), and how its hint is delivered | Before the next combat content pass | Design Lead |
