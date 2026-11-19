@@ -12,6 +12,8 @@ namespace TheArtifacts.Core.Combat
         public const float RunSpeed = 7f;
         public const float MeleeRange = 3f;
         public const float ArmorCap = 0.5f;
+        /// <summary>A single artifact may multiply a stat by at most this much (Combat Spec 5.4).</summary>
+        public const float MaxStatMultiplierPerArtifact = 2f;
 
         public const float AutoSwing = 2.0f;
         public const float AutoCoefficient = 1.0f;
@@ -96,7 +98,7 @@ namespace TheArtifacts.Core.Combat
         public float Hp;
         public float Power;
         public float Armor;
-        /// <summary>The artifact's trait (Combat Spec 5.4). Empty for the four Relic/Heirloom artifacts until Q14.</summary>
+        /// <summary>The artifact's trait (Combat Spec 5.4).</summary>
         public IReadOnlyList<TraitPart> Trait = new TraitPart[0];
     }
 
@@ -114,11 +116,28 @@ namespace TheArtifacts.Core.Combat
             Artifacts = (artifacts ?? Enumerable.Empty<ArtifactDef>()).ToArray();
             if (Artifacts.GroupBy(a => a.Slot).Any(g => g.Count() > SlotCapacity(g.Key)))
                 throw new ArgumentException("At most one artifact per slot (two trinkets).");
+            foreach (var a in Artifacts)
+            foreach (StatKind stat in Enum.GetValues(typeof(StatKind)))
+                if (Multiplier(new[] { a }, stat) > PlayerRules.MaxStatMultiplierPerArtifact + 1e-6f)
+                    throw new ArgumentException($"{a.Id} multiplies {stat} by more than x{PlayerRules.MaxStatMultiplierPerArtifact}.");
 
-            MaxHp = baseHp + Artifacts.Sum(a => a.Hp);
-            Power = basePower + Artifacts.Sum(a => a.Power);
-            Armor = Math.Min(PlayerRules.ArmorCap, baseArmor + Artifacts.Sum(a => a.Armor));
+            // Flat bonuses first, then multipliers; multipliers from different artifacts multiply together.
+            MaxHp = (baseHp + Artifacts.Sum(a => a.Hp)) * Multiplier(Artifacts, StatKind.Hp);
+            Power = (basePower + Artifacts.Sum(a => a.Power)) * Multiplier(Artifacts, StatKind.Power);
+            Armor = Math.Min(PlayerRules.ArmorCap, (baseArmor + Artifacts.Sum(a => a.Armor)) * Multiplier(Artifacts, StatKind.Armor));
         }
+
+        static float Multiplier(IEnumerable<ArtifactDef> artifacts, StatKind stat) =>
+            PassiveEffects(artifacts, TraitEffectKind.MultiplyStat).Where(e => e.Stat == stat)
+                .Aggregate(1f, (m, e) => m * e.Value);
+
+        static IEnumerable<TraitEffect> PassiveEffects(IEnumerable<ArtifactDef> artifacts, TraitEffectKind kind) =>
+            artifacts.SelectMany(a => a.Trait).Where(p => p.Mode == TraitMode.Passive)
+                .SelectMany(p => p.Effects).Where(e => e.Kind == kind);
+
+        /// <summary>Product of (1 + Value) for passive effects of this kind that target <paramref name="type"/>.</summary>
+        public float VersusType(TraitEffectKind kind, CreatureType type) =>
+            PassiveEffects(Artifacts, kind).Where(e => e.Creature == type).Aggregate(1f, (m, e) => m * (1f + e.Value));
 
         /// <summary>Every trait part from equipped artifacts, with the artifact it came from.</summary>
         public IEnumerable<(ArtifactDef Artifact, TraitPart Part)> TraitParts =>
@@ -163,10 +182,14 @@ namespace TheArtifacts.Core.Combat
 
         public static readonly IReadOnlyList<ArtifactDef> Artifacts = new[]
         {
-            new ArtifactDef { Id = "worn_band", Name = "Worn Band", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Relic, Power = 5f },
-            new ArtifactDef { Id = "padded_vest", Name = "Padded Vest", Slot = ArtifactSlot.Armor, Rarity = Rarity.Relic, Hp = 100f },
-            new ArtifactDef { Id = "iron_charm", Name = "Iron Charm", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Heirloom, Hp = 100f, Armor = 0.05f },
-            new ArtifactDef { Id = "scaled_coat", Name = "Scaled Coat", Slot = ArtifactSlot.Armor, Rarity = Rarity.Heirloom, Hp = 200f, Armor = 0.10f },
+            new ArtifactDef { Id = "worn_band", Name = "Worn Band", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Relic, Power = 5f,
+                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Power, Value = 1.05f }) } },
+            new ArtifactDef { Id = "padded_vest", Name = "Padded Vest", Slot = ArtifactSlot.Armor, Rarity = Rarity.Relic, Hp = 100f,
+                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Hp, Value = 1.05f }) } },
+            new ArtifactDef { Id = "iron_charm", Name = "Iron Charm", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Heirloom, Hp = 100f, Armor = 0.05f,
+                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.DamageTakenVsType, Creature = CreatureType.Construct, Value = -0.10f }) } },
+            new ArtifactDef { Id = "scaled_coat", Name = "Scaled Coat", Slot = ArtifactSlot.Armor, Rarity = Rarity.Heirloom, Hp = 200f, Armor = 0.10f,
+                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.DamageTakenVsType, Creature = CreatureType.Construct, Value = -0.15f }) } },
             new ArtifactDef { Id = "keen_edge", Name = "Keen Edge", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Treasure, Power = 20f,
                 Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.SetCooldown, Ability = Ability.HeavyStrike, Value = 4.5f }) } },
             new ArtifactDef { Id = "wardens_plate", Name = "Warden's Plate", Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 150f, Armor = 0.10f,
@@ -189,8 +212,8 @@ namespace TheArtifacts.Core.Combat
             new TraitPart { Mode = TraitMode.Triggered, Trigger = TraitTrigger.AbilityUsed, Ability = ability,
                 RequiresGuardianRecovery = inRecovery, Effects = new[] { effect } };
 
-        /// <summary>The prototype Guardian's status immunities: none. Immunity is a per-Guardian property (Combat Spec 4.5).</summary>
-        public static readonly IReadOnlyCollection<GuardianStatus> GuardianImmunities = new GuardianStatus[0];
+        /// <summary>The prototype Guardian: a Construct with no status immunities (Combat Spec 4.5).</summary>
+        public static readonly GuardianProfile Guardian = new GuardianProfile { Type = CreatureType.Construct };
 
         public static TierDef Tier(string id) => Tiers.FirstOrDefault(t => t.Id == id);
         public static GuardianSkillDef Skill(string id) => Skills.FirstOrDefault(s => s.Id == id);

@@ -115,6 +115,8 @@ A strategy decides only **when** and **which** skill is used. Tells, damage, and
 
 Enrage is a **per-Guardian property, off by default.** The prototype's open Guardian has no enrage. Special Guardians in the full game may set an enrage timer as part of their identity; it belongs to that Guardian's configuration, never to the adaptive setup, so the agent cannot turn it on or change it.
 
+**Creature type [DECIDED 2026-11-19]:** every Guardian (and, in the full game, every field monster) has a creature type that conditional traits target. Types so far: Construct, Beast, Elemental, Undead; the full list is open. **The prototype Guardian is a Construct.**
+
 **Status immunities [DECIDED 2026-11-18]** work the same way: a per-Guardian property that fits its identity (for example, a Lich immune to fear, a Golem immune to petrify), never part of the adaptive setup. The prototype Guardian has none.
 
 ### 4.6 Tuning range by challenger strength (open Guardian)
@@ -139,6 +141,8 @@ Bands overlap at their edges, and a geared player can never get a weaker tier th
 | Geared: time to kill | 48 s | 58 s | 69 s | 83 s | 99 s |
 | Geared: telegraphed hits it can take | 6.9 | 5.6 | 4.5 | 3.0 | 1.7 |
 
+> **Note (2026-11-19):** this table predates traits. Against the Construct prototype Guardian, the geared build's Iron Charm and Scaled Coat cut damage taken to 0.9 × 0.85 = 0.765, so its "telegraphed hits it can take" row is about 31% higher. The rebalance in GDD Q15 recomputes the table.
+
 Reading: the scripted default is very hard for a starter and easy for a geared player (the gap the hypothesis targets). Inside their bands, a starter at T1–T2 and a geared player at T4–T5 both land near the 90–120 s target, and the geared player still has more margin, so gear keeps its value.
 
 ## 5. Rewards (Q5)
@@ -162,8 +166,8 @@ Every artifact has a **trait**, which general items never have (GDD Section 6.6)
 
 | Rarity | Stats | Effect |
 |---|---|---|
-| Relic | one small stat bonus | one trait **[OPEN]** Q14 |
-| Heirloom | two stat bonuses, or one large | one trait **[OPEN]** Q14 |
+| Relic | one small stat bonus | one passive trait (Section 5.4) |
+| Heirloom | two stat bonuses, or one large | one passive trait (Section 5.4) |
 | Treasure | stat bonus | one minor effect (tunes an ability) |
 | Wonder | stat bonus | one signature effect (changes how an ability is used) |
 
@@ -171,10 +175,10 @@ Every artifact has a **trait**, which general items never have (GDD Section 6.6)
 
 | Artifact | Slot | Rarity | Stats | Effect |
 |---|---|---|---|---|
-| Worn Band | trinket | Relic | +5 Power | — (trait **[OPEN]** Q14) |
-| Padded Vest | armor | Relic | +100 HP | — (trait **[OPEN]** Q14) |
-| Iron Charm | trinket | Heirloom | +100 HP, +5% Armor | — (trait **[OPEN]** Q14) |
-| Scaled Coat | armor | Heirloom | +200 HP, +10% Armor | — (trait **[OPEN]** Q14) |
+| Worn Band | trinket | Relic | +5 Power | Power ×1.05 |
+| Padded Vest | armor | Relic | +100 HP | Max HP ×1.05 |
+| Iron Charm | trinket | Heirloom | +100 HP, +5% Armor | 10% less damage taken from Constructs |
+| Scaled Coat | armor | Heirloom | +200 HP, +10% Armor | 15% less damage taken from Constructs |
 | Keen Edge | right hand | Treasure | +20 Power | Heavy Strike cooldown 6 → 4.5 s |
 | Warden's Plate | armor | Treasure | +150 HP, +10% Armor | Guard also heals 5% max HP |
 | Echo Blade | right hand | Wonder | +25 Power | Punish in a recovery window resets Lunge |
@@ -205,9 +209,14 @@ A new artifact usually only combines existing parts; a truly new effect adds one
 | Treasure | Triggered effects or an equipment skill |
 | Wonder | Rule-breaking effects (for example, 100% reflect, survive at 1 HP, always hit) |
 
+**Passive numeric traits [DECIDED 2026-11-19]:**
+
+- *Multiplicative stat:* multiplies HP, Power, or Armor after flat bonuses. One artifact may multiply a stat by at most **×2**; multipliers from different artifacts multiply together. The Armor cap (50%) still applies.
+- *Conditional by creature type:* more damage dealt to, or less damage taken from, one creature type (Guardians and field monsters). Effects of this kind from different artifacts multiply together.
+
 **Statuses on a Guardian [DECIDED 2026-11-18]:** a status (stun, petrify, fear) interrupts the Guardian's current skill: its telegraphs are removed, the rest of the skill (and any queued combo skill) is cancelled, and there is no recovery window. While the status lasts the Guardian does nothing, then returns to its normal rhythm. A Guardian immune to a status ignores it (Section 4.5). No diminishing returns for now; revisit if a playtest shows a status locking a Guardian down. In the prototype all three statuses behave the same; distinct behavior (such as fear making the Guardian flee) is later work.
 
-Still open (GDD Q14): a power budget per grade, and traits for the four Relic and Heirloom prototype artifacts.
+Still open (GDD Q14): a power budget per grade.
 
 ## 6. Session rules (Q4, Q6, Q7)
 

@@ -119,7 +119,7 @@ namespace TheArtifacts.Core.Combat
         public GuardianSkillDef CurrentSkill { get; private set; }
         public bool IsFuryActive => Time < _furyEnd;
         public GuardianStatus? ActiveStatus { get; private set; }
-        public IReadOnlyCollection<GuardianStatus> GuardianImmunities { get; }
+        public GuardianProfile Guardian { get; }
 
         public IReadOnlyList<Telegraph> ActiveTelegraphs => _telegraphs;
         public IReadOnlyList<CombatEvent> Events => _events;
@@ -143,11 +143,13 @@ namespace TheArtifacts.Core.Combat
         float _guardianAutoTimer;
         float _furyEnd = float.NegativeInfinity;
         float _furyMultiplier = 1f;
+        readonly float _dealtVsType;
+        readonly float _takenVsType;
 
-        /// <param name="immunities">The Guardian's status immunities; defaults to the prototype Guardian's (none).</param>
-        public CombatSim(PlayerBuild build, GuardianSetup setup, int seed, IReadOnlyCollection<GuardianStatus> immunities = null)
+        /// <param name="guardian">The Guardian's type and immunities; defaults to the prototype Guardian.</param>
+        public CombatSim(PlayerBuild build, GuardianSetup setup, int seed, GuardianProfile guardian = null)
         {
-            GuardianImmunities = immunities ?? PrototypeContent.GuardianImmunities;
+            Guardian = guardian ?? PrototypeContent.Guardian;
             Build = build ?? throw new ArgumentNullException(nameof(build));
             Setup = setup ?? throw new ArgumentNullException(nameof(setup));
             Tier = PrototypeContent.Tier(setup.StatTier) ?? throw new ArgumentException($"Unknown tier '{setup.StatTier}'.");
@@ -158,6 +160,8 @@ namespace TheArtifacts.Core.Combat
 
             _strategy = GuardianStrategy.Create(setup.StrategyId);
             _rng = new Random(seed);
+            _dealtVsType = build.VersusType(TraitEffectKind.DamageDealtVsType, Guardian.Type);
+            _takenVsType = build.VersusType(TraitEffectKind.DamageTakenVsType, Guardian.Type);
 
             PlayerHp = build.MaxHp;
             GuardianHp = Tier.MaxHp;
@@ -271,10 +275,10 @@ namespace TheArtifacts.Core.Combat
             _playerAutoTimer = PlayerRules.AutoSwing;
         }
 
-        /// <summary>All player damage, reflects included, is reduced by the Guardian's armor (Combat Spec 2).</summary>
+        /// <summary>All player damage, reflects included, is scaled by type traits and reduced by the Guardian's armor (Combat Spec 2).</summary>
         void DamageGuardian(float amount, string source)
         {
-            amount *= 1f - Tier.Armor;
+            amount *= _dealtVsType * (1f - Tier.Armor);
             GuardianHp = Math.Max(0f, GuardianHp - amount);
             Emit(CombatEventType.GuardianDamaged, source, amount);
         }
@@ -286,10 +290,10 @@ namespace TheArtifacts.Core.Combat
             Emit(CombatEventType.PlayerHealed, source, healed);
         }
 
-        /// <summary>Damage taken = base × tier multiplier × (1 − Armor), reduced by Guard (Combat Spec 2).</summary>
+        /// <summary>Damage taken = base × tier multiplier × (1 − Armor) × type traits, reduced by Guard (Combat Spec 2).</summary>
         void DamagePlayer(float baseDamage, string source)
         {
-            var amount = baseDamage * Tier.DamageMultiplier * (1f - Build.Armor);
+            var amount = baseDamage * Tier.DamageMultiplier * (1f - Build.Armor) * _takenVsType;
             if (GuardRemaining > 0f)
             {
                 var blocked = amount * PlayerRules.GuardReduction;
@@ -339,7 +343,7 @@ namespace TheArtifacts.Core.Combat
         /// <summary>A status interrupts the Guardian's current skill unless the Guardian is immune (Combat Spec 4.5).</summary>
         public void ApplyGuardianStatus(GuardianStatus status, float duration)
         {
-            if (GuardianImmunities.Contains(status))
+            if (Guardian.Immunities.Contains(status))
             {
                 Emit(CombatEventType.StatusResisted, status.ToString(), 0f);
                 return;

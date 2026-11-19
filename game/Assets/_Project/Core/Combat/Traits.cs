@@ -38,16 +38,36 @@ namespace TheArtifacts.Core.Combat
         ReflectPercent,
         /// <summary>Apply <see cref="TraitEffect.Status"/> to the Guardian for Value seconds.</summary>
         ApplyStatus,
+        /// <summary>Passive: multiply <see cref="TraitEffect.Stat"/> by Value, after flat bonuses. At most ×2 per artifact.</summary>
+        MultiplyStat,
+        /// <summary>Passive: damage dealt to a Guardian of <see cref="TraitEffect.Creature"/> × (1 + Value).</summary>
+        DamageDealtVsType,
+        /// <summary>Passive: damage taken from a Guardian of <see cref="TraitEffect.Creature"/> × (1 + Value); negative reduces.</summary>
+        DamageTakenVsType,
     }
+
+    public enum StatKind { Hp, Power, Armor }
+
+    /// <summary>Guardian and field-monster families that conditional traits target. The full list is open.</summary>
+    public enum CreatureType { Construct, Beast, Elemental, Undead }
 
     /// <summary>Statuses the player can put on a Guardian. Each interrupts a tell; a Guardian may be immune.</summary>
     public enum GuardianStatus { Stun, Petrify, Fear }
+
+    /// <summary>Per-Guardian identity, fixed for the Guardian and never part of the adaptive setup (Combat Spec 4.5).</summary>
+    public sealed class GuardianProfile
+    {
+        public CreatureType Type;
+        public IReadOnlyCollection<GuardianStatus> Immunities = new GuardianStatus[0];
+    }
 
     public sealed class TraitEffect
     {
         public TraitEffectKind Kind;
         public Ability Ability;
         public GuardianStatus Status;
+        public StatKind Stat;
+        public CreatureType Creature;
         public float Value;
     }
 

@@ -30,6 +30,31 @@ namespace TheArtifacts.Core.Tests.Combat
         }
 
         [Test]
+        public void RelicMultipliers_ApplyAfterFlatBonuses()
+        {
+            Assert.That(PrototypeContent.Build("worn_band").Power, Is.EqualTo(45f * 1.05f).Within(1e-3));
+            Assert.That(PrototypeContent.Build("padded_vest").MaxHp, Is.EqualTo(1100f * 1.05f).Within(1e-3));
+        }
+
+        [Test]
+        public void OneArtifact_CannotMultiplyAStatPastTwo()
+        {
+            var greedy = new ArtifactDef
+            {
+                Id = "test_greedy", Slot = ArtifactSlot.Helm, Rarity = Rarity.Wonder,
+                Trait = new[]
+                {
+                    new TraitPart { Mode = TraitMode.Passive, Effects = new[]
+                    {
+                        new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Power, Value = 1.5f },
+                        new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Power, Value = 1.5f },
+                    } },
+                },
+            };
+            Assert.Throws<System.ArgumentException>(() => new PlayerBuild(1000f, 40f, 0f, new[] { greedy }));
+        }
+
+        [Test]
         public void OneArtifactPerSlot()
         {
             Assert.Throws<System.ArgumentException>(() => PrototypeContent.Build("keen_edge", "echo_blade"));
@@ -204,18 +229,21 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That(sim.Events.Any(e => e.Type == CombatEventType.SkillMissed && e.Id == "rings"), Is.True);
         }
 
-        [Test]
-        public void ArmorAndGuard_ReduceDamage()
+        // Geared: 15% armor; Iron Charm −10% and Scaled Coat −15% against Constructs. Guard: 60% less.
+        // Against the Construct prototype Guardian: 200 × 0.85 × 0.9 × 0.85 × 0.4 = 52.02; against a Beast: 68.
+        [TestCase(CreatureType.Construct, 52.02f)]
+        [TestCase(CreatureType.Beast, 68f)]
+        public void ArmorGuardAndTypeTraits_ReduceDamage(CreatureType guardianType, float expected)
         {
-            // Geared: 15% armor. Guard at tell start: 60% less. Cleave 200 → 200 × 0.85 × 0.4 = 68.
-            var sim = Sim(PrototypeContent.GearedBuild, "T3", "steady", "cleave", "slam", "charge");
+            var sim = new CombatSim(PrototypeContent.GearedBuild, new GuardianSetup("T3", new[] { "cleave", "slam", "charge" }, "steady"),
+                seed: 1, new GuardianProfile { Type = guardianType });
             Engage(sim);
             RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 15f);
 
             Use(sim, Ability.Guard);
             RunUntil(sim, s => s.Phase == GuardianPhase.Recovery, 3f);
 
-            Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "cleave"), Is.EqualTo(68f).Within(1e-3));
+            Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "cleave"), Is.EqualTo(expected).Within(1e-3));
         }
 
         [Test]
@@ -284,7 +312,7 @@ namespace TheArtifacts.Core.Tests.Combat
         public void Status_IsResisted_ByAnImmuneGuardian()
         {
             var sim = new CombatSim(PrototypeContent.StarterBuild, PrototypeContent.DefaultSetup, seed: 1,
-                immunities: new[] { GuardianStatus.Petrify });
+                new GuardianProfile { Type = CreatureType.Construct, Immunities = new[] { GuardianStatus.Petrify } });
             Engage(sim);
             RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 15f);
 
