@@ -129,7 +129,7 @@ A strategy decides only **when** and **which** skill is used. Tells, damage, and
 
 ### 4.4 Default (scripted) Guardian
 
-**T3, skills `cleave` `slam` `charge`, strategy `steady`.** Used for every attempt in scripted mode and as the fallback in adaptive mode.
+**T3, skills `cleave` `slam` `charge`, strategy `steady`.** Used for every attempt in scripted mode and as the fallback in adaptive mode. The comparison runs on the **Columbia Lion** (Beast, Def 0, Res 0; GDD Q16), so this setup is the Lion's scripted baseline.
 
 ### 4.5 Enrage [DECIDED 2026-11-16]
 

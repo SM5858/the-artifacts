@@ -292,8 +292,8 @@ namespace TheArtifacts.Core.Combat
                 Landmark = "Columbia bookstore", LootPool = new[] { "columbia_blue_mortarboard", "columbia_blue_robe" } },
         };
 
-        /// <summary>The Guardian a fight uses when none is given. Which one hosts the comparison is open (GDD Q16).</summary>
-        public static GuardianProfile Guardian => GuardianById("alma_mater");
+        /// <summary>The Guardian a fight uses when none is given: the Columbia Lion, which hosts the comparison (GDD Q16).</summary>
+        public static GuardianProfile Guardian => GuardianById("columbia_lion");
 
         public static IReadOnlyList<ArtifactDef> LootPool(string guardianId) =>
             GuardianById(guardianId).LootPool.Select(Artifact).ToArray();
