@@ -32,8 +32,8 @@ namespace TheArtifacts.Core.Tests.Combat
         [Test]
         public void RelicMultipliers_ApplyAfterFlatBonuses()
         {
-            Assert.That(PrototypeContent.Build("worn_band").Power, Is.EqualTo(45f * 1.05f).Within(1e-3));
-            Assert.That(PrototypeContent.Build("padded_vest").MaxHp, Is.EqualTo(1100f * 1.05f).Within(1e-3));
+            Assert.That(PrototypeContent.Build("worn_band").Power, Is.EqualTo(45f * 1.3f).Within(1e-3));
+            Assert.That(PrototypeContent.Build("padded_vest").MaxHp, Is.EqualTo(1100f * 1.3f).Within(1e-3));
         }
 
         /// <summary>Design guardrail: every authored artifact stays within the ×2 per-artifact multiplier cap.</summary>

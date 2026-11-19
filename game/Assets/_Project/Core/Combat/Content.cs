@@ -93,6 +93,8 @@ namespace TheArtifacts.Core.Combat
     {
         public string Id;
         public string Name;
+        /// <summary>Player-facing trait text for the item tooltip, e.g. "Power +30%".</summary>
+        public string Description;
         public ArtifactSlot Slot;
         public Rarity Rarity;
         public float Hp;
@@ -182,21 +184,21 @@ namespace TheArtifacts.Core.Combat
 
         public static readonly IReadOnlyList<ArtifactDef> Artifacts = new[]
         {
-            new ArtifactDef { Id = "worn_band", Name = "Worn Band", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Relic, Power = 5f,
-                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Power, Value = 1.05f }) } },
-            new ArtifactDef { Id = "padded_vest", Name = "Padded Vest", Slot = ArtifactSlot.Armor, Rarity = Rarity.Relic, Hp = 100f,
-                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Hp, Value = 1.05f }) } },
-            new ArtifactDef { Id = "iron_charm", Name = "Iron Charm", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Heirloom, Hp = 100f, Armor = 0.05f,
+            new ArtifactDef { Id = "worn_band", Name = "Worn Band", Description = "Power +30%", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Relic, Power = 5f,
+                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Power, Value = 1.3f }) } },
+            new ArtifactDef { Id = "padded_vest", Name = "Padded Vest", Description = "Max HP +30%", Slot = ArtifactSlot.Armor, Rarity = Rarity.Relic, Hp = 100f,
+                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Hp, Value = 1.3f }) } },
+            new ArtifactDef { Id = "iron_charm", Name = "Iron Charm", Description = "10% less damage taken from Constructs", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Heirloom, Hp = 100f, Armor = 0.05f,
                 Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.DamageTakenVsType, Creature = CreatureType.Construct, Value = -0.10f }) } },
-            new ArtifactDef { Id = "scaled_coat", Name = "Scaled Coat", Slot = ArtifactSlot.Armor, Rarity = Rarity.Heirloom, Hp = 200f, Armor = 0.10f,
+            new ArtifactDef { Id = "scaled_coat", Name = "Scaled Coat", Description = "15% less damage taken from Constructs", Slot = ArtifactSlot.Armor, Rarity = Rarity.Heirloom, Hp = 200f, Armor = 0.10f,
                 Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.DamageTakenVsType, Creature = CreatureType.Construct, Value = -0.15f }) } },
-            new ArtifactDef { Id = "keen_edge", Name = "Keen Edge", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Treasure, Power = 20f,
+            new ArtifactDef { Id = "keen_edge", Name = "Keen Edge", Description = "Heavy Strike cooldown 6 → 4.5 s", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Treasure, Power = 20f,
                 Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.SetCooldown, Ability = Ability.HeavyStrike, Value = 4.5f }) } },
-            new ArtifactDef { Id = "wardens_plate", Name = "Warden's Plate", Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 150f, Armor = 0.10f,
+            new ArtifactDef { Id = "wardens_plate", Name = "Warden's Plate", Description = "Guard also heals 5% of max HP", Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 150f, Armor = 0.10f,
                 Trait = new[] { OnAbility(Ability.Guard, new TraitEffect { Kind = TraitEffectKind.HealPercentMaxHp, Value = 0.05f }) } },
-            new ArtifactDef { Id = "echo_blade", Name = "Echo Blade", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Wonder, Power = 25f,
+            new ArtifactDef { Id = "echo_blade", Name = "Echo Blade", Description = "Punish in a recovery window resets Lunge", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Wonder, Power = 25f,
                 Trait = new[] { OnAbility(Ability.Punish, new TraitEffect { Kind = TraitEffectKind.ResetCooldown, Ability = Ability.Lunge }, inRecovery: true) } },
-            new ArtifactDef { Id = "stillstone", Name = "Stillstone", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Wonder, Hp = 150f,
+            new ArtifactDef { Id = "stillstone", Name = "Stillstone", Description = "Guard lasts 3 s and reflects 30% of blocked damage", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Wonder, Hp = 150f,
                 Trait = new[]
                 {
                     Passive(new TraitEffect { Kind = TraitEffectKind.SetGuardDuration, Value = 3f }),

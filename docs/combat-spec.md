@@ -175,8 +175,8 @@ Every artifact has a **trait**, which general items never have (GDD Section 6.6)
 
 | Artifact | Slot | Rarity | Stats | Effect |
 |---|---|---|---|---|
-| Worn Band | trinket | Relic | +5 Power | Power ×1.05 |
-| Padded Vest | armor | Relic | +100 HP | Max HP ×1.05 |
+| Worn Band | trinket | Relic | +5 Power | Power +30% (×1.3) |
+| Padded Vest | armor | Relic | +100 HP | Max HP +30% (×1.3) |
 | Iron Charm | trinket | Heirloom | +100 HP, +5% Armor | 10% less damage taken from Constructs |
 | Scaled Coat | armor | Heirloom | +200 HP, +10% Armor | 15% less damage taken from Constructs |
 | Keen Edge | right hand | Treasure | +20 Power | Heavy Strike cooldown 6 → 4.5 s |
@@ -185,6 +185,8 @@ Every artifact has a **trait**, which general items never have (GDD Section 6.6)
 | Stillstone | trinket | Wonder | +150 HP | Guard lasts 3 s and reflects 30% of blocked damage |
 
 The geared test build wears Keen Edge, Scaled Coat, and Iron Charm.
+
+The item tooltip shows the Effect column as written, with multipliers as percentages (×1.3 → "+30%").
 
 > **Note (2026-11-17):** the full game adds general items graded Standard, Fine, Superior, Masterpiece. Artifacts are a separate category with the four grades Relic, Heirloom, Treasure, Wonder. A Masterpiece's stats can reach Heirloom, but it never has a trait; every artifact does ([GDD](gdd.md) Section 6.6). The prototype gives the test builds a fixed general-gear loadout (Q13); its stats and each grade's budget are open (Q12). The numbers above stand until then.
 
@@ -211,7 +213,7 @@ A new artifact usually only combines existing parts; a truly new effect adds one
 
 **Passive numeric traits [DECIDED 2026-11-19]:**
 
-- *Multiplicative stat:* multiplies HP, Power, or Armor after flat bonuses. One artifact may multiply a stat by at most **×2**. This is a ceiling for designing future artifacts, so new content cannot break balance, not a target: prototype values stay well below it (Relic ×1.05). CI checks every artifact against the cap. Multipliers from different artifacts multiply together. The Armor cap (50%) still applies.
+- *Multiplicative stat:* multiplies HP, Power, or Armor after flat bonuses. One artifact may multiply a stat by at most **×2**. This is a ceiling for designing future artifacts, so new content cannot break balance, not a target: prototype values stay well below it (Relic ×1.3). CI checks every artifact against the cap. Multipliers from different artifacts multiply together. The Armor cap (50%) still applies.
 - *Conditional by creature type:* more damage dealt to, or less damage taken from, one creature type (Guardians and field monsters). Effects of this kind from different artifacts multiply together.
 
 **Statuses on a Guardian [DECIDED 2026-11-18]:** a status (stun, petrify, fear) interrupts the Guardian's current skill: its telegraphs are removed, the rest of the skill (and any queued combo skill) is cancelled, and there is no recovery window. While the status lasts the Guardian does nothing, then returns to its normal rhythm. A Guardian immune to a status ignores it (Section 4.5). No diminishing returns for now; revisit if a playtest shows a status locking a Guardian down. In the prototype all three statuses behave the same; distinct behavior (such as fear making the Guardian flee) is later work.
