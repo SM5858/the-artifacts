@@ -171,12 +171,14 @@ From the balance report in CI (`Report_BotFightsAcrossGuardiansTiersAndBuilds`) 
 
 | Build | Missed telegraphs | T1 | T2 | **T3 (default)** | T4 | T5 |
 |---|---|---|---|---|---|---|
-| Starter | 0% | 75 s / 54% | 99 s / 40% | 117 s / 28% | 152 s / 10% | L |
-| Starter | 30% | 75 s / 29% | L | L | L | L |
+| Starter | 0% | 81 s / 50% | 106 s / 36% | 133 s / 18% | 163 s / 1% | L |
+| Starter | 30% | 81 s / 25% | L | L | L | L |
 | Starter | 60% | L | L | L | L | L |
-| Geared | 0% | 44 s / 76% | 58 s / 72% | 66 s / 67% | 90 s / 57% | L |
-| Geared | 30% | 44 s / 57% | 58 s / 52% | 70 s / 44% | 90 s / 37% | L |
-| Geared | 60% | 44 s / 21% | 58 s / 17% | 70 s / 9% | 90 s / 2% | L |
+| Geared | 0% | 51 s / 75% | 58 s / 72% | 72 s / 64% | 102 s / 51% | L |
+| Geared | 30% | 51 s / 55% | 58 s / 52% | 75 s / 44% | 102 s / 13% | L |
+| Geared | 60% | 51 s / 20% | 58 s / 17% | 75 s / 9% | L | L |
+
+Measured after Punish was replaced by the opening and Overpower (fights run about 5–15% longer than with Punish).
 
 Reading: the scripted default (T3) is hard for a starter and comfortable for the geared build, the gap the hypothesis targets. T5 is out of reach for a 0.6 s reaction even with no misses (its shortest tells leave about 0.35 s to move), so it is for fast players; the playtest decides whether to keep it. The Book Keeper plays the same for a starter and about 15–20% slower for the geared build (no Lion's Fang bonus); Alma Mater runs about 25–50% longer (Lightning Bolt barely hurts it). With the mixed skill set (Slam, Shock Rings, Embers) a starter loses from T3 even without misses, because Embers lands on the player three times in a row.
 
