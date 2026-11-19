@@ -50,6 +50,46 @@ namespace TheArtifacts.Core.Combat
 
     public enum DamageType { Physical, Magic }
 
+    /// <summary>General (non-artifact) item grades, from shops up to crafted Masterpieces (GDD 6.6).</summary>
+    public enum GeneralGrade { Standard, Fine, Superior, Masterpiece }
+
+    /// <summary>
+    /// Stat budget for general items (GDD 6.6, Q12). One point = 1 Strength, Intelligence, Agility, Def, Res, or
+    /// Precision, or 10 HP or 10 MP; Speed (crafted items only) costs 2 points per Speed.
+    /// The budget keeps the strongest hit under <see cref="MaxBurstShareOfLowestTier"/> of a T1 Guardian's HP.
+    /// </summary>
+    public static class ItemBudget
+    {
+        public const int EquipmentSlots = 8;
+        public const float HpPerPoint = 10f;
+        public const float MpPerPoint = 10f;
+        public const float PointsPerSpeed = 2f;
+
+        /// <summary>The strongest hit (Punish in a recovery window, critical) may take at most this share of T1 HP.</summary>
+        public const float MaxBurstShareOfLowestTier = 0.5f;
+
+        /// <summary>Points per slot; a Masterpiece's points rise with crafting skill and materials up to the max.</summary>
+        public static int Points(GeneralGrade grade) => grade switch
+        {
+            GeneralGrade.Standard => 5,
+            GeneralGrade.Fine => 10,
+            GeneralGrade.Superior => 15,
+            _ => MasterpieceMinPoints,
+        };
+
+        public const int MasterpieceMinPoints = 20;
+        public const int MasterpieceMaxPoints = 23;
+
+        /// <summary>The strongest single hit for this Strength: Punish × recovery window × critical (Combat Spec 2, 3.2).</summary>
+        public static float StrongestHit(float strength) =>
+            PlayerRules.PunishCoefficient * PlayerRules.PunishRecoveryMultiplier * PlayerRules.CritMultiplier * strength;
+
+        /// <summary>An artifact's flat stats in budget points, for comparing grades (traits not counted).</summary>
+        public static float Points(ArtifactDef a) =>
+            a.Strength + a.Intelligence + a.Agility + a.Def + a.Res + a.Precision
+            + a.Hp / HpPerPoint + a.Mp / MpPerPoint + a.Speed * PointsPerSpeed;
+    }
+
     /// <summary>
     /// Guardian rules from Combat Spec 4.1. Values marked "implementation default" are not in the spec
     /// and are for the Design Lead to confirm.
