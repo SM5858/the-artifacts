@@ -10,7 +10,7 @@ namespace TheArtifacts.Core.Tests.Combat
         [Test]
         public void FullMasterpieceStrengthSet_CannotTakeMoreThanHalfOfT1InOneHit()
         {
-            // Worst case: every slot a top Masterpiece with all points in Strength, and a crit Punish in a recovery window.
+            // Worst case: every slot a top Masterpiece with all points in Strength, and a critical Overpower.
             var strength = PrototypeContent.Base.Strength + ItemBudget.EquipmentSlots * ItemBudget.MasterpieceMaxPoints;
             var t1 = PrototypeContent.Tier("T1");
             var hit = ItemBudget.StrongestHit(strength) * (1f - PlayerRules.Rating(t1.Def));

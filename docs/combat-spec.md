@@ -8,7 +8,7 @@ Labels as in the GDD: **[DECIDED]** chosen by me as Design Lead; **[OPEN]** unre
 | Choice | Decision | Why |
 |---|---|---|
 | Control scheme | **Tab-target + click-to-move evasion** (changed 2026-11-17 from WASD). The Guardian is auto-targeted; skills are on a hotbar; the player avoids telegraphed attacks by right-clicking out of their marked area. No dodge roll. | Simplest to build; puts the weight on build choices and reading tells (Pillars 2, 3). |
-| Player character | **One melee class.** | Fighting at the Guardian's feet makes tell → move → punish the clearest. |
+| Player character | **One melee class.** | Fighting at the Guardian's feet makes tell → move → strike in the opening the clearest. |
 | Fight length target | **90–120 s** per attempt. | Two or three passes through the Guardian's pattern; 10 attempts fit one 20–30 min playtest session. |
 | Rarity | **Power and variety.** Higher rarity gives larger stats and adds a unique effect. | Keeps "gear felt worth it" measurable. |
 
@@ -18,6 +18,7 @@ Labels as in the GDD: **[DECIDED]** chosen by me as Design Lead; **[OPEN]** unre
 - **Damage types [DECIDED 2026-11-19]:** every skill, the player's and the Guardian's, is **physical** or **magic**. Def reduces physical damage, Res reduces magic damage.
 - **Damage dealt by the player** = skill coefficient × Strength (physical) or Intelligence (magic) × (1 − the Guardian's Def or Res rating). This applies to all player damage, reflected damage included (reflects count as physical). The Guardian has no evasion stat.
 - **Critical hits [DECIDED 2026-11-19]:** a player attack crits with chance = Precision rating and deals **×1.5**. Reflects never crit. Guardians do not crit.
+- **Opening [DECIDED 2026-11-19]:** while the Guardian recovers after a skill (its recovery window, 1.0–2.0 s), player attacks get **+50 percentage points** of crit chance (capped at 100%). This replaced Punish: every attack can use the opening, so no skill slot sits unused.
 - **Damage taken by the player** = base damage × (1 − the player's Def or Res rating). Tiers do not scale damage; they scale tell times (Section 4.1) **[DECIDED 2026-11-19]**.
 - **Cooldowns:** every ability cooldown is shortened by the Agility rating.
 - **Global cooldown (GCD):** 1.0 s after any hotbar skill.
@@ -53,7 +54,7 @@ Both builds use the same abilities, so a tester learns one control scheme. The b
 | 1 | Heavy Strike | 6 s | 2.5 × Strength | commit |
 | 2 | Guard | 12 s | 60% less damage taken for 2 s | defend |
 | 3 | Lunge | 10 s | Dash up to 8 m to the Guardian, 1.0 × Strength | switch tactics (re-engage after evading) |
-| 4 | Punish | 15 s | 4.0 × Strength; **×2 if the Guardian is in a recovery window** | commit (rewards reading tells) |
+| 4 | Overpower (ultimate) **[PROPOSED 2026-11-19]** | 45 s | 8.0 × Strength, melee. Best saved for an opening, where it is likely to crit | commit (rewards reading tells) |
 | 5 | Lightning Bolt **[DECIDED 2026-11-19]** | 8 s | Magic: 100 + 1.5 × Intelligence (useful at any Intelligence), range 15 m, costs 30 MP. Strong against most Guardians, nearly useless against Constructs (high Res) | commit at range |
 | Right-click | Move | — | Run to the clicked point (hold to steer); walk out of telegraphed areas | evade |
 
@@ -103,7 +104,7 @@ The Guardian auto-attacks the player for 20 base damage every 2.5 s when in rang
 
 ### 4.2 Skill pool (Q11)
 
-Each skill: **tell** (telegraph shown, player reacts) → **hit** → **recovery** (Guardian idle, Punish deals double).
+Each skill: **tell** (telegraph shown, player reacts) → **hit** → **recovery** (Guardian idle; the opening raises the player's crit chance, Section 2).
 
 Tell is the T3 value; tiers scale it (4.1). Minimum tell = worst-case escape from melee range at run speed + 0.4 s to react.
 

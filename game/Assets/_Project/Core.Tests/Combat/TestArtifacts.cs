@@ -24,7 +24,7 @@ namespace TheArtifacts.Core.Tests.Combat
         public static readonly ArtifactDef EchoBlade = new ArtifactDef
         {
             Id = "echo_blade", Name = "Echo Blade", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Mythic, Strength = 25f,
-            Trait = new[] { new TraitPart { Mode = TraitMode.Triggered, Trigger = TraitTrigger.AbilityUsed, Ability = Ability.Punish, RequiresGuardianRecovery = true,
+            Trait = new[] { new TraitPart { Mode = TraitMode.Triggered, Trigger = TraitTrigger.AbilityUsed, Ability = Ability.Overpower, RequiresGuardianRecovery = true,
                 Effects = new[] { new TraitEffect { Kind = TraitEffectKind.ResetCooldown, Ability = Ability.Lunge } } } },
         };
 

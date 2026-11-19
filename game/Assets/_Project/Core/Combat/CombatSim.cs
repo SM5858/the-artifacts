@@ -5,7 +5,7 @@ using TheArtifacts.Core.Guardian;
 
 namespace TheArtifacts.Core.Combat
 {
-    public enum Ability { None, HeavyStrike, Guard, Lunge, Punish, LightningBolt }
+    public enum Ability { None, HeavyStrike, Guard, Lunge, Overpower, LightningBolt }
 
     /// <summary>Equipment-skill keys, laid out like the body (Combat Spec 3.2).</summary>
     public enum EquipmentKey { None, Q, W, E, A, S, D, X, C }
@@ -33,7 +33,7 @@ namespace TheArtifacts.Core.Combat
         Idle,
         /// <summary>Telegraph shown; the player can react.</summary>
         Tell,
-        /// <summary>Opening after a skill; Punish deals double.</summary>
+        /// <summary>Opening after a skill; player attacks gain crit chance (Combat Spec 2).</summary>
         Recovery,
         /// <summary>Combo: short pause before the second skill's tell.</summary>
         ComboGap,
@@ -141,7 +141,7 @@ namespace TheArtifacts.Core.Combat
         // ---- Private state ----
         readonly Dictionary<Ability, float> _cooldowns = new Dictionary<Ability, float>
         {
-            { Ability.HeavyStrike, 0f }, { Ability.Guard, 0f }, { Ability.Lunge, 0f }, { Ability.Punish, 0f }, { Ability.LightningBolt, 0f },
+            { Ability.HeavyStrike, 0f }, { Ability.Guard, 0f }, { Ability.Lunge, 0f }, { Ability.Overpower, 0f }, { Ability.LightningBolt, 0f },
         };
         float _playerAutoTimer;
         readonly Dictionary<string, float> _equipmentCooldowns = new Dictionary<string, float>();
@@ -193,6 +193,10 @@ namespace TheArtifacts.Core.Combat
         public bool InMeleeRange => DistanceToGuardian <= PlayerRules.MeleeRange;
         /// <summary>A skill's tell at this fight's tier: base × tier multiplier, never below the skill's fair minimum.</summary>
         public float TellFor(GuardianSkillDef skill) => Math.Max(skill.MinTell, skill.Tell * Tier.TellMultiplier);
+
+        /// <summary>Crit chance right now: the Precision rating, plus the opening bonus while the Guardian recovers.</summary>
+        public float CritChance =>
+            Math.Min(1f, Build.CritChance + (Phase == GuardianPhase.Recovery ? PlayerRules.OpeningCritBonus : 0f));
 
         public float CooldownRemaining(Ability ability) => _cooldowns.TryGetValue(ability, out var t) ? t : 0f;
 
@@ -277,7 +281,7 @@ namespace TheArtifacts.Core.Combat
         {
             if (CooldownRemaining(ability) > 0f) return "cooldown";
             if (GcdRemaining > 0f) return "gcd";
-            if ((ability == Ability.HeavyStrike || ability == Ability.Punish) && !InMeleeRange) return "range";
+            if ((ability == Ability.HeavyStrike || ability == Ability.Overpower) && !InMeleeRange) return "range";
             if (ability == Ability.LightningBolt)
             {
                 if (PlayerMp < PlayerRules.LightningBoltManaCost) return "mana";
@@ -318,13 +322,10 @@ namespace TheArtifacts.Core.Combat
                     break;
                 }
 
-                case Ability.Punish:
-                {
-                    var mult = inRecovery ? PlayerRules.PunishRecoveryMultiplier : 1f;
-                    DamageGuardian(PlayerRules.PunishCoefficient * Build.Strength * mult, inRecovery ? "punish_recovery" : "punish", DamageType.Physical, canCrit: true);
-                    _cooldowns[ability] = Cooldown(ability, PlayerRules.PunishCooldown);
+                case Ability.Overpower:
+                    DamageGuardian(PlayerRules.OverpowerCoefficient * Build.Strength, "overpower", DamageType.Physical, canCrit: true);
+                    _cooldowns[ability] = Cooldown(ability, PlayerRules.OverpowerCooldown);
                     break;
-                }
 
                 case Ability.LightningBolt:
                     PlayerMp -= PlayerRules.LightningBoltManaCost;
@@ -351,11 +352,12 @@ namespace TheArtifacts.Core.Combat
 
         /// <summary>
         /// All player damage, reflects included, is scaled by type traits and reduced by the Guardian's Def or Res
-        /// (Combat Spec 2). Attacks may crit; the roll is skipped at 0 Precision so fights stay deterministic.
+        /// (Combat Spec 2). Attacks may crit; the roll is skipped when the chance is 0 (no Precision, no opening).
         /// </summary>
         void DamageGuardian(float amount, string source, DamageType type, bool canCrit = false)
         {
-            var crit = canCrit && Build.CritChance > 0f && _rng.NextDouble() < Build.CritChance;
+            var chance = CritChance;
+            var crit = canCrit && chance > 0f && _rng.NextDouble() < chance;
             if (crit) amount *= PlayerRules.CritMultiplier;
             var resist = type == DamageType.Physical ? Guardian.Def + Tier.Def : Guardian.Res + Tier.Res;
             amount *= _dealtVsType * (1f - PlayerRules.Rating(resist));

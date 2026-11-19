@@ -33,9 +33,12 @@ namespace TheArtifacts.Core.Combat
         public const float LungeDistance = 8f;
         public const float LungeCoefficient = 1.0f;
 
-        public const float PunishCooldown = 15f;
-        public const float PunishCoefficient = 4.0f;
-        public const float PunishRecoveryMultiplier = 2f;
+        /// <summary>Overpower, the ultimate on key 4: a big melee hit on a long cooldown.</summary>
+        public const float OverpowerCooldown = 45f;
+        public const float OverpowerCoefficient = 8.0f;
+
+        /// <summary>Opening: while the Guardian recovers from a skill, player attacks gain this much crit chance.</summary>
+        public const float OpeningCritBonus = 0.5f;
 
         public const float LightningBoltCooldown = 8f;
         /// <summary>Lightning Bolt damage = base + coefficient × Intelligence, so it is useful at any Intelligence.</summary>
@@ -65,7 +68,7 @@ namespace TheArtifacts.Core.Combat
         public const float MpPerPoint = 10f;
         public const float PointsPerSpeed = 2f;
 
-        /// <summary>The strongest hit (Punish in a recovery window, critical) may take at most this share of T1 HP.</summary>
+        /// <summary>The strongest hit (a critical Overpower) may take at most this share of T1 HP.</summary>
         public const float MaxBurstShareOfLowestTier = 0.5f;
 
         /// <summary>Points per slot; a Masterpiece's points rise with crafting skill and materials up to the max.</summary>
@@ -80,9 +83,9 @@ namespace TheArtifacts.Core.Combat
         public const int MasterpieceMinPoints = 20;
         public const int MasterpieceMaxPoints = 23;
 
-        /// <summary>The strongest single hit for this Strength: Punish × recovery window × critical (Combat Spec 2, 3.2).</summary>
+        /// <summary>The strongest single hit for this Strength: a critical Overpower (Combat Spec 2, 3.2).</summary>
         public static float StrongestHit(float strength) =>
-            PlayerRules.PunishCoefficient * PlayerRules.PunishRecoveryMultiplier * PlayerRules.CritMultiplier * strength;
+            PlayerRules.OverpowerCoefficient * PlayerRules.CritMultiplier * strength;
 
         /// <summary>An artifact's flat stats in budget points, for comparing grades (traits not counted).</summary>
         public static float Points(ArtifactDef a) =>

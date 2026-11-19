@@ -111,7 +111,7 @@ namespace TheArtifacts.PC.Combat
                 if (kb.digit1Key.wasPressedThisFrame) _pendingAbility = Ability.HeavyStrike;
                 else if (kb.digit2Key.wasPressedThisFrame) _pendingAbility = Ability.Guard;
                 else if (kb.digit3Key.wasPressedThisFrame) _pendingAbility = Ability.Lunge;
-                else if (kb.digit4Key.wasPressedThisFrame) _pendingAbility = Ability.Punish;
+                else if (kb.digit4Key.wasPressedThisFrame) _pendingAbility = Ability.Overpower;
                 else if (kb.digit5Key.wasPressedThisFrame) _pendingAbility = Ability.LightningBolt;
             }
             if (_pendingEquipment == EquipmentKey.None) _pendingEquipment = ReadEquipmentKey(kb);
@@ -348,7 +348,7 @@ namespace TheArtifacts.PC.Combat
             else if (_sim.Phase == GuardianPhase.Recovery)
             {
                 Bar(cast, 1f, GuardianRecovery);
-                GUI.Label(cast, "OPENING  -  Punish x2", _center);
+                GUI.Label(cast, "OPENING  -  crit chance +50%", _center);
             }
 
             // Player HP and hotbar
@@ -361,7 +361,7 @@ namespace TheArtifacts.PC.Combat
 
             var abilities = new[]
             {
-                (Ability.HeavyStrike, "1 Heavy"), (Ability.Guard, "2 Guard"), (Ability.Lunge, "3 Lunge"), (Ability.Punish, "4 Punish"),
+                (Ability.HeavyStrike, "1 Heavy"), (Ability.Guard, "2 Guard"), (Ability.Lunge, "3 Lunge"), (Ability.Overpower, "4 Overpower"),
                 (Ability.LightningBolt, "5 Bolt"),
             };
             for (var i = 0; i < abilities.Length; i++)
@@ -380,7 +380,7 @@ namespace TheArtifacts.PC.Combat
             GUI.Label(new Rect(16f, 16f, 700f, 110f),
                 $"{build} (gear {_sim.Build.GearScore})   {_sim.Time:0.0}s\n" +
                 $"Guardian: {_sim.Setup}\n" +
-                "Right-click move   1 Heavy  2 Guard  3 Lunge  4 Punish  5 Lightning Bolt\n" +
+                "Right-click move   1 Heavy  2 Guard  3 Lunge  4 Overpower  5 Lightning Bolt\n" +
                 "Equipment skills: Q W E / A S D / X C" + EquipmentSkillList(), _label);
             GUI.Label(new Rect(16f, h - 190f, 360f, 170f), string.Join("\n", _log), _label);
 

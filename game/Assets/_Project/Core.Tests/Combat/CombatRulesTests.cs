@@ -221,9 +221,9 @@ namespace TheArtifacts.Core.Tests.Combat
             Engage(sim);
 
             Use(sim, Ability.HeavyStrike);
-            Use(sim, Ability.Punish);
+            Use(sim, Ability.Overpower);
 
-            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("Punish:gcd"));
+            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("Overpower:gcd"));
         }
 
         [Test]
@@ -261,27 +261,44 @@ namespace TheArtifacts.Core.Tests.Combat
         // ---------- Guardian skills, tells, recovery ----------
 
         [Test]
-        public void StandingInCleave_TakesFullDamage_ThenPunishInRecoveryDoubles()
+        public void StandingInCleave_TakesFullDamage_ThenTheOpeningRaisesCritChance()
         {
             var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
             Engage(sim);
+            Assert.That(sim.CritChance, Is.Zero);
 
             RunUntil(sim, s => s.Phase == GuardianPhase.Recovery, 15f);
-            Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "cleave"), Is.EqualTo(200f));
 
-            Use(sim, Ability.Punish);
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "punish_recovery"), Is.EqualTo(AtT3(320f)).Within(1e-3));
+            Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "cleave"), Is.EqualTo(200f));
+            Assert.That(sim.CritChance, Is.EqualTo(PlayerRules.OpeningCritBonus));
         }
 
         [Test]
-        public void PunishOutsideRecovery_IsNotDoubled()
+        public void Overpower_IsAnEightTimesStrengthHit_OnALongCooldown()
         {
             var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
             Engage(sim);
 
-            Use(sim, Ability.Punish);
+            Use(sim, Ability.Overpower);   // outside an opening, so no crit for a starter
 
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "punish"), Is.EqualTo(AtT3(160f)).Within(1e-3));
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "overpower"), Is.EqualTo(AtT3(320f)).Within(1e-3));
+            Assert.That(sim.CooldownRemaining(Ability.Overpower), Is.EqualTo(PlayerRules.OverpowerCooldown).Within(Dt));
+        }
+
+        [Test]
+        public void Opening_CritsAboutHalfTheTime()
+        {
+            var crits = 0;
+            const int fights = 200;
+            for (var seed = 1; seed <= fights; seed++)
+            {
+                var sim = new CombatSim(PrototypeContent.StarterBuild, PrototypeContent.DefaultSetup, seed);
+                Engage(sim);
+                RunUntil(sim, s => s.Phase == GuardianPhase.Recovery, 15f);
+                Use(sim, Ability.Overpower);
+                if (sim.Events.Any(e => e.Type == CombatEventType.CriticalHit && e.Id == "overpower")) crits++;
+            }
+            Assert.That(crits / (double)fights, Is.EqualTo(PlayerRules.OpeningCritBonus).Within(0.1));
         }
 
         [Test]
@@ -418,7 +435,7 @@ namespace TheArtifacts.Core.Tests.Combat
         }
 
         [Test]
-        public void EchoBlade_PunishInRecoveryResetsLunge()
+        public void EchoBlade_OverpowerInAnOpeningResetsLunge()
         {
             var sim = Sim(TestArtifacts.With(TestArtifacts.EchoBlade), "T3", "steady", "cleave", "slam", "charge");
             Use(sim, Ability.Lunge);
@@ -426,7 +443,7 @@ namespace TheArtifacts.Core.Tests.Combat
             Engage(sim);
 
             RunUntil(sim, s => s.Phase == GuardianPhase.Recovery, 15f);
-            Use(sim, Ability.Punish);
+            Use(sim, Ability.Overpower);
 
             Assert.That(sim.CooldownRemaining(Ability.Lunge), Is.Zero);
         }

@@ -92,7 +92,8 @@ namespace TheArtifacts.Core.Tests.Combat
             Ability act = Ability.None;
             if (sim.InMeleeRange)
             {
-                if (sim.Phase == GuardianPhase.Recovery && sim.BlockReason(Ability.Punish) == null) act = Ability.Punish;
+                // Save Overpower for an opening, where its crit chance is highest.
+                if (sim.Phase == GuardianPhase.Recovery && sim.BlockReason(Ability.Overpower) == null) act = Ability.Overpower;
                 else if (sim.BlockReason(Ability.HeavyStrike) == null) act = Ability.HeavyStrike;
             }
             else if (sim.DistanceToGuardian > 6f && !threats.Any() && sim.BlockReason(Ability.Lunge) == null)

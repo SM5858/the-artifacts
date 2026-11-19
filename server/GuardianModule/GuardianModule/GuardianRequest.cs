@@ -53,7 +53,7 @@ namespace GuardianModule
                     ["precision"] = (int)Math.Round(build[StatKind.Precision]),
                     ["speed"] = (int)Math.Round(build[StatKind.Speed]),
                 },
-                new[] { "heavy_strike", "guard", "lunge", "punish", "lightning_bolt" },
+                new[] { "heavy_strike", "guard", "lunge", "overpower", "lightning_bolt" },
                 build.Artifacts.Select(a => a.Id),
                 attemptsOnThisGuardian);
 

@@ -145,7 +145,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
   | Superior | 15 |
   | Masterpiece | 20–23, rising with crafting skill and materials |
 
-  The budget is set by one rule: **the strongest single hit (Punish in a recovery window, critical) may take at most half of a T1 Guardian's HP.** Eight top Masterpieces with every point in Strength give 224 Strength, a 2688 hit against T1's 5500 HP (49%). CI checks this rule, and that every Heirloom-or-better artifact has more points than the best Masterpiece. **Artifacts may exceed this cap [DECIDED 2026-11-19]:** it binds general items only; an artifact's stats and traits (for example Columbia Lion's Fang against a Beast) can push the strongest hit past half, as a reward for travel. Artifacts stay bounded by the ×2 per-artifact multiplier cap (Combat Spec 5.4). For comparison, the prototype artifacts are worth 10–20 points (Relic), 25 (Heirloom), 33 (Treasure), and 47 (Mythic), plus their traits.
+  The budget is set by one rule: **the strongest single hit (a critical Overpower, the ultimate on key 4) may take at most half of a T1 Guardian's HP.** Eight top Masterpieces with every point in Strength give 224 Strength, a 2688 hit against T1's 5500 HP (49%). CI checks this rule, and that every Heirloom-or-better artifact has more points than the best Masterpiece. **Artifacts may exceed this cap [DECIDED 2026-11-19]:** it binds general items only; an artifact's stats and traits (for example Columbia Lion's Fang against a Beast) can push the strongest hit past half, as a reward for travel. Artifacts stay bounded by the ×2 per-artifact multiplier cap (Combat Spec 5.4). For comparison, the prototype artifacts are worth 10–20 points (Relic), 25 (Heirloom), 33 (Treasure), and 47 (Mythic), plus their traits.
 - **Prototype scope [DECIDED 2026-11-17] (Q13):** the prototype builds no general-item sources (no drops, shop, crafting, or events). General gear appears only as a fixed loadout given to the test builds. Its exact stats wait on the Q12 budgets; until then the Combat Spec builds stand.
 
 ## 7. Win, failure, and edge cases [PROPOSED]
@@ -201,7 +201,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 | Reference | Specific moment or mechanic | Borrowed | Changed | Terms |
 |---|---|---|---|---|
 | *Pokémon GO* | PokéStop spin: a brief check-in at a real landmark | The short landmark interaction | The main encounter moves to PC; the visit only unlocks | Proprietary. Design reference only; no assets or code used. |
-| *Dark Souls* | A boss telegraphs an attack and leaves a recovery opening | The readable tell and punish window | Stays real-time, but the fight is paced by basic attacks, skill cooldowns, and artifact effects in my own combat rules | Proprietary. Design reference only; no assets or code used. |
+| *Dark Souls* | A boss telegraphs an attack and leaves a recovery opening | The readable tell and the opening after it | Stays real-time, but the fight is paced by basic attacks, skill cooldowns, and artifact effects in my own combat rules | Proprietary. Design reference only; no assets or code used. |
 
 - Cover illustration in the pitch deck: AI-generated concept art created for the pitch.
 - Prototype assets and code will be original or used under documented licenses, with terms recorded in this section before use.
