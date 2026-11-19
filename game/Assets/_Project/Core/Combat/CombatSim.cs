@@ -272,7 +272,7 @@ namespace TheArtifacts.Core.Combat
 
                 case Ability.LightningBolt:
                     PlayerMp -= PlayerRules.LightningBoltManaCost;
-                    DamageGuardian(PlayerRules.LightningBoltCoefficient * Build.Intelligence, "lightning_bolt", DamageType.Magic, canCrit: true);
+                    DamageGuardian(PlayerRules.LightningBoltBaseDamage + PlayerRules.LightningBoltCoefficient * Build.Intelligence, "lightning_bolt", DamageType.Magic, canCrit: true);
                     _cooldowns[ability] = Cooldown(ability, PlayerRules.LightningBoltCooldown);
                     break;
             }

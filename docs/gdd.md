@@ -114,7 +114,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 - Winning a fight grants an artifact from one of **four artifact grades**: Relic, Heirloom, Treasure, Mythic (lowest to highest).
 - Reward rolls are made by the engine and are hidden from the Guardian.
-- Drop table and rarity **[DECIDED]**: rarity changes both power and variety; first win on a Guardian is at least Heirloom. See [Combat Spec](combat-spec.md), Section 5.
+- Drop table and rarity **[DECIDED]**: rarity changes both power and variety; first win on a Guardian is at least Heirloom when the landmark offers one, otherwise its highest grade. See [Combat Spec](combat-spec.md), Section 5.
 - **Landmark loot pools [DECIDED 2026-11-19]:** each artifact has a fixed grade and belongs to one landmark. A landmark offers several artifacts of different grades; a win rolls the grade, then gives that landmark's artifact of that grade. So a player who wanted Columbia Lion's Fang (Heirloom) may instead get Columbia Lion's Pelt (Mythic). Prototype pools are in Combat Spec Section 5.3.
 - Progression in the prototype is: unlock → win → equip → retry or seek another unlock. No levels or currencies.
 

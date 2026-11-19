@@ -130,8 +130,8 @@ namespace TheArtifacts.Core.Tests.Combat
 
         // ---------- Lightning Bolt, Agility, Precision, Speed (Combat Spec 2, 3.2) ----------
 
-        [TestCase("columbia_lion", 80f)]   // 2.0 × Intelligence 40, no Res
-        [TestCase("alma_mater", 16f)]      // Construct: Res 400 → 80% less
+        [TestCase("columbia_lion", 160f)]  // 100 + 1.5 × Intelligence 40, no Res
+        [TestCase("alma_mater", 32f)]      // Construct: Res 400 → 80% less
         public void LightningBolt_IsRangedMagic_ResistedByConstructs(string guardianId, float expected)
         {
             var sim = new CombatSim(PrototypeContent.StarterBuild, PrototypeContent.DefaultSetup, seed: 1,

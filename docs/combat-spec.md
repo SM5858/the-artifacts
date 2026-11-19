@@ -54,7 +54,7 @@ Both builds use the same abilities, so a tester learns one control scheme. The b
 | 2 | Guard | 12 s | 60% less damage taken for 2 s | defend |
 | 3 | Lunge | 10 s | Dash up to 8 m to the Guardian, 1.0 × Strength | switch tactics (re-engage after evading) |
 | 4 | Punish | 15 s | 4.0 × Strength; **×2 if the Guardian is in a recovery window** | commit (rewards reading tells) |
-| 5 | Lightning Bolt **[PROPOSED 2026-11-19]** | 8 s | Magic: 2.0 × Intelligence, range 15 m, costs 30 MP. Strong against most Guardians, nearly useless against Constructs (high Res) | commit at range |
+| 5 | Lightning Bolt **[PROPOSED 2026-11-19]** | 8 s | Magic: 100 + 1.5 × Intelligence (useful at any Intelligence), range 15 m, costs 30 MP. Strong against most Guardians, nearly useless against Constructs (high Res) | commit at range |
 | Right-click | Move | — | Run to the clicked point (hold to steer); walk out of telegraphed areas | evade |
 
 **Equipment-skill keys [DECIDED 2026-11-17].** A skill granted by an equipped artifact (GDD Section 6.6) is cast with the key of the slot it is worn in. The keys follow the body: top row head and hands, middle row torso, bottom row feet. WASD is no longer movement.
@@ -182,7 +182,9 @@ Reading: the scripted default is very hard for a starter and easy for a geared p
 | Treasure | 15% | 3 |
 | Mythic | 5% | 4 |
 
-The **first win** on a Guardian is at least Heirloom. Rolls are made by the engine and hidden from the Guardian agent.
+**Per landmark [DECIDED 2026-11-19]:** a win rolls the grade from this table restricted to the grades the landmark's pool offers (chances renormalized), then picks one of that landmark's artifacts of that grade at random.
+
+The **first win** on a Guardian gives Heirloom or better when the landmark's pool has one; otherwise the pool's highest grade **[DECIDED 2026-11-19]**. Rolls are made by the engine and hidden from the Guardian agent.
 
 ### 5.2 Slots and what rarity changes
 

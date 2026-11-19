@@ -38,7 +38,9 @@ namespace TheArtifacts.Core.Combat
         public const float PunishRecoveryMultiplier = 2f;
 
         public const float LightningBoltCooldown = 8f;
-        public const float LightningBoltCoefficient = 2.0f;
+        /// <summary>Lightning Bolt damage = base + coefficient × Intelligence, so it is useful at any Intelligence.</summary>
+        public const float LightningBoltBaseDamage = 100f;
+        public const float LightningBoltCoefficient = 1.5f;
         public const float LightningBoltManaCost = 30f;
         public const float LightningBoltRange = 15f;
 
