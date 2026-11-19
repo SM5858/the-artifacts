@@ -121,7 +121,7 @@ Enrage is a **per-Guardian property, off by default.** The prototype's open Guar
 
 ### 4.6 Tuning range by challenger strength (open Guardian)
 
-Challenger strength is the **gear score**: the sum of equipped artifact rarity points (Relic 1, Heirloom 2, Treasure 3, Wonder 4).
+Challenger strength is the **gear score**: the sum of equipped artifact rarity points (Relic 1, Heirloom 2, Treasure 3, Mythic 4).
 
 | Gear score | Allowed tiers | Allowed skills | Skill count | Allowed strategies |
 |---|---|---|---|---|
@@ -154,7 +154,7 @@ Reading: the scripted default is very hard for a starter and easy for a geared p
 | Relic | 50% | 1 |
 | Heirloom | 30% | 2 |
 | Treasure | 15% | 3 |
-| Wonder | 5% | 4 |
+| Mythic | 5% | 4 |
 
 The **first win** on a Guardian is at least Heirloom. Rolls are made by the engine and hidden from the Guardian agent.
 
@@ -169,9 +169,11 @@ Every artifact has a **trait**, which general items never have (GDD Section 6.6)
 | Relic | one small stat bonus | one passive trait (Section 5.4) |
 | Heirloom | two stat bonuses, or one large | one passive trait (Section 5.4) |
 | Treasure | stat bonus | one minor effect (tunes an ability) |
-| Wonder | stat bonus | one signature effect (changes how an ability is used) |
+| Mythic | stat bonus | one signature effect (changes how an ability is used) |
 
 ### 5.3 Prototype artifact list (8 artifacts)
+
+> **Being replaced (2026-11-19):** the prototype rewards become six Columbia landmark artifacts in three loot pools (GDD Section 6.5). Their stats and traits are pending approval; this list and the test builds stay in use until then.
 
 | Artifact | Slot | Rarity | Stats | Effect |
 |---|---|---|---|---|
@@ -181,14 +183,14 @@ Every artifact has a **trait**, which general items never have (GDD Section 6.6)
 | Scaled Coat | armor | Heirloom | +200 HP, +10% Armor | 15% less damage taken from Constructs |
 | Keen Edge | right hand | Treasure | +20 Power | Heavy Strike cooldown 6 → 4.5 s |
 | Warden's Plate | armor | Treasure | +150 HP, +10% Armor | Guard also heals 5% max HP |
-| Echo Blade | right hand | Wonder | +25 Power | Punish in a recovery window resets Lunge |
-| Stillstone | trinket | Wonder | +150 HP | Guard lasts 3 s and reflects 30% of blocked damage |
+| Echo Blade | right hand | Mythic | +25 Power | Punish in a recovery window resets Lunge |
+| Stillstone | trinket | Mythic | +150 HP | Guard lasts 3 s and reflects 30% of blocked damage |
 
 The geared test build wears Keen Edge, Scaled Coat, and Iron Charm.
 
 The item tooltip shows the Effect column as written, with multipliers as percentages (×1.3 → "+30%").
 
-> **Note (2026-11-17):** the full game adds general items graded Standard, Fine, Superior, Masterpiece. Artifacts are a separate category with the four grades Relic, Heirloom, Treasure, Wonder. A Masterpiece's stats can reach Heirloom, but it never has a trait; every artifact does ([GDD](gdd.md) Section 6.6). The prototype gives the test builds a fixed general-gear loadout (Q13); its stats and each grade's budget are open (Q12). The numbers above stand until then.
+> **Note (2026-11-17):** the full game adds general items graded Standard, Fine, Superior, Masterpiece. Artifacts are a separate category with the four grades Relic, Heirloom, Treasure, Mythic. A Masterpiece's stats can reach Heirloom, but it never has a trait; every artifact does ([GDD](gdd.md) Section 6.6). The prototype gives the test builds a fixed general-gear loadout (Q13); its stats and each grade's budget are open (Q12). The numbers above stand until then.
 
 ### 5.4 Trait model [DECIDED 2026-11-17]
 
@@ -209,7 +211,7 @@ A new artifact usually only combines existing parts; a truly new effect adds one
 |---|---|
 | Relic, Heirloom | Passive numeric effects (multiplicative stats, conditional bonuses) |
 | Treasure | Triggered effects or an equipment skill |
-| Wonder | Rule-breaking effects (for example, 100% reflect, survive at 1 HP, always hit) |
+| Mythic | Rule-breaking effects (for example, 100% reflect, survive at 1 HP, always hit) |
 
 **Passive numeric traits [DECIDED 2026-11-19]:**
 

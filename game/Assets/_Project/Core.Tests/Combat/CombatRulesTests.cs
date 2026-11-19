@@ -49,7 +49,7 @@ namespace TheArtifacts.Core.Tests.Combat
         {
             var greedy = new ArtifactDef
             {
-                Id = "test_greedy", Slot = ArtifactSlot.Helm, Rarity = Rarity.Wonder,
+                Id = "test_greedy", Slot = ArtifactSlot.Helm, Rarity = Rarity.Mythic,
                 Trait = new[]
                 {
                     new TraitPart { Mode = TraitMode.Passive, Effects = new[]
@@ -336,7 +336,7 @@ namespace TheArtifacts.Core.Tests.Combat
             // A test-only artifact: every hit taken petrifies the Guardian for 1 s.
             var aegis = new ArtifactDef
             {
-                Id = "test_aegis", Name = "Test Aegis", Slot = ArtifactSlot.LeftHand, Rarity = Rarity.Wonder,
+                Id = "test_aegis", Name = "Test Aegis", Slot = ArtifactSlot.LeftHand, Rarity = Rarity.Mythic,
                 Trait = new[]
                 {
                     new TraitPart

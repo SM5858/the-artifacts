@@ -82,15 +82,25 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 - **Each Guardian has its own tuning range [DECIDED].** Not every Guardian adjusts all the way down to the challenger:
   - An **open Guardian** has a wide range. A brand-new player can win its artifact after a few attempts.
   - A **gated Guardian** has a floor. With the right base stats and equipment it is manageable; without them it is very hard. Its artifacts are the reason to build up a character.
-- The prototype builds one **open** Guardian. A gated variant is the same Guardian with a higher floor (a configuration change, not new content); it is tested only if time allows.
+- **Prototype Guardians [DECIDED 2026-11-19]:** three open Guardians, one per landmark, each a different creature type so type-conditional traits can be tested:
+
+  | Landmark | Guardian | Creature type |
+  |---|---|---|
+  | Alma Mater statue | Alma Mater | Construct |
+  | Columbia Lion statue | Columbia Lion | Beast |
+  | Columbia bookstore | Book Keeper | Undead |
+
+  All three share the engine's skill pool (Combat Spec 4.2); they differ by creature type, immunities, tier range, skill choice, name, and look, so no new skills are needed. The scripted-versus-adaptive comparison (Section 11) runs on **one** of them, so the test conditions stay the same; the other two are content. Which Guardian hosts the comparison: **[OPEN]** Q16.
+- A gated variant is the same Guardian with a higher floor (a configuration change, not new content); it is tested only if time allows.
 - Allowed ranges per Guardian, the list of stat tiers, the skill pool, and the strategy list: **[DECIDED]** in the [Combat Spec](combat-spec.md), Section 4. Enrage is a per-Guardian property, off for the prototype Guardian, and the agent cannot change it.
 - What the Guardian may and may not know is specified in the Configuration Document, Section 2.
 
 ### 6.5 Rewards and progression
 
-- Winning a fight grants an artifact from one of **four artifact grades**: Relic, Heirloom, Treasure, Wonder (lowest to highest).
+- Winning a fight grants an artifact from one of **four artifact grades**: Relic, Heirloom, Treasure, Mythic (lowest to highest).
 - Reward rolls are made by the engine and are hidden from the Guardian.
 - Drop table and rarity **[DECIDED]**: rarity changes both power and variety; first win on a Guardian is at least Heirloom. See [Combat Spec](combat-spec.md), Section 5.
+- **Landmark loot pools [DECIDED 2026-11-19]:** each artifact has a fixed grade and belongs to one landmark. A landmark offers several artifacts of different grades; a win rolls the grade, then gives that landmark's artifact of that grade. So a player who wanted Columbia Lion's Fang (Heirloom) may instead get Columbia Lion's Pelt (Mythic). Prototype pools are in Combat Spec Section 5.3.
 - Progression in the prototype is: unlock → win → equip → retry or seek another unlock. No levels or currencies.
 
 ### 6.6 Item economy: general items and artifacts (full game) [DECIDED 2026-11-17]
@@ -107,9 +117,9 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 - **Crafting, no fixed classes [DECIDED 2026-11-17]:** the full game has no fixed class system. Any player can raise a crafting skill; a highly skilled crafter works as a blacksmith and can make every general grade from Standard to Masterpiece, with the grade set by skill level and material quality. Skill thresholds and materials per grade: not yet designed.
 - **Artifacts** are a separate category (Legendary-class power), not a grade on the general ladder. They are earned only by visiting a real landmark (unlock) and beating its Guardian on PC (Pillar 2).
-- **Every artifact has a trait [DECIDED 2026-11-17].** A trait is something general items never have, for example a multiplicative stat boost, or a skill the player can use only while the artifact is equipped. Higher grades carry stronger traits; Treasure and Wonder traits change how an ability is used (Combat Spec Section 5.2).
-- **Masterpiece–artifact boundary [DECIDED 2026-11-17]:** Masterpiece overlaps the lower artifact grades on raw stats, so a player who never travels still has a reason to raise a crafting skill. A Masterpiece's stats can reach the Heirloom level, depending on crafting skill and materials. A Masterpiece never has a trait. Stats can overlap; traits are what travel adds, and the strongest traits (Treasure, Wonder) are out of the crafter's reach.
-- **Artifact grades:** Relic → Heirloom → Treasure → Wonder. The top artifact for a slot is a step above the best general item for that slot: better, but not so far above that non-travelers are shut out of content.
+- **Every artifact has a trait [DECIDED 2026-11-17].** A trait is something general items never have, for example a multiplicative stat boost, or a skill the player can use only while the artifact is equipped. Higher grades carry stronger traits; Treasure and Mythic traits change how an ability is used (Combat Spec Section 5.2).
+- **Masterpiece–artifact boundary [DECIDED 2026-11-17]:** Masterpiece overlaps the lower artifact grades on raw stats, so a player who never travels still has a reason to raise a crafting skill. A Masterpiece's stats can reach the Heirloom level, depending on crafting skill and materials. A Masterpiece never has a trait. Stats can overlap; traits are what travel adds, and the strongest traits (Treasure, Mythic) are out of the crafter's reach.
+- **Artifact grades:** Relic → Heirloom → Treasure → Mythic. The top artifact for a slot is a step above the best general item for that slot: better, but not so far above that non-travelers are shut out of content.
 - **Artifacts need not be equipment.** The full game may include very strong consumable artifacts. The prototype uses equippable artifacts only.
 - **Not yet decided [OPEN] Q12:** the stat budget of each general grade, and the crafting skill and materials that move a Masterpiece from below Relic up to Heirloom.
 - **Prototype scope [DECIDED 2026-11-17] (Q13):** the prototype builds no general-item sources (no drops, shop, crafting, or events). General gear appears only as a fixed loadout given to the test builds. Its exact stats wait on the Q12 budgets; until then the Combat Spec builds stand.
@@ -142,7 +152,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 | | |
 |---|---|
-| **Included [DECIDED]** | 2–3 Columbia-area locations, mobile visit unlock, one PC dungeon, four artifact grades, one real-time **open** Guardian in two modes (scripted, adaptive). A gated variant of the same Guardian is a stretch test, not a commitment. |
+| **Included [DECIDED]** | 3 Columbia landmarks (Alma Mater statue, Columbia Lion statue, Columbia bookstore), mobile visit unlock, one dungeon and one real-time **open** Guardian per landmark (changed 2026-11-19 from one), four artifact grades. One Guardian runs in two modes (scripted, adaptive) for the comparison. A gated variant is a stretch test, not a commitment. |
 | **Excluded [DECIDED]** | Multiplayer / PvP, open world, paid unlocks, trading, additional dungeon environments. |
 | **First cut [DECIDED]** | Simulate GPS visits; keep the unlock-to-combat loop. |
 | **Full vision, not prototype scope** | Landmarks anywhere a player travels, each with a dungeon, Guardian, and artifacts themed on that place, collected over many trips. A general-item economy (field drops, shops, crafting, events) with grades Standard to Masterpiece, classless crafting, and artifacts as the travel-only category above it (Section 6.6). Consumable artifacts. |
@@ -171,6 +181,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 - Cover illustration in the pitch deck: AI-generated concept art created for the pitch.
 - Prototype assets and code will be original or used under documented licenses, with terms recorded in this section before use.
+- **Columbia names and landmarks** (Alma Mater, the Columbia Lion, the bookstore, Columbia blue) are used for the class prototype only. A public release needs the university's permission or replacement content.
 - **Concepts considered before this one:**
   - *AI Mafia* — simpler to prototype; set aside because The Artifacts connects real-world discovery with RPG progression.
   - *Conducting game* — the player conducts with a trackpad or mouse, shaping each part's dynamics (forte / piano) and nudging the rhythm, with an AI agent evaluating the performance. Set aside for two reasons: music licensing, and, even with rights cleared, the cost of obtaining a separate line for every instrument part.
@@ -187,9 +198,10 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 | Q6 | ~~Mid-fight disconnect: resume or forfeit~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before G2 playtest | Design Lead / Tech Lead |
 | Q7 | ~~How many attempts count as "a few", and the fairness and earned-reward thresholds~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before the first comparison playtest | Design Lead / BI |
 | Q9 | ~~Runtime model for the Guardian (budget uses planning rates)~~ **Resolved 2026-11-16:** Claude Haiku 5.5 (Configuration Document 2.7) | Before adaptive policy task | Tech Lead recommends; I decide |
-| Q10 | Which 2–3 landmarks, and whether any are indoors (GPS accuracy) | Before mobile check-in task | Design Lead |
+| Q10 | ~~Which 2–3 landmarks, and whether any are indoors (GPS accuracy)~~ **Resolved 2026-11-19:** Alma Mater statue, Columbia Lion statue, Columbia bookstore. The bookstore is indoors, so GPS there is unreliable; the prototype may simulate visits (Section 6.1) | Before mobile check-in task | Design Lead |
 | Q11 | ~~Stat tiers, skill pool, strategy list, and the allowed tuning range per challenger strength~~ **Resolved 2026-11-16** in the [Combat Spec](combat-spec.md) | Before adaptive Guardian task | Design Lead |
 | Q12 | Stat budget of each general grade, and the crafting skill and materials that move a Masterpiece up to Heirloom (decided 2026-11-17: general grades are Standard, Fine, Superior, Masterpiece; artifacts are a separate category; Masterpiece stats reach up to Heirloom, with no effects) | Before item data is authored beyond the 8 prototype artifacts | Design Lead |
 | Q13 | ~~Which general-item sources the prototype builds, and whether the test builds are redefined around general gear~~ **Resolved 2026-11-17:** no sources built; general gear only as a fixed test-build loadout (Section 6.6) | Before G2 playtest | Design Lead / Producer |
 | Q14 | A power budget per artifact grade. Decided: traits are data built from shared parts (Combat Spec 5.4), skill keys by slot (3.2), Guardian Armor and no evasion, "always hit" means arena-wide range (2026-11-17); trait range per grade, statuses interrupt tells, per-Guardian status immunities (2026-11-18); multiplicative stats capped at ×2 per artifact, creature-type conditional traits, prototype Guardian is a Construct, traits for the four Relic and Heirloom artifacts (2026-11-19) | Before the next combat content pass | Design Lead |
 | Q15 | Prototype content for the five new slots (helm, gloves, boots, left hand, second trinket): artifacts, the fixed general-gear loadout, and the rebalance they need (test-build stats, Guardian Armor per tier, gear-score bands, the Combat Spec 4.7 outcome table) | Before the next combat content pass | Design Lead |
+| Q16 | Which of the three Guardians hosts the scripted-versus-adaptive comparison | Before the first comparison playtest | Design Lead |
