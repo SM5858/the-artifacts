@@ -8,6 +8,10 @@ namespace TheArtifacts.Core.Tests.Combat
 {
     public class CombatRulesTests
     {
+        /// <summary>Player damage after the T3 tier's Def (plus any Guardian Def), as most rules tests fight at T3.</summary>
+        static float AtT3(float damage, float guardianDef = 0f) =>
+            damage * (1f - PlayerRules.Rating(PrototypeContent.Tier("T3").Def + guardianDef));
+
         // ---------- Content ----------
 
         [Test]
@@ -115,7 +119,7 @@ namespace TheArtifacts.Core.Tests.Combat
             Engage(sim);
 
             Use(sim, Ability.HeavyStrike);
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(100f));
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(AtT3(100f)).Within(1e-3));
 
             RunFor(sim, 1.1f);
             Use(sim, Ability.HeavyStrike);
@@ -123,7 +127,7 @@ namespace TheArtifacts.Core.Tests.Combat
 
             RunFor(sim, 5f);
             Use(sim, Ability.HeavyStrike);
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(200f));
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(AtT3(200f)).Within(1e-3));
         }
 
         [Test]
@@ -134,15 +138,17 @@ namespace TheArtifacts.Core.Tests.Combat
             Engage(sim);
 
             Use(sim, Ability.HeavyStrike);
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(50f).Within(1e-3));
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(AtT3(100f, guardianDef: 100f)).Within(1e-3));
         }
 
         // ---------- Lightning Bolt, Agility, Precision, Speed (Combat Spec 2, 3.2) ----------
 
-        [TestCase("columbia_lion", 160f)]  // 100 + 1.5 × Intelligence 40, no Res
-        [TestCase("alma_mater", 32f)]      // Construct: Res 400 → 80% less
-        public void LightningBolt_IsRangedMagic_ResistedByConstructs(string guardianId, float expected)
+        [TestCase("columbia_lion")]  // 100 + 1.5 × Intelligence 40 = 160, only the tier's Res
+        [TestCase("alma_mater")]     // Construct: Res 400 on top → about 80% less
+        public void LightningBolt_IsRangedMagic_ResistedByConstructs(string guardianId)
         {
+            var res = PrototypeContent.GuardianById(guardianId).Res + PrototypeContent.Tier("T3").Res;
+            var expected = 160f * (1f - PlayerRules.Rating(res));
             var sim = new CombatSim(PrototypeContent.StarterBuild, PrototypeContent.DefaultSetup, seed: 1,
                 PrototypeContent.GuardianById(guardianId));
             Assert.That(sim.DistanceToGuardian, Is.GreaterThan(PlayerRules.MeleeRange));
@@ -185,7 +191,7 @@ namespace TheArtifacts.Core.Tests.Combat
 
             Use(sim, Ability.HeavyStrike);
 
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(150f).Within(1e-3));
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(AtT3(150f)).Within(1e-3));
             Assert.That(sim.Events.Any(e => e.Type == CombatEventType.CriticalHit && e.Id == "heavy_strike"), Is.True);
         }
 
@@ -264,7 +270,7 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "cleave"), Is.EqualTo(200f));
 
             Use(sim, Ability.Punish);
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "punish_recovery"), Is.EqualTo(320f));
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "punish_recovery"), Is.EqualTo(AtT3(320f)).Within(1e-3));
         }
 
         [Test]
@@ -275,7 +281,7 @@ namespace TheArtifacts.Core.Tests.Combat
 
             Use(sim, Ability.Punish);
 
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "punish"), Is.EqualTo(160f));
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "punish"), Is.EqualTo(AtT3(160f)).Within(1e-3));
         }
 
         [Test]
@@ -300,7 +306,7 @@ namespace TheArtifacts.Core.Tests.Combat
 
             RunUntil(sim, s => s.Phase == GuardianPhase.Recovery, 15f);
 
-            Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "slam"), Is.EqualTo(250f * 1.3f).Within(1e-3));
+            Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "slam"), Is.EqualTo(250f * 1.6f).Within(1e-3));
         }
 
         [Test]
@@ -367,7 +373,7 @@ namespace TheArtifacts.Core.Tests.Combat
         [Test]
         public void LionsPelt_SurvivesOneKillingBlowPerFight()
         {
-            // 250 HP total; Slam at T5 hits for 325 × (1 − 12/112) ≈ 290, so each Slam would kill.
+            // 250 HP total; Slam at T5 hits for 400 × (1 − 12/112) ≈ 357, so each Slam would kill.
             var frail = new BaseStats { Hp = 100f, Mp = 100f, Strength = 40f, Intelligence = 40f };
             var sim = Sim(new PlayerBuild(frail, new[] { PrototypeContent.Artifact("columbia_lions_pelt") }), "T5", "steady", "slam", "cleave", "charge");
             Engage(sim);
@@ -392,7 +398,7 @@ namespace TheArtifacts.Core.Tests.Combat
             Use(sim, Ability.Guard);
             RunUntil(sim, s => s.Phase == GuardianPhase.Recovery, 3f);
 
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "stillstone_reflect"), Is.EqualTo(36f).Within(1e-3));
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "stillstone_reflect"), Is.EqualTo(AtT3(36f)).Within(1e-3));
         }
 
         [Test]

@@ -351,7 +351,7 @@ namespace TheArtifacts.Core.Combat
         {
             var crit = canCrit && Build.CritChance > 0f && _rng.NextDouble() < Build.CritChance;
             if (crit) amount *= PlayerRules.CritMultiplier;
-            var resist = type == DamageType.Physical ? Guardian.Def : Guardian.Res;
+            var resist = type == DamageType.Physical ? Guardian.Def + Tier.Def : Guardian.Res + Tier.Res;
             amount *= _dealtVsType * (1f - PlayerRules.Rating(resist));
             GuardianHp = Math.Max(0f, GuardianHp - amount);
             Emit(CombatEventType.GuardianDamaged, source, amount);

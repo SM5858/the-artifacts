@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using TheArtifacts.Core.Combat;
 using TheArtifacts.Core.Guardian;
@@ -46,14 +47,16 @@ namespace TheArtifacts.Core.Tests.Combat
             .Select(i => new Vec2((float)Math.Cos(i * Math.PI / 8), (float)Math.Sin(i * Math.PI / 8)))
             .ToArray();
 
-        public static PlayerInput Decide(CombatSim sim) => Decide(sim, 0f);
+        public static PlayerInput Decide(CombatSim sim) => Decide(sim, 0f, null);
 
         /// <param name="reactionTime">Seconds after a telegraph appears before the bot notices it.</param>
-        public static PlayerInput Decide(CombatSim sim, float reactionTime)
+        /// <param name="missed">Telegraphs the bot fails to notice at all.</param>
+        public static PlayerInput Decide(CombatSim sim, float reactionTime, ISet<Telegraph> missed)
         {
             var pos = sim.PlayerPosition;
             var threats = sim.ActiveTelegraphs
                 .Where(t => t.Area != null && sim.Time - (t.HitTime - t.Skill.Tell) >= reactionTime)
+                .Where(t => missed == null || !missed.Contains(t))
                 .ToArray();
             bool Danger(Vec2 p) => threats.Any(t => t.Area.Contains(p));
 
@@ -107,11 +110,20 @@ namespace TheArtifacts.Core.Tests.Combat
             return new PlayerInput(move, act);
         }
 
+        /// <param name="missChance">Chance the bot never notices a given telegraph, standing in for human mistakes.</param>
         public static CombatSim Play(PlayerBuild build, GuardianSetup setup, int seed,
-            float reactionTime = 0f, float maxSeconds = 600f, GuardianProfile guardian = null)
+            float reactionTime = 0f, float maxSeconds = 600f, GuardianProfile guardian = null, float missChance = 0f)
         {
             var sim = new CombatSim(build, setup, seed, guardian);
-            CombatTestUtil.RunFor(sim, maxSeconds, s => Decide(s, reactionTime));
+            var rng = new Random(seed * 7919 + 17);
+            var seen = new HashSet<Telegraph>();
+            var missed = new HashSet<Telegraph>();
+            CombatTestUtil.RunFor(sim, maxSeconds, s =>
+            {
+                foreach (var t in s.ActiveTelegraphs)
+                    if (seen.Add(t) && rng.NextDouble() < missChance) missed.Add(t);
+                return Decide(s, reactionTime, missed);
+            });
             return sim;
         }
     }

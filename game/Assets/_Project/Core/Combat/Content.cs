@@ -97,6 +97,8 @@ namespace TheArtifacts.Core.Combat
         public string Id;
         public float MaxHp;
         public float DamageMultiplier;
+        /// <summary>Added to the Guardian's own Def and Res (Combat Spec 4.1), so higher tiers resist more.</summary>
+        public float Def, Res;
     }
 
     /// <summary>Equipment slots (Combat Spec 5.2). Each has an equipment-skill key; Trinket has two slots (D, C).</summary>
@@ -223,11 +225,11 @@ namespace TheArtifacts.Core.Combat
 
         public static readonly IReadOnlyList<TierDef> Tiers = new[]
         {
-            new TierDef { Id = "T1", MaxHp = 3000f, DamageMultiplier = 0.80f },
-            new TierDef { Id = "T2", MaxHp = 3600f, DamageMultiplier = 0.90f },
-            new TierDef { Id = "T3", MaxHp = 4300f, DamageMultiplier = 1.00f },
-            new TierDef { Id = "T4", MaxHp = 5200f, DamageMultiplier = 1.15f },
-            new TierDef { Id = "T5", MaxHp = 6200f, DamageMultiplier = 1.30f },
+            new TierDef { Id = "T1", MaxHp = 5500f, DamageMultiplier = 0.50f, Def = 0f, Res = 0f },
+            new TierDef { Id = "T2", MaxHp = 6400f, DamageMultiplier = 0.70f, Def = 5f, Res = 5f },
+            new TierDef { Id = "T3", MaxHp = 7500f, DamageMultiplier = 1.00f, Def = 10f, Res = 10f },
+            new TierDef { Id = "T4", MaxHp = 8700f, DamageMultiplier = 1.30f, Def = 20f, Res = 20f },
+            new TierDef { Id = "T5", MaxHp = 9800f, DamageMultiplier = 1.60f, Def = 30f, Res = 30f },
         };
 
         public static readonly IReadOnlyList<GuardianSkillDef> Skills = new[]
