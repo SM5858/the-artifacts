@@ -39,21 +39,32 @@ namespace TheArtifacts.Core.Tests.Combat
                 Assert.That(geared.Time, Is.LessThan(starter.Time));
         }
 
+        /// <summary>
+        /// Balance report for the Q15 rebalance: every Guardian, build, tier, and skill set, at two bot reaction
+        /// times. Printed to the test log as REPORT lines (steady strategy; the bot dodges well, so this is an
+        /// upper bound on player skill, not a playtest).
+        /// </summary>
         [TestCase(0f)]
         [TestCase(0.6f)]
-        public void Report_BotFightsAcrossTiersAndStrategies(float reactionTime)
+        public void Report_BotFightsAcrossGuardiansTiersAndBuilds(float reactionTime)
         {
-            TestContext.WriteLine($"--- bot reaction time {reactionTime:0.0}s ---");
+            var skillSets = new[] { ("physical", DefaultSkills), ("mixed", new[] { "slam", "rings", "embers" }) };
             var builds = new[] { ("starter", PrototypeContent.StarterBuild), ("geared", PrototypeContent.GearedBuild) };
-            foreach (var strategy in PrototypeContent.StrategyIds)
+            TestContext.WriteLine("REPORT|reaction|guardian|skills|build|tier|outcome|seconds|hp_left|max_hp|telegraph_hits|bolt_share|robe_uses|crits");
+            foreach (var guardian in PrototypeContent.Guardians)
+            foreach (var (setName, skills) in skillSets)
             foreach (var (name, build) in builds)
             foreach (var tier in PrototypeContent.Tiers)
             {
-                var sim = TestBot.Play(build, new GuardianSetup(tier.Id, DefaultSkills, strategy), seed: 1, reactionTime);
-                var hits = sim.Events.Count(e => e.Type == CombatEventType.SkillHit);
-                TestContext.WriteLine(
-                    $"{strategy,-10} {name,-7} {tier.Id}: {sim.Outcome,-4} {sim.Time,6:0}s  " +
-                    $"player HP {sim.PlayerHp,5:0}/{sim.PlayerMaxHp:0}  Guardian HP {sim.GuardianHp,5:0}  telegraph hits {hits}");
+                var sim = TestBot.Play(build, new GuardianSetup(tier.Id, skills, "steady"), seed: 1, reactionTime, guardian: guardian);
+                var dealt = sim.Events.Where(e => e.Type == CombatEventType.GuardianDamaged).Sum(e => e.Amount);
+                var bolt = sim.Events.Where(e => e.Type == CombatEventType.GuardianDamaged && e.Id == "lightning_bolt").Sum(e => e.Amount);
+                TestContext.WriteLine(string.Join("|", "REPORT", reactionTime.ToString("0.0"), guardian.Id, setName, name, tier.Id,
+                    sim.Outcome, sim.Time.ToString("0"), sim.PlayerHp.ToString("0"), sim.PlayerMaxHp.ToString("0"),
+                    sim.Events.Count(e => e.Type == CombatEventType.SkillHit),
+                    dealt > 0f ? (bolt / dealt).ToString("0.00") : "0",
+                    sim.Events.Count(e => e.Type == CombatEventType.AbilityUsed && e.Id == "columbia_blue_robe"),
+                    sim.Events.Count(e => e.Type == CombatEventType.CriticalHit)));
                 Assert.That(sim.Outcome, Is.Not.EqualTo(CombatOutcome.Ongoing), "every fight must end");
             }
         }

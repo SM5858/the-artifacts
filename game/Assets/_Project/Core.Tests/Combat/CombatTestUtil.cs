@@ -37,7 +37,8 @@ namespace TheArtifacts.Core.Tests.Combat
 
     /// <summary>
     /// A simple competent player for balance smoke tests: steps out of telegraphs by the quickest
-    /// direction, guards hits it cannot escape, punishes recovery windows, and keeps melee uptime.
+    /// direction, guards (or uses an equipment skill on S) for hits it cannot escape, punishes recovery
+    /// windows, keeps melee uptime, and casts Lightning Bolt when out of melee or when melee skills are down.
     /// </summary>
     static class TestBot
     {
@@ -78,8 +79,11 @@ namespace TheArtifacts.Core.Tests.Combat
                 }
 
                 var nextHit = threats.Where(t => t.Area.Contains(pos)).Min(t => t.HitTime) - sim.Time;
-                var ability = bestTime > nextHit && sim.BlockReason(Ability.Guard) == null ? Ability.Guard : Ability.None;
-                return new PlayerInput(best, ability);
+                var cannotEscape = bestTime > nextHit;
+                var ability = cannotEscape && sim.BlockReason(Ability.Guard) == null ? Ability.Guard : Ability.None;
+                var equipment = cannotEscape && ability == Ability.None && sim.EquipmentBlockReason(EquipmentKey.S) == null
+                    ? EquipmentKey.S : EquipmentKey.None;
+                return new PlayerInput(best, ability, equipment);
             }
 
             Ability act = Ability.None;
@@ -92,6 +96,7 @@ namespace TheArtifacts.Core.Tests.Combat
             {
                 act = Ability.Lunge;
             }
+            if (act == Ability.None && sim.BlockReason(Ability.LightningBolt) == null) act = Ability.LightningBolt;
 
             var move = Vec2.Zero;
             if (sim.DistanceToGuardian > 2.6f)
@@ -103,9 +108,9 @@ namespace TheArtifacts.Core.Tests.Combat
         }
 
         public static CombatSim Play(PlayerBuild build, GuardianSetup setup, int seed,
-            float reactionTime = 0f, float maxSeconds = 600f)
+            float reactionTime = 0f, float maxSeconds = 600f, GuardianProfile guardian = null)
         {
-            var sim = new CombatSim(build, setup, seed);
+            var sim = new CombatSim(build, setup, seed, guardian);
             CombatTestUtil.RunFor(sim, maxSeconds, s => Decide(s, reactionTime));
             return sim;
         }
