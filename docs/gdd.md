@@ -59,6 +59,21 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 ### 6.2 Build
 
 - A build is the character's abilities plus equipped artifacts.
+- **Character stats [DECIDED 2026-11-19]:**
+
+  | Stat | Effect | Raised by |
+  |---|---|---|
+  | Strength | Physical attack power | Levels, items |
+  | Intelligence | Magic attack power | Levels, items |
+  | Agility | Cooldown reduction | Levels, items |
+  | Def | Physical defense | Levels, items |
+  | Res | Magic resistance | Levels, items |
+  | HP | Health | Levels, items |
+  | MP | Mana pool | Levels, items |
+  | Precision | Critical-hit chance in combat; chance of a higher grade when crafting | Levels, items |
+  | Speed | Movement speed | **Artifacts and crafted items only**, never levels |
+
+  The full game has character levels that raise the first eight stats. The prototype has no levels (Section 6.5); test builds use fixed base stats. Conversion formulas, damage types, and how far the prototype adopts these stats: **[OPEN]** Q17. Until Q17 is settled, the Combat Spec's HP / Power / Armor model stays in use.
 - The prototype tests at least two builds of different strength: a **starter** build (a new account, no artifacts) and a **geared** build (artifacts equipped, stronger skills).
 - Ability lists, stats, and artifact effects: **[DECIDED]** in the [Combat Spec](combat-spec.md), Section 3 and 5.
 
@@ -205,3 +220,4 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 | Q14 | A power budget per artifact grade. Decided: traits are data built from shared parts (Combat Spec 5.4), skill keys by slot (3.2), Guardian Armor and no evasion, "always hit" means arena-wide range (2026-11-17); trait range per grade, statuses interrupt tells, per-Guardian status immunities (2026-11-18); multiplicative stats capped at ×2 per artifact, creature-type conditional traits, prototype Guardian is a Construct, traits for the four Relic and Heirloom artifacts (2026-11-19) | Before the next combat content pass | Design Lead |
 | Q15 | Prototype content for the five new slots (helm, gloves, boots, left hand, second trinket): artifacts, the fixed general-gear loadout, and the rebalance they need (test-build stats, Guardian Armor per tier, gear-score bands, the Combat Spec 4.7 outcome table) | Before the next combat content pass | Design Lead |
 | Q16 | Which of the three Guardians hosts the scripted-versus-adaptive comparison | Before the first comparison playtest | Design Lead |
+| Q17 | Formulas for the new stats (Def, Res, Agility, Precision, Speed), physical versus magic damage types for player and Guardian skills, mana costs, and which stats the prototype implements | Before the artifact list is replaced | Design Lead |
