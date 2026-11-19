@@ -7,7 +7,7 @@ namespace TheArtifacts.Core.Combat
     {
         /// <summary>Always on; read when the rule it changes is applied.</summary>
         Passive,
-        /// <summary>Cast with the slot's equipment-skill key (Combat Spec 3.2). Not wired yet.</summary>
+        /// <summary>Cast with the slot's equipment-skill key (Combat Spec 3.2); costs no MP and ignores the GCD.</summary>
         EquipmentSkill,
         /// <summary>Fires when its trigger happens and its conditions hold.</summary>
         Triggered,
@@ -22,6 +22,8 @@ namespace TheArtifacts.Core.Combat
         HitTaken,
         /// <summary>Guard blocked damage; amount is the damage blocked.</summary>
         DamageBlocked,
+        /// <summary>A hit would bring the player to 0 HP. Checked before the damage lands.</summary>
+        LethalDamage,
     }
 
     public enum TraitEffectKind
@@ -44,6 +46,10 @@ namespace TheArtifacts.Core.Combat
         DamageDealtVsType,
         /// <summary>Passive: damage taken from a Guardian of <see cref="TraitEffect.Creature"/> × (1 + Value); negative reduces.</summary>
         DamageTakenVsType,
+        /// <summary>For Duration seconds, damage taken × (1 + Value); negative reduces.</summary>
+        DamageTakenBuff,
+        /// <summary>With <see cref="TraitTrigger.LethalDamage"/>: the player is left at 1 HP instead of dying.</summary>
+        SurviveAtOneHp,
     }
 
     public enum StatKind { Hp, Mp, Strength, Intelligence, Agility, Def, Res, Precision, Speed }
@@ -60,8 +66,12 @@ namespace TheArtifacts.Core.Combat
         public string Id;
         public string Name;
         public CreatureType Type;
+        /// <summary>The real-world landmark whose visit unlocks this Guardian's dungeon.</summary>
+        public string Landmark;
         /// <summary>Reduce physical / magic damage taken as value / (value + 100), like the player's (Combat Spec 2).</summary>
         public float Def, Res;
+        /// <summary>Artifact ids a win here can give (GDD 6.5, Combat Spec 5.3).</summary>
+        public IReadOnlyList<string> LootPool = new string[0];
         public IReadOnlyCollection<GuardianStatus> Immunities = new GuardianStatus[0];
     }
 
@@ -73,6 +83,7 @@ namespace TheArtifacts.Core.Combat
         public StatKind Stat;
         public CreatureType Creature;
         public float Value;
+        public float Duration;
     }
 
     /// <summary>
@@ -89,6 +100,10 @@ namespace TheArtifacts.Core.Combat
         public bool RequiresGuardianRecovery;
         /// <summary>Condition: chance to fire, 0–1.</summary>
         public float Chance = 1f;
+        /// <summary>Condition: fires at most once per fight.</summary>
+        public bool OncePerFight;
+        /// <summary>For <see cref="TraitMode.EquipmentSkill"/>: seconds before it can be cast again.</summary>
+        public float Cooldown;
         public IReadOnlyList<TraitEffect> Effects = new TraitEffect[0];
     }
 }

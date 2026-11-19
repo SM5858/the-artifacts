@@ -7,16 +7,21 @@ namespace TheArtifacts.Core.Combat
 {
     public enum Ability { None, HeavyStrike, Guard, Lunge, Punish, LightningBolt }
 
+    /// <summary>Equipment-skill keys, laid out like the body (Combat Spec 3.2).</summary>
+    public enum EquipmentKey { None, Q, W, E, A, S, D, X, C }
+
     /// <summary>One tick of player input. Move is a direction on the floor; length above 1 is clamped.</summary>
     public readonly struct PlayerInput
     {
         public readonly Vec2 Move;
         public readonly Ability Ability;
+        public readonly EquipmentKey Equipment;
 
-        public PlayerInput(Vec2 move, Ability ability = Ability.None)
+        public PlayerInput(Vec2 move, Ability ability = Ability.None, EquipmentKey equipment = EquipmentKey.None)
         {
             Move = move;
             Ability = ability;
+            Equipment = equipment;
         }
 
         public static readonly PlayerInput None = new PlayerInput(Vec2.Zero);
@@ -58,6 +63,8 @@ namespace TheArtifacts.Core.Combat
         TellInterrupted,
         /// <summary>A player hit was critical; Id is its source, Amount the damage after armor.</summary>
         CriticalHit,
+        /// <summary>A trait left the player at 1 HP instead of dying; Id is the artifact.</summary>
+        SurvivedLethal,
     }
 
     /// <summary>Feedback for the UI and the per-attempt trace.</summary>
@@ -134,6 +141,9 @@ namespace TheArtifacts.Core.Combat
             { Ability.HeavyStrike, 0f }, { Ability.Guard, 0f }, { Ability.Lunge, 0f }, { Ability.Punish, 0f }, { Ability.LightningBolt, 0f },
         };
         float _playerAutoTimer;
+        readonly Dictionary<string, float> _equipmentCooldowns = new Dictionary<string, float>();
+        readonly List<(float Multiplier, float End)> _damageTakenBuffs = new List<(float, float)>();
+        readonly HashSet<TraitPart> _usedOncePerFight = new HashSet<TraitPart>();
 
         readonly GuardianStrategy _strategy;
         readonly Random _rng;
@@ -190,6 +200,7 @@ namespace TheArtifacts.Core.Combat
             TickPlayerTimers(dt);
             MovePlayer(input.Move, dt);
             if (input.Ability != Ability.None) TryUse(input.Ability);
+            if (input.Equipment != EquipmentKey.None) TryUseEquipment(input.Equipment);
             PlayerAutoAttack();
             if (CheckEnd()) return;
 
@@ -207,6 +218,45 @@ namespace TheArtifacts.Core.Combat
             GuardRemaining = Math.Max(0f, GuardRemaining - dt);
             _playerAutoTimer = Math.Max(0f, _playerAutoTimer - dt);
             PlayerMp = Math.Min(Build.MaxMp, PlayerMp + PlayerRules.MpRegenPerSecond * dt);
+            foreach (var key in _equipmentCooldowns.Keys.ToArray())
+                _equipmentCooldowns[key] = Math.Max(0f, _equipmentCooldowns[key] - dt);
+            _damageTakenBuffs.RemoveAll(b => b.End <= Time);
+        }
+
+        // ---------------- Equipment skills (Combat Spec 3.2, 5.4) ----------------
+
+        static TraitPart EquipmentSkill(ArtifactDef artifact) =>
+            artifact?.Trait.FirstOrDefault(p => p.Mode == TraitMode.EquipmentSkill);
+
+        public float EquipmentCooldownRemaining(EquipmentKey key)
+        {
+            var artifact = Build.EquippedAt(key);
+            return artifact != null && _equipmentCooldowns.TryGetValue(artifact.Id, out var t) ? t : 0f;
+        }
+
+        /// <summary>Why this key's equipment skill cannot be cast now ("none" if the slot has no skill), or null.</summary>
+        public string EquipmentBlockReason(EquipmentKey key)
+        {
+            if (EquipmentSkill(Build.EquippedAt(key)) == null) return "none";
+            if (EquipmentCooldownRemaining(key) > 0f) return "cooldown";
+            return null;
+        }
+
+        /// <summary>Equipment skills cost no MP and neither need nor trigger the GCD.</summary>
+        void TryUseEquipment(EquipmentKey key)
+        {
+            var reason = EquipmentBlockReason(key);
+            if (reason != null)
+            {
+                Emit(CombatEventType.AbilityRejected, $"{key}:{reason}", 0f);
+                return;
+            }
+
+            var artifact = Build.EquippedAt(key);
+            var part = EquipmentSkill(artifact);
+            foreach (var effect in part.Effects) ApplyTraitEffect(artifact, effect, 0f);
+            _equipmentCooldowns[artifact.Id] = part.Cooldown * (1f - Build.CooldownReduction);
+            Emit(CombatEventType.AbilityUsed, artifact.Id, 0f);
         }
 
         void MovePlayer(Vec2 move, float dt)
@@ -320,18 +370,35 @@ namespace TheArtifacts.Core.Combat
         {
             var reduction = type == DamageType.Physical ? Build.PhysicalReduction : Build.MagicReduction;
             var amount = baseDamage * Tier.DamageMultiplier * (1f - reduction) * _takenVsType;
+            foreach (var buff in _damageTakenBuffs) amount *= buff.Multiplier;
             if (GuardRemaining > 0f)
             {
                 var blocked = amount * PlayerRules.GuardReduction;
                 amount -= blocked;
                 FireTraits(TraitTrigger.DamageBlocked, Ability.None, blocked, Phase == GuardianPhase.Recovery);
             }
+            if (amount >= PlayerHp && TrySurviveLethal()) amount = PlayerHp - 1f;
             PlayerHp = Math.Max(0f, PlayerHp - amount);
             Emit(CombatEventType.PlayerDamaged, source, amount);
             FireTraits(TraitTrigger.HitTaken, Ability.None, amount, Phase == GuardianPhase.Recovery);
         }
 
         // ---------------- Traits (Combat Spec 5.4) ----------------
+
+        /// <summary>A lethal-damage trait that is still available leaves the player at 1 HP.</summary>
+        bool TrySurviveLethal()
+        {
+            foreach (var (artifact, part) in Build.TraitParts)
+            {
+                if (part.Mode != TraitMode.Triggered || part.Trigger != TraitTrigger.LethalDamage) continue;
+                if (part.OncePerFight && _usedOncePerFight.Contains(part)) continue;
+                if (!part.Effects.Any(e => e.Kind == TraitEffectKind.SurviveAtOneHp)) continue;
+                if (part.OncePerFight) _usedOncePerFight.Add(part);
+                Emit(CombatEventType.SurvivedLethal, artifact.Id, 0f);
+                return true;
+            }
+            return false;
+        }
 
         /// <param name="amount">The trigger's amount: damage taken or blocked, 0 for an ability.</param>
         void FireTraits(TraitTrigger trigger, Ability ability, float amount, bool guardianInRecovery)
@@ -341,7 +408,9 @@ namespace TheArtifacts.Core.Combat
                 if (part.Mode != TraitMode.Triggered || part.Trigger != trigger) continue;
                 if (trigger == TraitTrigger.AbilityUsed && part.Ability != ability) continue;
                 if (part.RequiresGuardianRecovery && !guardianInRecovery) continue;
+                if (part.OncePerFight && _usedOncePerFight.Contains(part)) continue;
                 if (part.Chance < 1f && _rng.NextDouble() >= part.Chance) continue;
+                if (part.OncePerFight) _usedOncePerFight.Add(part);
                 foreach (var effect in part.Effects) ApplyTraitEffect(artifact, effect, amount);
             }
         }
@@ -361,6 +430,9 @@ namespace TheArtifacts.Core.Combat
                     break;
                 case TraitEffectKind.ApplyStatus:
                     ApplyGuardianStatus(effect.Status, effect.Value);
+                    break;
+                case TraitEffectKind.DamageTakenBuff:
+                    _damageTakenBuffs.Add((1f + effect.Value, Time + effect.Duration));
                     break;
                 // SetCooldown and SetGuardDuration are passive and read where the rule applies.
             }

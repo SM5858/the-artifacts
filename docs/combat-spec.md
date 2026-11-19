@@ -65,21 +65,23 @@ Both builds use the same abilities, so a tester learns one control scheme. The b
 | A | Gloves | | S | Armor | | D | Trinket 1 |
 | — | — | | X | Boots | | C | Trinket 2 |
 
-A slot with no granted skill leaves its key unused.
+A slot with no granted skill leaves its key unused. Equipment skills cost no MP and neither need nor trigger the GCD **[PROPOSED 2026-11-19]**, so a defensive one can be used in reaction to a tell.
 
 ### 3.3 Test builds
 
 | | Starter | Geared |
 |---|---|---|
-| HP | 1000 | 1300 |
-| MP | 100 | 100 |
-| Strength | 40 | 60 |
+| HP | 1000 | 1200 |
+| MP | 100 | 130 |
+| Strength | 40 | 55 |
 | Intelligence | 40 | 40 |
-| Def | 0 (0%) | 18 (15.3%) |
-| Res, Agility, Precision, Speed | 0 | 0 |
-| Artifacts | none | Treasure right-hand weapon, Heirloom armor, Heirloom trinket (Section 5.3) |
-| Gear score | 0 | 7 |
-| Expected DPS (ideal / realistic 70% uptime) | 54 / 38 | 89 / 63 |
+| Def | 0 (0%) | 6 (5.7%) |
+| Res | 0 (0%) | 17 (14.5%) |
+| Precision | 0 (0%) | 10 (9.1% crit) |
+| Agility, Speed | 0 | 0 |
+| Artifacts | none | Wreath of Alma Mater, Columbia Lion's Fang, Columbia Blue Robe (Section 5.3) |
+| Gear score | 0 | 6 |
+| Expected DPS (ideal / realistic 70% uptime) | 54 / 38 | recompute in Q15 |
 
 ## 4. Guardian
 
@@ -167,7 +169,7 @@ Bands overlap at their edges, and a geared player can never get a weaker tier th
 | Geared: time to kill | 48 s | 58 s | 69 s | 83 s | 99 s |
 | Geared: telegraphed hits it can take | 6.9 | 5.6 | 4.5 | 3.0 | 1.7 |
 
-> **Note (2026-11-19):** this table predates traits, the nine-stat model, and Lightning Bolt. Lightning Bolt adds ranged magic damage against the Columbia Lion and the Book Keeper, so those fights run shorter than shown; against Alma Mater (Res 400) it adds little. Against the Construct prototype Guardian, the geared build's Iron Charm and Scaled Coat cut damage taken to 0.9 × 0.85 = 0.765, so its "telegraphed hits it can take" row is about 31% higher. The rebalance in GDD Q15 recomputes the table.
+> **Note (2026-11-19):** this table predates traits, the nine-stat model, and Lightning Bolt. Lightning Bolt adds ranged magic damage against the Columbia Lion and the Book Keeper, so those fights run shorter than shown; against Alma Mater (Res 400) it adds little. The geared rows describe the old geared build; the Columbia geared build (3.3) has less Strength, Def, and HP but adds Precision, Res, and the Robe's damage-cut skill. The rebalance in GDD Q15 recomputes the table.
 
 Reading: the scripted default is very hard for a starter and easy for a geared player (the gap the hypothesis targets). Inside their bands, a starter at T1–T2 and a geared player at T4–T5 both land near the 90–120 s target, and the geared player still has more margin, so gear keeps its value.
 
@@ -188,7 +190,7 @@ The **first win** on a Guardian gives Heirloom or better when the landmark's poo
 
 ### 5.2 Slots and what rarity changes
 
-Eight slots **[DECIDED 2026-11-17]**: **helm, armor, left hand, right hand, gloves, boots,** and **two trinket slots.** One item per slot; a trinket fits either trinket slot. Each slot has an equipment-skill key (Section 3.2). The eight prototype artifacts below cover only right hand, armor, and trinket; content for the other slots and the rebalance it needs are open (GDD Q15).
+Eight slots **[DECIDED 2026-11-17]**: **helm, armor, left hand, right hand, gloves, boots,** and **two trinket slots.** One item per slot; a trinket fits either trinket slot. Each slot has an equipment-skill key (Section 3.2). The prototype artifacts (5.3) cover helm, right hand, and armor; content for the other slots is open (GDD Q15).
 
 Every artifact has a **trait**, which general items never have (GDD Section 6.6). The Effect column is that trait.
 
@@ -199,22 +201,20 @@ Every artifact has a **trait**, which general items never have (GDD Section 6.6)
 | Treasure | stat bonus | one minor effect (tunes an ability) |
 | Mythic | stat bonus | one signature effect (changes how an ability is used) |
 
-### 5.3 Prototype artifact list (8 artifacts)
+### 5.3 Prototype artifacts: Columbia landmark pools [DECIDED 2026-11-19]
 
-> **Being replaced (2026-11-19):** the prototype rewards become six Columbia landmark artifacts in three loot pools (GDD Section 6.5). Their stats and traits are pending approval; this list and the test builds stay in use until then.
+| Landmark (Guardian) | Artifact | Slot | Grade | Stats | Trait (tooltip) |
+|---|---|---|---|---|---|
+| Alma Mater statue (Alma Mater) | Wreath of Alma Mater | helm | Relic | +50 HP, +5 Res | Max MP +30% |
+| | Staff of Alma Mater | right hand | Relic | +10 Intelligence | Intelligence +30% |
+| Columbia Lion statue (Columbia Lion) | Columbia Lion's Fang | right hand (dagger) | Heirloom | +15 Strength, +10 Precision | 20% more damage to Beasts |
+| | Columbia Lion's Pelt | helm | Mythic | +150 HP, +12 Def, +10 Speed | Once per fight, survive a killing blow at 1 HP |
+| Columbia bookstore (Book Keeper) | Columbia Blue Mortarboard | helm | Relic | +20 Precision | 20% more damage to Undead |
+| | Columbia Blue Robe | armor | Treasure | +150 HP, +6 Def, +12 Res | S: take 30% less damage for 4 s (25 s cooldown) |
 
-| Artifact | Slot | Rarity | Stats | Effect |
-|---|---|---|---|---|
-| Worn Band | trinket | Relic | +5 Strength | Strength +30% (×1.3) |
-| Padded Vest | armor | Relic | +100 HP | Max HP +30% (×1.3) |
-| Iron Charm | trinket | Heirloom | +100 HP, +6 Def | 10% less damage taken from Constructs |
-| Scaled Coat | armor | Heirloom | +200 HP, +12 Def | 15% less damage taken from Constructs |
-| Keen Edge | right hand | Treasure | +20 Strength | Heavy Strike cooldown 6 → 4.5 s |
-| Warden's Plate | armor | Treasure | +150 HP, +12 Def | Guard also heals 5% max HP |
-| Echo Blade | right hand | Mythic | +25 Strength | Punish in a recovery window resets Lunge |
-| Stillstone | trinket | Mythic | +150 HP | Guard lasts 3 s and reflects 30% of blocked damage |
+With the per-landmark roll (5.1), a win gives: Alma Mater, always a Relic (either artifact); Columbia Lion, Fang 86% / Pelt 14%; Book Keeper, Mortarboard 77% / Robe 23%. A first win gives the Fang or Pelt at the Lion (unchanged), the Robe at the bookstore, and a Relic at Alma Mater.
 
-The geared test build wears Keen Edge, Scaled Coat, and Iron Charm.
+The geared test build wears one artifact from each landmark: **Wreath of Alma Mater, Columbia Lion's Fang, Columbia Blue Robe.** The eight earlier placeholder artifacts were removed; the trait mechanics they used stay covered by test-only fixtures.
 
 The item tooltip shows the Effect column as written, with multipliers as percentages (×1.3 → "+30%").
 

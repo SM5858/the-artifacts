@@ -196,6 +196,23 @@ namespace TheArtifacts.Core.Combat
                 .LastOrDefault(e => e.Kind == kind && (ability == Ability.None || e.Ability == ability));
 
         public static int SlotCapacity(ArtifactSlot slot) => slot == ArtifactSlot.Trinket ? 2 : 1;
+
+        /// <summary>The artifact cast by an equipment-skill key (Combat Spec 3.2), or null. D and C are the first and second trinket.</summary>
+        public ArtifactDef EquippedAt(EquipmentKey key)
+        {
+            switch (key)
+            {
+                case EquipmentKey.Q: return Artifacts.FirstOrDefault(a => a.Slot == ArtifactSlot.LeftHand);
+                case EquipmentKey.W: return Artifacts.FirstOrDefault(a => a.Slot == ArtifactSlot.Helm);
+                case EquipmentKey.E: return Artifacts.FirstOrDefault(a => a.Slot == ArtifactSlot.RightHand);
+                case EquipmentKey.A: return Artifacts.FirstOrDefault(a => a.Slot == ArtifactSlot.Gloves);
+                case EquipmentKey.S: return Artifacts.FirstOrDefault(a => a.Slot == ArtifactSlot.Armor);
+                case EquipmentKey.X: return Artifacts.FirstOrDefault(a => a.Slot == ArtifactSlot.Boots);
+                case EquipmentKey.D: return Artifacts.Where(a => a.Slot == ArtifactSlot.Trinket).ElementAtOrDefault(0);
+                case EquipmentKey.C: return Artifacts.Where(a => a.Slot == ArtifactSlot.Trinket).ElementAtOrDefault(1);
+                default: return null;
+            }
+        }
     }
 
     /// <summary>All prototype content from the Combat Spec, in one place.</summary>
@@ -225,48 +242,61 @@ namespace TheArtifacts.Core.Combat
 
         public static readonly IReadOnlyList<string> StrategyIds = new[] { "steady", "aggressive", "combo", "reactive" };
 
+        /// <summary>The six Columbia landmark artifacts (Combat Spec 5.3), grouped by the landmark that drops them.</summary>
         public static readonly IReadOnlyList<ArtifactDef> Artifacts = new[]
         {
-            new ArtifactDef { Id = "worn_band", Name = "Worn Band", Description = "Strength +30%", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Relic, Strength = 5f,
-                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Strength, Value = 1.3f }) } },
-            new ArtifactDef { Id = "padded_vest", Name = "Padded Vest", Description = "Max HP +30%", Slot = ArtifactSlot.Armor, Rarity = Rarity.Relic, Hp = 100f,
-                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Hp, Value = 1.3f }) } },
-            new ArtifactDef { Id = "iron_charm", Name = "Iron Charm", Description = "10% less damage taken from Constructs", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Heirloom, Hp = 100f, Def = 6f,
-                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.DamageTakenVsType, Creature = CreatureType.Construct, Value = -0.10f }) } },
-            new ArtifactDef { Id = "scaled_coat", Name = "Scaled Coat", Description = "15% less damage taken from Constructs", Slot = ArtifactSlot.Armor, Rarity = Rarity.Heirloom, Hp = 200f, Def = 12f,
-                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.DamageTakenVsType, Creature = CreatureType.Construct, Value = -0.15f }) } },
-            new ArtifactDef { Id = "keen_edge", Name = "Keen Edge", Description = "Heavy Strike cooldown 6 → 4.5 s", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Treasure, Strength = 20f,
-                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.SetCooldown, Ability = Ability.HeavyStrike, Value = 4.5f }) } },
-            new ArtifactDef { Id = "wardens_plate", Name = "Warden's Plate", Description = "Guard also heals 5% of max HP", Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 150f, Def = 12f,
-                Trait = new[] { OnAbility(Ability.Guard, new TraitEffect { Kind = TraitEffectKind.HealPercentMaxHp, Value = 0.05f }) } },
-            new ArtifactDef { Id = "echo_blade", Name = "Echo Blade", Description = "Punish in a recovery window resets Lunge", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Mythic, Strength = 25f,
-                Trait = new[] { OnAbility(Ability.Punish, new TraitEffect { Kind = TraitEffectKind.ResetCooldown, Ability = Ability.Lunge }, inRecovery: true) } },
-            new ArtifactDef { Id = "stillstone", Name = "Stillstone", Description = "Guard lasts 3 s and reflects 30% of blocked damage", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Mythic, Hp = 150f,
+            // Alma Mater statue
+            new ArtifactDef { Id = "wreath_of_alma_mater", Name = "Wreath of Alma Mater", Description = "Max MP +30%",
+                Slot = ArtifactSlot.Helm, Rarity = Rarity.Relic, Hp = 50f, Res = 5f,
+                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Mp, Value = 1.3f }) } },
+            new ArtifactDef { Id = "staff_of_alma_mater", Name = "Staff of Alma Mater", Description = "Intelligence +30%",
+                Slot = ArtifactSlot.RightHand, Rarity = Rarity.Relic, Intelligence = 10f,
+                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Intelligence, Value = 1.3f }) } },
+
+            // Columbia Lion statue
+            new ArtifactDef { Id = "columbia_lions_fang", Name = "Columbia Lion's Fang", Description = "20% more damage to Beasts",
+                Slot = ArtifactSlot.RightHand, Rarity = Rarity.Heirloom, Strength = 15f, Precision = 10f,
+                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.DamageDealtVsType, Creature = CreatureType.Beast, Value = 0.2f }) } },
+            new ArtifactDef { Id = "columbia_lions_pelt", Name = "Columbia Lion's Pelt", Description = "Once per fight, survive a killing blow at 1 HP",
+                Slot = ArtifactSlot.Helm, Rarity = Rarity.Mythic, Hp = 150f, Def = 12f, Speed = 10f,
                 Trait = new[]
                 {
-                    Passive(new TraitEffect { Kind = TraitEffectKind.SetGuardDuration, Value = 3f }),
-                    new TraitPart { Mode = TraitMode.Triggered, Trigger = TraitTrigger.DamageBlocked,
-                        Effects = new[] { new TraitEffect { Kind = TraitEffectKind.ReflectPercent, Value = 0.3f } } },
+                    new TraitPart { Mode = TraitMode.Triggered, Trigger = TraitTrigger.LethalDamage, OncePerFight = true,
+                        Effects = new[] { new TraitEffect { Kind = TraitEffectKind.SurviveAtOneHp } } },
+                } },
+
+            // Columbia bookstore
+            new ArtifactDef { Id = "columbia_blue_mortarboard", Name = "Columbia Blue Mortarboard", Description = "20% more damage to Undead",
+                Slot = ArtifactSlot.Helm, Rarity = Rarity.Relic, Precision = 20f,
+                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.DamageDealtVsType, Creature = CreatureType.Undead, Value = 0.2f }) } },
+            new ArtifactDef { Id = "columbia_blue_robe", Name = "Columbia Blue Robe", Description = "S: take 30% less damage for 4 s (25 s cooldown)",
+                Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 150f, Def = 6f, Res = 12f,
+                Trait = new[]
+                {
+                    new TraitPart { Mode = TraitMode.EquipmentSkill, Cooldown = 25f,
+                        Effects = new[] { new TraitEffect { Kind = TraitEffectKind.DamageTakenBuff, Value = -0.3f, Duration = 4f } } },
                 } },
         };
 
         static TraitPart Passive(TraitEffect effect) =>
             new TraitPart { Mode = TraitMode.Passive, Effects = new[] { effect } };
 
-        static TraitPart OnAbility(Ability ability, TraitEffect effect, bool inRecovery = false) =>
-            new TraitPart { Mode = TraitMode.Triggered, Trigger = TraitTrigger.AbilityUsed, Ability = ability,
-                RequiresGuardianRecovery = inRecovery, Effects = new[] { effect } };
-
         /// <summary>The three prototype Guardians (GDD 6.4, Combat Spec 4.5). Def and Res are per Guardian, not per tier.</summary>
         public static readonly IReadOnlyList<GuardianProfile> Guardians = new[]
         {
-            new GuardianProfile { Id = "alma_mater", Name = "Alma Mater", Type = CreatureType.Construct, Res = 400f },
-            new GuardianProfile { Id = "columbia_lion", Name = "Columbia Lion", Type = CreatureType.Beast },
-            new GuardianProfile { Id = "book_keeper", Name = "Book Keeper", Type = CreatureType.Undead },
+            new GuardianProfile { Id = "alma_mater", Name = "Alma Mater", Type = CreatureType.Construct, Res = 400f,
+                Landmark = "Alma Mater statue", LootPool = new[] { "wreath_of_alma_mater", "staff_of_alma_mater" } },
+            new GuardianProfile { Id = "columbia_lion", Name = "Columbia Lion", Type = CreatureType.Beast,
+                Landmark = "Columbia Lion statue", LootPool = new[] { "columbia_lions_fang", "columbia_lions_pelt" } },
+            new GuardianProfile { Id = "book_keeper", Name = "Book Keeper", Type = CreatureType.Undead,
+                Landmark = "Columbia bookstore", LootPool = new[] { "columbia_blue_mortarboard", "columbia_blue_robe" } },
         };
 
         /// <summary>The Guardian a fight uses when none is given. Which one hosts the comparison is open (GDD Q16).</summary>
         public static GuardianProfile Guardian => GuardianById("alma_mater");
+
+        public static IReadOnlyList<ArtifactDef> LootPool(string guardianId) =>
+            GuardianById(guardianId).LootPool.Select(Artifact).ToArray();
 
         public static GuardianProfile GuardianById(string id) => Guardians.FirstOrDefault(g => g.Id == id)
             ?? throw new ArgumentException($"Unknown Guardian '{id}'.");
@@ -282,8 +312,8 @@ namespace TheArtifacts.Core.Combat
         /// <summary>Starter test build: no artifacts (Combat Spec 3.3).</summary>
         public static PlayerBuild StarterBuild => Build();
 
-        /// <summary>Geared test build: Keen Edge, Scaled Coat, Iron Charm (Combat Spec 3.3, 5.3).</summary>
-        public static PlayerBuild GearedBuild => Build("keen_edge", "scaled_coat", "iron_charm");
+        /// <summary>Geared test build: one artifact from each landmark (Combat Spec 3.3, 5.3).</summary>
+        public static PlayerBuild GearedBuild => Build("wreath_of_alma_mater", "columbia_lions_fang", "columbia_blue_robe");
 
         /// <summary>Scripted baseline and fallback (Combat Spec 4.4).</summary>
         public static GuardianSetup DefaultSetup => new GuardianSetup("T3", new[] { "cleave", "slam", "charge" }, "steady");

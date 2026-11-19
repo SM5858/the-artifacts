@@ -39,7 +39,7 @@ namespace GuardianModule.Tests
     public class GuardianServiceTests
     {
         static readonly string[] Starter = new string[0];
-        static readonly string[] Geared = { "keen_edge", "scaled_coat", "iron_charm" };
+        static readonly string[] Geared = { "wreath_of_alma_mater", "columbia_lions_fang", "columbia_blue_robe" };
 
         [Test]
         public async Task ScriptedMode_UsesDefaultGuardian_WithoutCallingTheModel()

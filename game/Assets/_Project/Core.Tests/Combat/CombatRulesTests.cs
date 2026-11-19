@@ -18,11 +18,11 @@ namespace TheArtifacts.Core.Tests.Combat
 
             Assert.That((starter.MaxHp, starter.MaxMp, starter.Strength, starter.Intelligence, starter.GearScore), Is.EqualTo((1000f, 100f, 40f, 40f, 0)));
             Assert.That((starter.PhysicalReduction, starter.CooldownReduction, starter.CritChance), Is.EqualTo((0f, 0f, 0f)));
-            Assert.That(geared.MaxHp, Is.EqualTo(1300f));
-            Assert.That(geared.Strength, Is.EqualTo(60f));
-            Assert.That(geared[StatKind.Def], Is.EqualTo(18f));
-            Assert.That(geared.PhysicalReduction, Is.EqualTo(18f / 118f).Within(1e-6));
-            Assert.That(geared.GearScore, Is.EqualTo(7));
+            // Wreath of Alma Mater + Columbia Lion's Fang + Columbia Blue Robe.
+            Assert.That((geared.MaxHp, geared.Strength, geared.Intelligence), Is.EqualTo((1200f, 55f, 40f)));
+            Assert.That(geared.MaxMp, Is.EqualTo(130f).Within(1e-3));
+            Assert.That((geared[StatKind.Def], geared[StatKind.Res], geared[StatKind.Precision]), Is.EqualTo((6f, 17f, 10f)));
+            Assert.That(geared.GearScore, Is.EqualTo(6));
         }
 
         [TestCase(0f, 0f)]
@@ -37,8 +37,17 @@ namespace TheArtifacts.Core.Tests.Combat
         [Test]
         public void RelicMultipliers_ApplyAfterFlatBonuses()
         {
-            Assert.That(PrototypeContent.Build("worn_band").Strength, Is.EqualTo(45f * 1.3f).Within(1e-3));
-            Assert.That(PrototypeContent.Build("padded_vest").MaxHp, Is.EqualTo(1100f * 1.3f).Within(1e-3));
+            Assert.That(PrototypeContent.Build("staff_of_alma_mater").Intelligence, Is.EqualTo(50f * 1.3f).Within(1e-3));
+            Assert.That(PrototypeContent.Build("wreath_of_alma_mater").MaxMp, Is.EqualTo(100f * 1.3f).Within(1e-3));
+        }
+
+        [Test]
+        public void EachGuardian_DropsItsLandmarksArtifacts()
+        {
+            Assert.That(PrototypeContent.LootPool("alma_mater").Select(a => a.Id), Is.EqualTo(new[] { "wreath_of_alma_mater", "staff_of_alma_mater" }));
+            Assert.That(PrototypeContent.LootPool("columbia_lion").Select(a => a.Rarity), Is.EqualTo(new[] { Rarity.Heirloom, Rarity.Mythic }));
+            Assert.That(PrototypeContent.LootPool("book_keeper").Select(a => a.Rarity), Is.EqualTo(new[] { Rarity.Relic, Rarity.Treasure }));
+            Assert.That(PrototypeContent.Guardians.SelectMany(g => g.LootPool), Is.EquivalentTo(PrototypeContent.Artifacts.Select(a => a.Id)));
         }
 
         /// <summary>Design guardrail: every authored artifact stays within the ×2 per-artifact multiplier cap.</summary>
@@ -70,7 +79,7 @@ namespace TheArtifacts.Core.Tests.Combat
         [Test]
         public void OneArtifactPerSlot()
         {
-            Assert.Throws<System.ArgumentException>(() => PrototypeContent.Build("keen_edge", "echo_blade"));
+            Assert.Throws<System.ArgumentException>(() => PrototypeContent.Build("staff_of_alma_mater", "columbia_lions_fang"));
         }
 
         [Test]
@@ -224,7 +233,7 @@ namespace TheArtifacts.Core.Tests.Combat
         [Test]
         public void KeenEdge_ShortensHeavyStrikeCooldown()
         {
-            var sim = Sim(PrototypeContent.GearedBuild, "T3", "steady", "cleave", "slam", "charge");
+            var sim = Sim(TestArtifacts.With(TestArtifacts.KeenEdge), "T3", "steady", "cleave", "slam", "charge");
             Engage(sim);
 
             Use(sim, Ability.HeavyStrike);
@@ -305,14 +314,13 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That(sim.Events.Any(e => e.Type == CombatEventType.SkillMissed && e.Id == "rings"), Is.True);
         }
 
-        // Geared: Def 18 (18/118 ≈ 15.3% less); Iron Charm −10% and Scaled Coat −15% against Constructs. Guard: 60% less.
-        [TestCase(CreatureType.Construct, 0.9f * 0.85f)]
-        [TestCase(CreatureType.Beast, 1f)]
-        public void DefGuardAndTypeTraits_ReduceDamage(CreatureType guardianType, float typeFactor)
+        // Def 18 (18/118 ≈ 15.3% less); Guard: 60% less. Cleave is physical.
+        [Test]
+        public void DefAndGuard_ReducePhysicalDamage()
         {
-            var expected = 200f * (1f - 18f / 118f) * typeFactor * 0.4f;
-            var sim = new CombatSim(PrototypeContent.GearedBuild, new GuardianSetup("T3", new[] { "cleave", "slam", "charge" }, "steady"),
-                seed: 1, new GuardianProfile { Type = guardianType });
+            var expected = 200f * (1f - 18f / 118f) * 0.4f;
+            var tough = new BaseStats { Hp = 1000f, Mp = 100f, Strength = 40f, Intelligence = 40f, Def = 18f };
+            var sim = Sim(new PlayerBuild(tough, null), "T3", "steady", "cleave", "slam", "charge");
             Engage(sim);
             RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 15f);
 
@@ -323,10 +331,61 @@ namespace TheArtifacts.Core.Tests.Combat
         }
 
         [Test]
+        public void TypeTraits_OnlyApplyToTheirCreatureType()
+        {
+            var fang = PrototypeContent.Build("columbia_lions_fang");
+            Assert.That(fang.VersusType(TraitEffectKind.DamageDealtVsType, CreatureType.Beast), Is.EqualTo(1.2f).Within(1e-6));
+            Assert.That(fang.VersusType(TraitEffectKind.DamageDealtVsType, CreatureType.Undead), Is.EqualTo(1f));
+        }
+
+        // ---------- Columbia artifact traits ----------
+
+        [Test]
+        public void BlueRobe_EquipmentSkillOnS_CutsDamageTaken()
+        {
+            // Slam 250 at T3; Robe Def 6 → 6/106 less; the S skill takes 30% off for 4 s.
+            var sim = Sim(PrototypeContent.Build("columbia_blue_robe"), "T3", "steady", "slam", "cleave", "charge");
+            Engage(sim);
+            RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 15f);
+
+            sim.Step(Dt, new PlayerInput(Vec2.Zero, Ability.None, EquipmentKey.S));
+            RunUntil(sim, s => s.Phase == GuardianPhase.Recovery, 3f);
+
+            Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "slam"), Is.EqualTo(250f * (1f - 6f / 106f) * 0.7f).Within(1e-2));
+            Assert.That(sim.EquipmentCooldownRemaining(EquipmentKey.S), Is.GreaterThan(20f));
+            Assert.That(sim.GcdRemaining, Is.Zero);
+        }
+
+        [Test]
+        public void EquipmentKey_WithNoSkill_IsRejected()
+        {
+            var sim = Sim(PrototypeContent.Build("wreath_of_alma_mater"), "T3", "steady", "slam", "cleave", "charge");
+            sim.Step(Dt, new PlayerInput(Vec2.Zero, Ability.None, EquipmentKey.W));
+            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("W:none"));
+        }
+
+        [Test]
+        public void LionsPelt_SurvivesOneKillingBlowPerFight()
+        {
+            // 250 HP total; Slam at T5 hits for 325 × (1 − 12/112) ≈ 290, so each Slam would kill.
+            var frail = new BaseStats { Hp = 100f, Mp = 100f, Strength = 40f, Intelligence = 40f };
+            var sim = Sim(new PlayerBuild(frail, new[] { PrototypeContent.Artifact("columbia_lions_pelt") }), "T5", "steady", "slam", "cleave", "charge");
+            Engage(sim);
+
+            RunUntil(sim, s => s.Events.Any(e => e.Type == CombatEventType.SurvivedLethal), 15f);
+            Assert.That(sim.PlayerHp, Is.LessThanOrEqualTo(1f));
+            Assert.That(sim.Outcome, Is.EqualTo(CombatOutcome.Ongoing));
+
+            RunFor(sim, 20f);
+            Assert.That(sim.Outcome, Is.EqualTo(CombatOutcome.Loss));
+            Assert.That(sim.Events.Count(e => e.Type == CombatEventType.SurvivedLethal), Is.EqualTo(1));
+        }
+
+        [Test]
         public void Stillstone_ReflectsBlockedDamage()
         {
             // Cleave 200, no armor; Guard blocks 120; Stillstone reflects 30% of that = 36.
-            var sim = Sim(PrototypeContent.Build("stillstone"), "T3", "steady", "cleave", "slam", "charge");
+            var sim = Sim(TestArtifacts.With(TestArtifacts.Stillstone), "T3", "steady", "cleave", "slam", "charge");
             Engage(sim);
             RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 15f);
 
@@ -339,7 +398,7 @@ namespace TheArtifacts.Core.Tests.Combat
         [Test]
         public void EchoBlade_PunishInRecoveryResetsLunge()
         {
-            var sim = Sim(PrototypeContent.Build("echo_blade"), "T3", "steady", "cleave", "slam", "charge");
+            var sim = Sim(TestArtifacts.With(TestArtifacts.EchoBlade), "T3", "steady", "cleave", "slam", "charge");
             Use(sim, Ability.Lunge);
             Assert.That(sim.CooldownRemaining(Ability.Lunge), Is.GreaterThan(0f));
             Engage(sim);
@@ -354,7 +413,7 @@ namespace TheArtifacts.Core.Tests.Combat
         public void WardensPlate_GuardHealsFivePercentOfMaxHp()
         {
             // Max HP 1150 after the plate; standing in Slam leaves the player well below full.
-            var sim = Sim(PrototypeContent.Build("wardens_plate"), "T3", "steady", "slam", "cleave", "charge");
+            var sim = Sim(TestArtifacts.With(TestArtifacts.WardensPlate), "T3", "steady", "slam", "cleave", "charge");
             Engage(sim);
             RunUntil(sim, s => s.Phase == GuardianPhase.Recovery, 15f);
 

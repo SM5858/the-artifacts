@@ -46,6 +46,9 @@ namespace TheArtifacts.PC.Combat
         CombatSim _sim;
         float _accumulator;
         Ability _pendingAbility;
+        EquipmentKey _pendingEquipment;
+        int _wins;
+        string _reward;
         Vec2? _moveTarget;
         int _eventCursor;
         readonly List<string> _log = new List<string>();
@@ -77,6 +80,8 @@ namespace TheArtifacts.PC.Combat
             _eventCursor = 0;
             _accumulator = 0f;
             _pendingAbility = Ability.None;
+            _pendingEquipment = EquipmentKey.None;
+            _reward = null;
             _moveTarget = null;
             _sim = new CombatSim(CurrentBuild, CurrentSetup, seed, PrototypeContent.GuardianById(guardianId));
             SyncViews();
@@ -91,6 +96,7 @@ namespace TheArtifacts.PC.Combat
 
             if (_sim.Outcome != CombatOutcome.Ongoing)
             {
+                if (_sim.Outcome == CombatOutcome.Win && _reward == null) RollReward();
                 if (kb.rKey.wasPressedThisFrame) Restart();
                 if (kb.bKey.wasPressedThisFrame)
                 {
@@ -108,18 +114,41 @@ namespace TheArtifacts.PC.Combat
                 else if (kb.digit4Key.wasPressedThisFrame) _pendingAbility = Ability.Punish;
                 else if (kb.digit5Key.wasPressedThisFrame) _pendingAbility = Ability.LightningBolt;
             }
+            if (_pendingEquipment == EquipmentKey.None) _pendingEquipment = ReadEquipmentKey(kb);
 
             ReadMoveTarget();
             _accumulator = Mathf.Min(_accumulator + Time.deltaTime, 0.25f);
             while (_accumulator >= SimStep && _sim.Outcome == CombatOutcome.Ongoing)
             {
-                _sim.Step(SimStep, new PlayerInput(MoveTowardTarget(), _pendingAbility));
+                _sim.Step(SimStep, new PlayerInput(MoveTowardTarget(), _pendingAbility, _pendingEquipment));
                 _pendingAbility = Ability.None;
+                _pendingEquipment = EquipmentKey.None;
                 _accumulator -= SimStep;
             }
 
             SyncViews();
             CollectEvents();
+        }
+
+        static EquipmentKey ReadEquipmentKey(Keyboard kb)
+        {
+            if (kb.qKey.wasPressedThisFrame) return EquipmentKey.Q;
+            if (kb.wKey.wasPressedThisFrame) return EquipmentKey.W;
+            if (kb.eKey.wasPressedThisFrame) return EquipmentKey.E;
+            if (kb.aKey.wasPressedThisFrame) return EquipmentKey.A;
+            if (kb.sKey.wasPressedThisFrame) return EquipmentKey.S;
+            if (kb.dKey.wasPressedThisFrame) return EquipmentKey.D;
+            if (kb.xKey.wasPressedThisFrame) return EquipmentKey.X;
+            if (kb.cKey.wasPressedThisFrame) return EquipmentKey.C;
+            return EquipmentKey.None;
+        }
+
+        /// <summary>Rolls this landmark's reward (Combat Spec 5.1); the first win this session counts as a first win.</summary>
+        void RollReward()
+        {
+            var artifact = Rewards.Roll(PrototypeContent.LootPool(guardianId), firstWin: _wins == 0, new System.Random(seed + _wins));
+            _wins++;
+            _reward = $"{artifact.Name} ({artifact.Rarity})  -  {artifact.Description}";
         }
 
         /// <summary>Right-click (or hold) sets the move target on the arena floor. QWE/ASD/XC are equipment-skill keys.</summary>
@@ -348,10 +377,11 @@ namespace TheArtifacts.PC.Combat
                 Bar(new Rect(w * 0.5f - 250f, h - 28f, 500f * _sim.GcdRemaining / PlayerRules.GlobalCooldown, 4f), 1f, Color.white);
 
             // Info and log
-            GUI.Label(new Rect(16f, 16f, 420f, 90f),
+            GUI.Label(new Rect(16f, 16f, 700f, 110f),
                 $"{build} (gear {_sim.Build.GearScore})   {_sim.Time:0.0}s\n" +
                 $"Guardian: {_sim.Setup}\n" +
-                "Right-click move   1 Heavy  2 Guard  3 Lunge  4 Punish  5 Lightning Bolt", _label);
+                "Right-click move   1 Heavy  2 Guard  3 Lunge  4 Punish  5 Lightning Bolt\n" +
+                "Equipment skills: Q W E / A S D / X C" + EquipmentSkillList(), _label);
             GUI.Label(new Rect(16f, h - 190f, 360f, 170f), string.Join("\n", _log), _label);
 
             if (_sim.Outcome != CombatOutcome.Ongoing)
@@ -359,8 +389,17 @@ namespace TheArtifacts.PC.Combat
                 Bar(new Rect(0f, h * 0.35f, w, 150f), 1f, new Color(0f, 0f, 0f, 0.7f));
                 GUI.Label(new Rect(0f, h * 0.35f, w, 90f), _sim.Outcome == CombatOutcome.Win ? "VICTORY" : "DEFEAT", _big);
                 GUI.Label(new Rect(0f, h * 0.35f + 90f, w, 40f),
-                    $"{_sim.Time:0.0}s    R retry    B switch build (now {build})", _center);
+                    (_reward != null ? $"Reward: {_reward}\n" : "") + $"{_sim.Time:0.0}s    R retry    B switch build (now {build})", _center);
             }
+        }
+
+        string EquipmentSkillList()
+        {
+            var ready = new[] { EquipmentKey.Q, EquipmentKey.W, EquipmentKey.E, EquipmentKey.A, EquipmentKey.S, EquipmentKey.D, EquipmentKey.X, EquipmentKey.C }
+                .Where(k => _sim.EquipmentBlockReason(k) != "none")
+                .Select(k => $"{k} {_sim.Build.EquippedAt(k).Name}" + (_sim.EquipmentCooldownRemaining(k) > 0f ? $" {_sim.EquipmentCooldownRemaining(k):0}s" : ""));
+            var list = string.Join(", ", ready);
+            return list.Length > 0 ? $"  ({list})" : "";
         }
 
         static void Bar(Rect r, float fill, Color color)
