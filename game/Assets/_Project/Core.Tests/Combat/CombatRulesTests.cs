@@ -310,10 +310,10 @@ namespace TheArtifacts.Core.Tests.Combat
         }
 
         // Tells scale by tier (Combat Spec 4.1) but never drop below the skill's fair minimum.
-        [TestCase("T1", "slam", 1.6f * 1.3f)]
+        [TestCase("T1", "slam", 1.6f * 1.4f)]
         [TestCase("T3", "slam", 1.6f)]
-        [TestCase("T5", "slam", 1.6f * 0.7f)]
-        [TestCase("T5", "embers", 0.9f)]   // 1.0 × 0.7 = 0.7 is below Embers' minimum of 0.9
+        [TestCase("T5", "slam", 1.6f * 0.8f)]
+        [TestCase("T5", "embers", 0.9f)]   // 1.0 × 0.8 = 0.8 is below Embers' minimum of 0.9
         public void Tells_ScaleByTier_WithAFloor(string tier, string skill, float expected)
         {
             var sim = Sim(PrototypeContent.StarterBuild, tier, "steady", skill, "cleave", "charge");

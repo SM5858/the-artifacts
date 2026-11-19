@@ -87,15 +87,15 @@ A slot with no granted skill leaves its key unused. Equipment skills cost no MP 
 
 ### 4.1 Stat tiers (Q11)
 
-Tiers scale HP, defense, and **tell time** **[DECIDED 2026-11-19]**: damage stays the same at every tier, but low tiers give long tells (easy to dodge) and high tiers short ones (fast reactions needed). A tell never drops below the skill's fair minimum (Section 4.2). Values tuned by bot simulation; retune after playtests:
+Tiers scale HP, defense, and **tell time** **[DECIDED 2026-11-19]**: damage stays the same at every tier, but low tiers give long tells (easy to dodge) and high tiers short ones (fast reactions needed). A tell never drops below the skill's fair minimum (Section 4.2). Values tuned by bot simulation and softened on 2026-11-19 so a 0.6 s reaction can still dodge at T5; shorten them if playtesters find the high tiers too easy:
 
 | Tier | HP | Tell multiplier | Def / Res added |
 |---|---|---|---|
-| T1 | 5500 | ×1.30 | 0 |
-| T2 | 6400 | ×1.15 | 5 |
+| T1 | 5500 | ×1.40 | 0 |
+| T2 | 6400 | ×1.20 | 5 |
 | **T3 (default)** | 7500 | ×1.00 | 10 |
-| T4 | 8700 | ×0.85 | 20 |
-| T5 | 9800 | ×0.70 | 30 |
+| T4 | 8700 | ×0.90 | 20 |
+| T5 | 9800 | ×0.80 | 30 |
 
 The tier's Def and Res add to the Guardian's own (Section 4.5); for example, Alma Mater at T3 has Res 410.
 

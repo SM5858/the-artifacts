@@ -229,11 +229,11 @@ namespace TheArtifacts.Core.Combat
 
         public static readonly IReadOnlyList<TierDef> Tiers = new[]
         {
-            new TierDef { Id = "T1", MaxHp = 5500f, TellMultiplier = 1.30f, Def = 0f, Res = 0f },
-            new TierDef { Id = "T2", MaxHp = 6400f, TellMultiplier = 1.15f, Def = 5f, Res = 5f },
+            new TierDef { Id = "T1", MaxHp = 5500f, TellMultiplier = 1.40f, Def = 0f, Res = 0f },
+            new TierDef { Id = "T2", MaxHp = 6400f, TellMultiplier = 1.20f, Def = 5f, Res = 5f },
             new TierDef { Id = "T3", MaxHp = 7500f, TellMultiplier = 1.00f, Def = 10f, Res = 10f },
-            new TierDef { Id = "T4", MaxHp = 8700f, TellMultiplier = 0.85f, Def = 20f, Res = 20f },
-            new TierDef { Id = "T5", MaxHp = 9800f, TellMultiplier = 0.70f, Def = 30f, Res = 30f },
+            new TierDef { Id = "T4", MaxHp = 8700f, TellMultiplier = 0.90f, Def = 20f, Res = 20f },
+            new TierDef { Id = "T5", MaxHp = 9800f, TellMultiplier = 0.80f, Def = 30f, Res = 30f },
         };
 
         public static readonly IReadOnlyList<GuardianSkillDef> Skills = new[]
