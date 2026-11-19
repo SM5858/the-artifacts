@@ -284,8 +284,8 @@ namespace TheArtifacts.PC.Combat
                     _telegraphViews[t] = view;
                 }
 
-                var placed = t.HitTime - t.Skill.Tell;
-                var progress = Mathf.Clamp01((_sim.Time - placed) / t.Skill.Tell);
+                var placed = t.HitTime - t.Tell;
+                var progress = Mathf.Clamp01((_sim.Time - placed) / t.Tell);
                 view.mat.SetColor("_BaseColor", Color.Lerp(TelegraphStart, TelegraphHit, progress * progress));
             }
         }
@@ -341,7 +341,7 @@ namespace TheArtifacts.PC.Combat
             if (_sim.Phase == GuardianPhase.Tell && _sim.ActiveTelegraphs.Count > 0)
             {
                 var next = _sim.ActiveTelegraphs.Min(t => t.HitTime) - _sim.Time;
-                var tell = _sim.CurrentSkill.Tell;
+                var tell = _sim.TellFor(_sim.CurrentSkill);
                 Bar(cast, 1f - Mathf.Clamp01(next / tell), GuardianTell);
                 GUI.Label(cast, $"{_sim.CurrentSkill.Name}  {next:0.0}s", _center);
             }

@@ -82,7 +82,10 @@ namespace TheArtifacts.Core.Combat
         public float InnerRadius;    // ring only
         public float Width;          // line only
         public float AngleDegrees;   // cone only
+        /// <summary>Base tell at T3; tiers scale it (Combat Spec 4.1), never below <see cref="MinTell"/>.</summary>
         public float Tell;
+        /// <summary>Shortest fair tell: worst-case escape from melee range at run speed plus 0.4 s to react.</summary>
+        public float MinTell;
         public float BaseDamage;
         public float Recovery;
         public DamageType DamageType;
@@ -96,7 +99,8 @@ namespace TheArtifacts.Core.Combat
     {
         public string Id;
         public float MaxHp;
-        public float DamageMultiplier;
+        /// <summary>Scales every skill's tell: long at low tiers (easy to dodge), short at high tiers.</summary>
+        public float TellMultiplier;
         /// <summary>Added to the Guardian's own Def and Res (Combat Spec 4.1), so higher tiers resist more.</summary>
         public float Def, Res;
     }
@@ -225,21 +229,21 @@ namespace TheArtifacts.Core.Combat
 
         public static readonly IReadOnlyList<TierDef> Tiers = new[]
         {
-            new TierDef { Id = "T1", MaxHp = 5500f, DamageMultiplier = 0.50f, Def = 0f, Res = 0f },
-            new TierDef { Id = "T2", MaxHp = 6400f, DamageMultiplier = 0.70f, Def = 5f, Res = 5f },
-            new TierDef { Id = "T3", MaxHp = 7500f, DamageMultiplier = 1.00f, Def = 10f, Res = 10f },
-            new TierDef { Id = "T4", MaxHp = 8700f, DamageMultiplier = 1.30f, Def = 20f, Res = 20f },
-            new TierDef { Id = "T5", MaxHp = 9800f, DamageMultiplier = 1.60f, Def = 30f, Res = 30f },
+            new TierDef { Id = "T1", MaxHp = 5500f, TellMultiplier = 1.30f, Def = 0f, Res = 0f },
+            new TierDef { Id = "T2", MaxHp = 6400f, TellMultiplier = 1.15f, Def = 5f, Res = 5f },
+            new TierDef { Id = "T3", MaxHp = 7500f, TellMultiplier = 1.00f, Def = 10f, Res = 10f },
+            new TierDef { Id = "T4", MaxHp = 8700f, TellMultiplier = 0.85f, Def = 20f, Res = 20f },
+            new TierDef { Id = "T5", MaxHp = 9800f, TellMultiplier = 0.70f, Def = 30f, Res = 30f },
         };
 
         public static readonly IReadOnlyList<GuardianSkillDef> Skills = new[]
         {
-            new GuardianSkillDef { Id = "cleave", Name = "Cleave", Shape = AreaShape.Cone, AngleDegrees = 90f, Range = 6f, Tell = 1.2f, BaseDamage = 200f, Recovery = 1.0f, DamageType = DamageType.Physical },
-            new GuardianSkillDef { Id = "slam", Name = "Slam", Shape = AreaShape.Circle, Range = 5f, Tell = 1.6f, BaseDamage = 250f, Recovery = 1.5f, DamageType = DamageType.Physical },
-            new GuardianSkillDef { Id = "charge", Name = "Charge", Shape = AreaShape.Line, Range = 15f, Width = 3f, Tell = 1.4f, BaseDamage = 220f, Recovery = 2.0f, DamageType = DamageType.Physical },
-            new GuardianSkillDef { Id = "rings", Name = "Shock Rings", Shape = AreaShape.Ring, InnerRadius = 4f, Range = 12f, Tell = 1.8f, BaseDamage = 180f, Recovery = 1.2f, DamageType = DamageType.Magic },
-            new GuardianSkillDef { Id = "embers", Name = "Embers", Shape = AreaShape.CirclesOnPlayer, Range = 3f, Tell = 1.0f, BaseDamage = 120f, Recovery = 0.8f, DamageType = DamageType.Magic, Pulses = 3, PulseInterval = 0.6f },
-            new GuardianSkillDef { Id = "fury", Name = "Fury", Shape = AreaShape.None, Tell = 1.0f, Recovery = 0f, BuffDuration = 8f, BuffAutoMultiplier = 1.5f },
+            new GuardianSkillDef { Id = "cleave", Name = "Cleave", Shape = AreaShape.Cone, AngleDegrees = 90f, Range = 6f, Tell = 1.2f, MinTell = 0.7f, BaseDamage = 200f, Recovery = 1.0f, DamageType = DamageType.Physical },
+            new GuardianSkillDef { Id = "slam", Name = "Slam", Shape = AreaShape.Circle, Range = 5f, Tell = 1.6f, MinTell = 0.8f, BaseDamage = 250f, Recovery = 1.5f, DamageType = DamageType.Physical },
+            new GuardianSkillDef { Id = "charge", Name = "Charge", Shape = AreaShape.Line, Range = 15f, Width = 3f, Tell = 1.4f, MinTell = 0.7f, BaseDamage = 220f, Recovery = 2.0f, DamageType = DamageType.Physical },
+            new GuardianSkillDef { Id = "rings", Name = "Shock Rings", Shape = AreaShape.Ring, InnerRadius = 4f, Range = 12f, Tell = 1.8f, MinTell = 1.0f, BaseDamage = 180f, Recovery = 1.2f, DamageType = DamageType.Magic },
+            new GuardianSkillDef { Id = "embers", Name = "Embers", Shape = AreaShape.CirclesOnPlayer, Range = 3f, Tell = 1.0f, MinTell = 0.9f, BaseDamage = 120f, Recovery = 0.8f, DamageType = DamageType.Magic, Pulses = 3, PulseInterval = 0.6f },
+            new GuardianSkillDef { Id = "fury", Name = "Fury", Shape = AreaShape.None, Tell = 1.0f, MinTell = 0.5f, Recovery = 0f, BuffDuration = 8f, BuffAutoMultiplier = 1.5f },
         };
 
         public static readonly IReadOnlyList<string> StrategyIds = new[] { "steady", "aggressive", "combo", "reactive" };

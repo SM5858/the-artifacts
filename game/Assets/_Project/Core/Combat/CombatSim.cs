@@ -92,12 +92,15 @@ namespace TheArtifacts.Core.Combat
         public GuardianSkillDef Skill { get; }
         public Area Area { get; }
         public float HitTime { get; }
+        /// <summary>This telegraph's tell after tier scaling (Combat Spec 4.1).</summary>
+        public float Tell { get; }
 
-        public Telegraph(GuardianSkillDef skill, Area area, float hitTime)
+        public Telegraph(GuardianSkillDef skill, Area area, float hitTime, float tell)
         {
             Skill = skill;
             Area = area;
             HitTime = hitTime;
+            Tell = tell;
         }
     }
 
@@ -188,6 +191,9 @@ namespace TheArtifacts.Core.Combat
 
         public float DistanceToGuardian => Vec2.Distance(PlayerPosition, GuardianPosition);
         public bool InMeleeRange => DistanceToGuardian <= PlayerRules.MeleeRange;
+        /// <summary>A skill's tell at this fight's tier: base × tier multiplier, never below the skill's fair minimum.</summary>
+        public float TellFor(GuardianSkillDef skill) => Math.Max(skill.MinTell, skill.Tell * Tier.TellMultiplier);
+
         public float CooldownRemaining(Ability ability) => _cooldowns.TryGetValue(ability, out var t) ? t : 0f;
 
         /// <summary>Advances the fight by <paramref name="dt"/> seconds with this tick's input.</summary>
@@ -365,11 +371,11 @@ namespace TheArtifacts.Core.Combat
             Emit(CombatEventType.PlayerHealed, source, healed);
         }
 
-        /// <summary>Damage taken = base × tier multiplier × (1 − Def or Res rating) × type traits, reduced by Guard (Combat Spec 2).</summary>
+        /// <summary>Damage taken = base × (1 − Def or Res rating) × type traits, reduced by Guard (Combat Spec 2). Tiers do not scale damage.</summary>
         void DamagePlayer(float baseDamage, string source, DamageType type)
         {
             var reduction = type == DamageType.Physical ? Build.PhysicalReduction : Build.MagicReduction;
-            var amount = baseDamage * Tier.DamageMultiplier * (1f - reduction) * _takenVsType;
+            var amount = baseDamage * (1f - reduction) * _takenVsType;
             foreach (var buff in _damageTakenBuffs) amount *= buff.Multiplier;
             if (GuardRemaining > 0f)
             {
@@ -542,7 +548,7 @@ namespace TheArtifacts.Core.Combat
             CurrentSkill = skill;
             var toPlayer = PlayerPosition - GuardianPosition;
             if (toPlayer.LengthSquared > 1e-8f) GuardianFacing = toPlayer.Normalized();
-            Emit(CombatEventType.TellStarted, skill.Id, skill.Tell);
+            Emit(CombatEventType.TellStarted, skill.Id, TellFor(skill));
 
             _pulsesLeft = 0;
             switch (skill.Shape)
@@ -572,8 +578,9 @@ namespace TheArtifacts.Core.Combat
 
         void Place(GuardianSkillDef skill, Area area, float placedAt)
         {
-            _telegraphs.Add(new Telegraph(skill, area, placedAt + skill.Tell));
-            if (area != null) Emit(CombatEventType.TelegraphPlaced, skill.Id, skill.Tell);
+            var tell = TellFor(skill);
+            _telegraphs.Add(new Telegraph(skill, area, placedAt + tell, tell));
+            if (area != null) Emit(CombatEventType.TelegraphPlaced, skill.Id, tell);
         }
 
         void UpdateTell()

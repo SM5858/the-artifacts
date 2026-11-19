@@ -55,7 +55,7 @@ namespace TheArtifacts.Core.Tests.Combat
         {
             var pos = sim.PlayerPosition;
             var threats = sim.ActiveTelegraphs
-                .Where(t => t.Area != null && sim.Time - (t.HitTime - t.Skill.Tell) >= reactionTime)
+                .Where(t => t.Area != null && sim.Time - (t.HitTime - t.Tell) >= reactionTime)
                 .Where(t => missed == null || !missed.Contains(t))
                 .ToArray();
             bool Danger(Vec2 p) => threats.Any(t => t.Area.Contains(p));

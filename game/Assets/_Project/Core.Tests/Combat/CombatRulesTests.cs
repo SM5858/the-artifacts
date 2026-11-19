@@ -299,14 +299,30 @@ namespace TheArtifacts.Core.Tests.Combat
         }
 
         [Test]
-        public void StandingInSlam_TakesTierScaledDamage()
+        public void StandingInSlam_TakesBaseDamage_AtAnyTier()
         {
             var sim = Sim(PrototypeContent.StarterBuild, "T5", "steady", "slam", "cleave", "charge");
             Engage(sim);
 
             RunUntil(sim, s => s.Phase == GuardianPhase.Recovery, 15f);
 
-            Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "slam"), Is.EqualTo(250f * 1.6f).Within(1e-3));
+            Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "slam"), Is.EqualTo(250f).Within(1e-3));
+        }
+
+        // Tells scale by tier (Combat Spec 4.1) but never drop below the skill's fair minimum.
+        [TestCase("T1", "slam", 1.6f * 1.3f)]
+        [TestCase("T3", "slam", 1.6f)]
+        [TestCase("T5", "slam", 1.6f * 0.7f)]
+        [TestCase("T5", "embers", 0.9f)]   // 1.0 × 0.7 = 0.7 is below Embers' minimum of 0.9
+        public void Tells_ScaleByTier_WithAFloor(string tier, string skill, float expected)
+        {
+            var sim = Sim(PrototypeContent.StarterBuild, tier, "steady", skill, "cleave", "charge");
+
+            RunUntil(sim, s => s.ActiveTelegraphs.Count > 0, 15f);
+
+            var t = sim.ActiveTelegraphs[0];
+            Assert.That(t.Tell, Is.EqualTo(expected).Within(1e-4));
+            Assert.That(t.HitTime - sim.Time, Is.EqualTo(expected).Within(Dt * 1.5f));
         }
 
         [Test]
@@ -373,8 +389,8 @@ namespace TheArtifacts.Core.Tests.Combat
         [Test]
         public void LionsPelt_SurvivesOneKillingBlowPerFight()
         {
-            // 250 HP total; Slam at T5 hits for 400 × (1 − 12/112) ≈ 357, so each Slam would kill.
-            var frail = new BaseStats { Hp = 100f, Mp = 100f, Strength = 40f, Intelligence = 40f };
+            // 200 HP total; Slam hits for 250 × (1 − 12/112) ≈ 223, so each Slam would kill.
+            var frail = new BaseStats { Hp = 50f, Mp = 100f, Strength = 40f, Intelligence = 40f };
             var sim = Sim(new PlayerBuild(frail, new[] { PrototypeContent.Artifact("columbia_lions_pelt") }), "T5", "steady", "slam", "cleave", "charge");
             Engage(sim);
 
@@ -524,8 +540,9 @@ namespace TheArtifacts.Core.Tests.Combat
 
             var tells = sim.Events.Where(e => e.Type == CombatEventType.TellStarted).Take(2).ToArray();
             Assert.That(tells.Select(e => e.Id), Is.EqualTo(new[] { "cleave", "slam" }));
-            // cleave: 1.2 s tell + 1.0 s recovery, then 0.5 s gap.
-            Assert.That(tells[1].Time - tells[0].Time, Is.EqualTo(2.7f).Within(Dt * 2));
+            // cleave: 1.2 s tell × the T1 multiplier + 1.0 s recovery, then 0.5 s gap.
+            var cleaveTell = 1.2f * PrototypeContent.Tier("T1").TellMultiplier;
+            Assert.That(tells[1].Time - tells[0].Time, Is.EqualTo(cleaveTell + 1.5f).Within(Dt * 2));
         }
 
         [TestCase(10f, "charge")]
