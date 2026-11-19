@@ -54,7 +54,7 @@ Both builds use the same abilities, so a tester learns one control scheme. The b
 | 2 | Guard | 12 s | 60% less damage taken for 2 s | defend |
 | 3 | Lunge | 10 s | Dash up to 8 m to the Guardian, 1.0 × Strength | switch tactics (re-engage after evading) |
 | 4 | Punish | 15 s | 4.0 × Strength; **×2 if the Guardian is in a recovery window** | commit (rewards reading tells) |
-| 5 | Lightning Bolt **[PROPOSED 2026-11-19]** | 8 s | Magic: 100 + 1.5 × Intelligence (useful at any Intelligence), range 15 m, costs 30 MP. Strong against most Guardians, nearly useless against Constructs (high Res) | commit at range |
+| 5 | Lightning Bolt **[DECIDED 2026-11-19]** | 8 s | Magic: 100 + 1.5 × Intelligence (useful at any Intelligence), range 15 m, costs 30 MP. Strong against most Guardians, nearly useless against Constructs (high Res) | commit at range |
 | Right-click | Move | — | Run to the clicked point (hold to steer); walk out of telegraphed areas | evade |
 
 **Equipment-skill keys [DECIDED 2026-11-17].** A skill granted by an equipped artifact (GDD Section 6.6) is cast with the key of the slot it is worn in. The keys follow the body: top row head and hands, middle row torso, bottom row feet. WASD is no longer movement.
@@ -65,7 +65,7 @@ Both builds use the same abilities, so a tester learns one control scheme. The b
 | A | Gloves | | S | Armor | | D | Trinket 1 |
 | — | — | | X | Boots | | C | Trinket 2 |
 
-A slot with no granted skill leaves its key unused. Equipment skills cost no MP and neither need nor trigger the GCD **[PROPOSED 2026-11-19]**, so a defensive one can be used in reaction to a tell.
+A slot with no granted skill leaves its key unused. Equipment skills cost no MP and neither need nor trigger the GCD **[DECIDED 2026-11-19]**, so a defensive one can be used in reaction to a tell.
 
 ### 3.3 Test builds
 
@@ -137,11 +137,11 @@ Enrage is a **per-Guardian property, off by default.** The prototype's open Guar
 
 **Creature type [DECIDED 2026-11-19]:** every Guardian (and, in the full game, every field monster) has a creature type that conditional traits target. Types so far: Construct, Beast, Elemental, Undead; the full list is open. **The prototype Guardian is a Construct.**
 
-**The three prototype Guardians** (GDD Section 6.4). Def and Res are per Guardian; values marked [PROPOSED] are for the Design Lead to confirm:
+**The three prototype Guardians** (GDD Section 6.4). Def and Res are per Guardian:
 
 | Guardian | Type | Def | Res | Immunities |
 |---|---|---|---|---|
-| Alma Mater | Construct | 0 | 400 (80%) **[PROPOSED]** | none |
+| Alma Mater | Construct | 0 | 400 (80%) **[DECIDED 2026-11-19]** | none |
 | Columbia Lion | Beast | 0 | 0 | none |
 | Book Keeper | Undead | 0 | 0 | none |
 
