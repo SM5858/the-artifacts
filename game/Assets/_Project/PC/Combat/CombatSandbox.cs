@@ -20,6 +20,8 @@ namespace TheArtifacts.PC.Combat
         [Header("Fight")]
         [SerializeField] TestBuild build = TestBuild.Starter;
         [SerializeField] int seed = 1;
+        [Tooltip("alma_mater (Construct), columbia_lion (Beast), or book_keeper (Undead).")]
+        [SerializeField] string guardianId = "alma_mater";
         [Tooltip("On: the scripted default Guardian (Combat Spec 4.4). Off: the custom setup below.")]
         [SerializeField] bool useDefaultGuardian = true;
         [SerializeField] string customTier = "T2";
@@ -76,7 +78,7 @@ namespace TheArtifacts.PC.Combat
             _accumulator = 0f;
             _pendingAbility = Ability.None;
             _moveTarget = null;
-            _sim = new CombatSim(CurrentBuild, CurrentSetup, seed);
+            _sim = new CombatSim(CurrentBuild, CurrentSetup, seed, PrototypeContent.GuardianById(guardianId));
             SyncViews();
         }
 
@@ -104,6 +106,7 @@ namespace TheArtifacts.PC.Combat
                 else if (kb.digit2Key.wasPressedThisFrame) _pendingAbility = Ability.Guard;
                 else if (kb.digit3Key.wasPressedThisFrame) _pendingAbility = Ability.Lunge;
                 else if (kb.digit4Key.wasPressedThisFrame) _pendingAbility = Ability.Punish;
+                else if (kb.digit5Key.wasPressedThisFrame) _pendingAbility = Ability.LightningBolt;
             }
 
             ReadMoveTarget();
@@ -274,6 +277,9 @@ namespace TheArtifacts.PC.Combat
                     CombatEventType.BuffStarted => "Guardian is furious",
                     CombatEventType.AbilityRejected => $"Can't: {e.Id.Replace(":", " - ")}",
                     CombatEventType.GuardianDamaged when e.Id != "auto" => $"{e.Id.Replace('_', ' ')} {e.Amount:0}",
+                    CombatEventType.CriticalHit => "  critical!",
+                    CombatEventType.StatusApplied => $"Guardian {e.Id.ToLowerInvariant()}",
+                    CombatEventType.StatusResisted => $"Guardian resists {e.Id.ToLowerInvariant()}",
                     CombatEventType.Win => "Guardian defeated",
                     CombatEventType.Loss => "You fell",
                     _ => null,
@@ -300,7 +306,7 @@ namespace TheArtifacts.PC.Combat
             // Guardian HP and cast bar
             var top = new Rect(w * 0.5f - 250f, 20f, 500f, 22f);
             Bar(top, _sim.GuardianHp / _sim.GuardianMaxHp, new Color(0.8f, 0.15f, 0.15f));
-            GUI.Label(top, $"Guardian {_sim.Tier.Id}   {_sim.GuardianHp:0} / {_sim.GuardianMaxHp:0}", _center);
+            GUI.Label(top, $"{_sim.Guardian.Name} ({_sim.Guardian.Type}) {_sim.Tier.Id}   {_sim.GuardianHp:0} / {_sim.GuardianMaxHp:0}", _center);
 
             var cast = new Rect(w * 0.5f - 160f, 48f, 320f, 20f);
             if (_sim.Phase == GuardianPhase.Tell && _sim.ActiveTelegraphs.Count > 0)
@@ -317,31 +323,35 @@ namespace TheArtifacts.PC.Combat
             }
 
             // Player HP and hotbar
-            var hp = new Rect(w * 0.5f - 200f, h - 110f, 400f, 22f);
+            var hp = new Rect(w * 0.5f - 250f, h - 132f, 500f, 20f);
             Bar(hp, _sim.PlayerHp / _sim.PlayerMaxHp, new Color(0.2f, 0.75f, 0.3f));
             GUI.Label(hp, $"{_sim.PlayerHp:0} / {_sim.PlayerMaxHp:0}" + (_sim.GuardRemaining > 0f ? "   GUARD" : ""), _center);
+            var mp = new Rect(w * 0.5f - 250f, h - 108f, 500f, 16f);
+            Bar(mp, _sim.PlayerMp / _sim.PlayerMaxMp, new Color(0.25f, 0.4f, 0.95f));
+            GUI.Label(mp, $"MP {_sim.PlayerMp:0} / {_sim.PlayerMaxMp:0}", _center);
 
             var abilities = new[]
             {
                 (Ability.HeavyStrike, "1 Heavy"), (Ability.Guard, "2 Guard"), (Ability.Lunge, "3 Lunge"), (Ability.Punish, "4 Punish"),
+                (Ability.LightningBolt, "5 Bolt"),
             };
             for (var i = 0; i < abilities.Length; i++)
             {
                 var (ability, label) = abilities[i];
-                var slot = new Rect(w * 0.5f - 200f + i * 102f, h - 80f, 94f, 50f);
+                var slot = new Rect(w * 0.5f - 250f + i * 102f, h - 80f, 94f, 50f);
                 var cd = _sim.CooldownRemaining(ability);
                 var blocked = _sim.BlockReason(ability);
                 Bar(slot, 1f, blocked == null ? new Color(0.2f, 0.25f, 0.35f) : new Color(0.12f, 0.12f, 0.14f));
-                GUI.Label(slot, cd > 0f ? $"{label}\n{cd:0.0}" : blocked == "range" ? $"{label}\nrange" : label, _center);
+                GUI.Label(slot, cd > 0f ? $"{label}\n{cd:0.0}" : blocked is "range" or "mana" ? $"{label}\n{blocked}" : label, _center);
             }
             if (_sim.GcdRemaining > 0f)
-                Bar(new Rect(w * 0.5f - 200f, h - 28f, 400f * _sim.GcdRemaining / PlayerRules.GlobalCooldown, 4f), 1f, Color.white);
+                Bar(new Rect(w * 0.5f - 250f, h - 28f, 500f * _sim.GcdRemaining / PlayerRules.GlobalCooldown, 4f), 1f, Color.white);
 
             // Info and log
             GUI.Label(new Rect(16f, 16f, 420f, 90f),
                 $"{build} (gear {_sim.Build.GearScore})   {_sim.Time:0.0}s\n" +
                 $"Guardian: {_sim.Setup}\n" +
-                "Right-click move   1 Heavy  2 Guard  3 Lunge  4 Punish", _label);
+                "Right-click move   1 Heavy  2 Guard  3 Lunge  4 Punish  5 Lightning Bolt", _label);
             GUI.Label(new Rect(16f, h - 190f, 360f, 170f), string.Join("\n", _log), _label);
 
             if (_sim.Outcome != CombatOutcome.Ongoing)

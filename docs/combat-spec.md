@@ -14,10 +14,14 @@ Labels as in the GDD: **[DECIDED]** chosen by me as Design Lead; **[OPEN]** unre
 
 ## 2. Rules [DECIDED 2026-11-16]
 
-- **Damage dealt by the player** = skill coefficient × Power × (1 − Guardian Armor). Guardian Armor applies to all player damage, reflected damage included **[DECIDED 2026-11-17]**. The Guardian has no evasion stat.
-- **Damage taken by the player** = base damage × Guardian tier multiplier × (1 − Armor).
+- **Stat ratings [DECIDED 2026-11-19]:** Def, Res, Agility, and Precision turn into a percent as *value / (value + 100)*: 25 → 20%, 100 → 50%, 400 → 80%, never 100%. This holds for players and Guardians.
+- **Damage types [DECIDED 2026-11-19]:** every skill, the player's and the Guardian's, is **physical** or **magic**. Def reduces physical damage, Res reduces magic damage.
+- **Damage dealt by the player** = skill coefficient × Strength (physical) or Intelligence (magic) × (1 − the Guardian's Def or Res rating). This applies to all player damage, reflected damage included (reflects count as physical). The Guardian has no evasion stat.
+- **Critical hits [DECIDED 2026-11-19]:** a player attack crits with chance = Precision rating and deals **×1.5**. Reflects never crit. Guardians do not crit.
+- **Damage taken by the player** = base damage × Guardian tier multiplier × (1 − the player's Def or Res rating).
+- **Cooldowns:** every ability cooldown is shortened by the Agility rating.
 - **Global cooldown (GCD):** 1.0 s after any hotbar skill.
-- **Movement:** run speed 7 m/s. Turning and moving never stop auto-attack, but attacking requires melee range (≤ 3 m).
+- **Movement:** run speed 7 m/s × (1 + Speed / 100). Turning and moving never stop auto-attack, but attacking requires melee range (≤ 3 m).
 - **Telegraphs:** every Guardian skill shows its area on the ground for its full tell time; the area is fixed when the tell starts.
 - **No fight timer.** A fight ends only when either side's HP reaches zero. Guardian auto-attacks already make a long fight a losing one for the player.
 
@@ -25,23 +29,32 @@ Labels as in the GDD: **[DECIDED]** chosen by me as Design Lead; **[OPEN]** unre
 
 ### 3.1 Stats
 
+The nine stats are defined in GDD Section 6.2. In combat:
+
 | Stat | Meaning |
 |---|---|
 | HP | Health. No regeneration in a fight. |
-| Power | Scales all player damage. |
-| Armor | Percent reduction of damage taken (cap 50%). |
+| MP | Mana for learned magic skills; regenerates 2 MP/s. Artifact skills cost no mana. |
+| Strength | Scales physical damage. |
+| Intelligence | Scales magic damage. |
+| Agility | Cooldown reduction (rating). |
+| Def | Physical damage reduction (rating). |
+| Res | Magic damage reduction (rating). |
+| Precision | Critical-hit chance (rating). |
+| Speed | Run speed +Speed%. Raised only by artifacts and crafted items. |
 
 ### 3.2 Abilities (same for both builds)
 
-Both builds use the same abilities, so a tester learns one control scheme. The builds differ only in stats and artifacts.
+Both builds use the same abilities, so a tester learns one control scheme. The builds differ only in stats and artifacts. Keys 1–4 are physical; key 5 is the one learned magic skill in the prototype.
 
 | Key | Ability | Cooldown | Effect | Intent |
 |---|---|---|---|---|
-| auto | Auto-attack | 2.0 s swing | 1.0 × Power while in range | commit |
-| 1 | Heavy Strike | 6 s | 2.5 × Power | commit |
+| auto | Auto-attack | 2.0 s swing | 1.0 × Strength while in range | commit |
+| 1 | Heavy Strike | 6 s | 2.5 × Strength | commit |
 | 2 | Guard | 12 s | 60% less damage taken for 2 s | defend |
-| 3 | Lunge | 10 s | Dash up to 8 m to the Guardian, 1.0 × Power | switch tactics (re-engage after evading) |
-| 4 | Punish | 15 s | 4.0 × Power; **×2 if the Guardian is in a recovery window** | commit (rewards reading tells) |
+| 3 | Lunge | 10 s | Dash up to 8 m to the Guardian, 1.0 × Strength | switch tactics (re-engage after evading) |
+| 4 | Punish | 15 s | 4.0 × Strength; **×2 if the Guardian is in a recovery window** | commit (rewards reading tells) |
+| 5 | Lightning Bolt **[PROPOSED 2026-11-19]** | 8 s | Magic: 2.0 × Intelligence, range 15 m, costs 30 MP. Strong against most Guardians, nearly useless against Constructs (high Res) | commit at range |
 | Right-click | Move | — | Run to the clicked point (hold to steer); walk out of telegraphed areas | evade |
 
 **Equipment-skill keys [DECIDED 2026-11-17].** A skill granted by an equipped artifact (GDD Section 6.6) is cast with the key of the slot it is worn in. The keys follow the body: top row head and hands, middle row torso, bottom row feet. WASD is no longer movement.
@@ -59,8 +72,11 @@ A slot with no granted skill leaves its key unused.
 | | Starter | Geared |
 |---|---|---|
 | HP | 1000 | 1300 |
-| Power | 40 | 60 |
-| Armor | 0% | 15% |
+| MP | 100 | 100 |
+| Strength | 40 | 60 |
+| Intelligence | 40 | 40 |
+| Def | 0 (0%) | 18 (15.3%) |
+| Res, Agility, Precision, Speed | 0 | 0 |
 | Artifacts | none | Treasure right-hand weapon, Heirloom armor, Heirloom trinket (Section 5.3) |
 | Gear score | 0 | 7 |
 | Expected DPS (ideal / realistic 70% uptime) | 54 / 38 | 89 / 63 |
@@ -69,15 +85,15 @@ A slot with no granted skill leaves its key unused.
 
 ### 4.1 Stat tiers (Q11)
 
-| Tier | HP | Damage multiplier | Armor |
-|---|---|---|---|
-| T1 | 3000 | 0.80 | 0% |
-| T2 | 3600 | 0.90 | 0% |
-| **T3 (default)** | 4300 | 1.00 | 0% |
-| T4 | 5200 | 1.15 | 0% |
-| T5 | 6200 | 1.30 | 0% |
+| Tier | HP | Damage multiplier |
+|---|---|---|
+| T1 | 3000 | 0.80 |
+| T2 | 3600 | 0.90 |
+| **T3 (default)** | 4300 | 1.00 |
+| T4 | 5200 | 1.15 |
+| T5 | 6200 | 1.30 |
 
-Guardian Armor is a decided stat; its values are 0% until the rebalance in GDD Q15 sets them, so the outcomes in 4.7 still hold.
+A Guardian's Def and Res belong to the Guardian, not the tier (Section 4.5).
 
 The Guardian auto-attacks the player for 20 base damage every 2.5 s when in range.
 
@@ -85,14 +101,16 @@ The Guardian auto-attacks the player for 20 base damage every 2.5 s when in rang
 
 Each skill: **tell** (telegraph shown, player reacts) → **hit** → **recovery** (Guardian idle, Punish deals double).
 
-| ID | Skill | Area | Tell | Base damage | Recovery | How to avoid |
-|---|---|---|---|---|---|---|
-| `cleave` | Cleave | 90° cone in front, 6 m | 1.2 s | 200 | 1.0 s | Step to the side or behind |
-| `slam` | Slam | Circle around the Guardian, 5 m | 1.6 s | 250 | 1.5 s | Run out (0.7 s at run speed) |
-| `charge` | Charge | Line toward the player, 15 m × 3 m | 1.4 s | 220 | 2.0 s | Sidestep |
-| `rings` | Shock Rings | Ring 4–12 m from the Guardian (safe up close) | 1.8 s | 180 | 1.2 s | Move **in** to the Guardian |
-| `embers` | Embers | Three 3 m circles placed on the player, 0.6 s apart | 1.0 s each | 120 each | 0.8 s | Keep moving |
-| `fury` | Fury | Self-buff: auto-attacks +50% for 8 s | 1.0 s | — | 0 s | Use Guard; back off |
+| ID | Skill | Area | Tell | Base damage | Type | Recovery | How to avoid |
+|---|---|---|---|---|---|---|---|
+| `cleave` | Cleave | 90° cone in front, 6 m | 1.2 s | 200 | physical | 1.0 s | Step to the side or behind |
+| `slam` | Slam | Circle around the Guardian, 5 m | 1.6 s | 250 | physical | 1.5 s | Run out (0.7 s at run speed) |
+| `charge` | Charge | Line toward the player, 15 m × 3 m | 1.4 s | 220 | physical | 2.0 s | Sidestep |
+| `rings` | Shock Rings | Ring 4–12 m from the Guardian (safe up close) | 1.8 s | 180 | magic | 1.2 s | Move **in** to the Guardian |
+| `embers` | Embers | Three 3 m circles placed on the player, 0.6 s apart | 1.0 s each | 120 each | magic | 0.8 s | Keep moving |
+| `fury` | Fury | Self-buff: auto-attacks +50% for 8 s | 1.0 s | — | — | 0 s | Use Guard; back off |
+
+Guardian auto-attacks are physical.
 
 A setup picks **3 or 4** skills from the pool.
 
@@ -116,6 +134,14 @@ A strategy decides only **when** and **which** skill is used. Tells, damage, and
 Enrage is a **per-Guardian property, off by default.** The prototype's open Guardian has no enrage. Special Guardians in the full game may set an enrage timer as part of their identity; it belongs to that Guardian's configuration, never to the adaptive setup, so the agent cannot turn it on or change it.
 
 **Creature type [DECIDED 2026-11-19]:** every Guardian (and, in the full game, every field monster) has a creature type that conditional traits target. Types so far: Construct, Beast, Elemental, Undead; the full list is open. **The prototype Guardian is a Construct.**
+
+**The three prototype Guardians** (GDD Section 6.4). Def and Res are per Guardian; values marked [PROPOSED] are for the Design Lead to confirm:
+
+| Guardian | Type | Def | Res | Immunities |
+|---|---|---|---|---|
+| Alma Mater | Construct | 0 | 400 (80%) **[PROPOSED]** | none |
+| Columbia Lion | Beast | 0 | 0 | none |
+| Book Keeper | Undead | 0 | 0 | none |
 
 **Status immunities [DECIDED 2026-11-18]** work the same way: a per-Guardian property that fits its identity (for example, a Lich immune to fear, a Golem immune to petrify), never part of the adaptive setup. The prototype Guardian has none.
 
@@ -141,7 +167,7 @@ Bands overlap at their edges, and a geared player can never get a weaker tier th
 | Geared: time to kill | 48 s | 58 s | 69 s | 83 s | 99 s |
 | Geared: telegraphed hits it can take | 6.9 | 5.6 | 4.5 | 3.0 | 1.7 |
 
-> **Note (2026-11-19):** this table predates traits. Against the Construct prototype Guardian, the geared build's Iron Charm and Scaled Coat cut damage taken to 0.9 × 0.85 = 0.765, so its "telegraphed hits it can take" row is about 31% higher. The rebalance in GDD Q15 recomputes the table.
+> **Note (2026-11-19):** this table predates traits, the nine-stat model, and Lightning Bolt. Lightning Bolt adds ranged magic damage against the Columbia Lion and the Book Keeper, so those fights run shorter than shown; against Alma Mater (Res 400) it adds little. Against the Construct prototype Guardian, the geared build's Iron Charm and Scaled Coat cut damage taken to 0.9 × 0.85 = 0.765, so its "telegraphed hits it can take" row is about 31% higher. The rebalance in GDD Q15 recomputes the table.
 
 Reading: the scripted default is very hard for a starter and easy for a geared player (the gap the hypothesis targets). Inside their bands, a starter at T1–T2 and a geared player at T4–T5 both land near the 90–120 s target, and the geared player still has more margin, so gear keeps its value.
 
@@ -177,13 +203,13 @@ Every artifact has a **trait**, which general items never have (GDD Section 6.6)
 
 | Artifact | Slot | Rarity | Stats | Effect |
 |---|---|---|---|---|
-| Worn Band | trinket | Relic | +5 Power | Power +30% (×1.3) |
+| Worn Band | trinket | Relic | +5 Strength | Strength +30% (×1.3) |
 | Padded Vest | armor | Relic | +100 HP | Max HP +30% (×1.3) |
-| Iron Charm | trinket | Heirloom | +100 HP, +5% Armor | 10% less damage taken from Constructs |
-| Scaled Coat | armor | Heirloom | +200 HP, +10% Armor | 15% less damage taken from Constructs |
-| Keen Edge | right hand | Treasure | +20 Power | Heavy Strike cooldown 6 → 4.5 s |
-| Warden's Plate | armor | Treasure | +150 HP, +10% Armor | Guard also heals 5% max HP |
-| Echo Blade | right hand | Mythic | +25 Power | Punish in a recovery window resets Lunge |
+| Iron Charm | trinket | Heirloom | +100 HP, +6 Def | 10% less damage taken from Constructs |
+| Scaled Coat | armor | Heirloom | +200 HP, +12 Def | 15% less damage taken from Constructs |
+| Keen Edge | right hand | Treasure | +20 Strength | Heavy Strike cooldown 6 → 4.5 s |
+| Warden's Plate | armor | Treasure | +150 HP, +12 Def | Guard also heals 5% max HP |
+| Echo Blade | right hand | Mythic | +25 Strength | Punish in a recovery window resets Lunge |
 | Stillstone | trinket | Mythic | +150 HP | Guard lasts 3 s and reflects 30% of blocked damage |
 
 The geared test build wears Keen Edge, Scaled Coat, and Iron Charm.
@@ -199,7 +225,7 @@ Traits are meant to be very varied and themed on their place (for example, an At
 - **Mode:** *passive* (always on), *equipment skill* (cast with its slot key, Section 3.2, with a cooldown), or *triggered* (fires on an event).
 - **Trigger** (triggered only): on hit taken, on hit dealt, on lethal damage, on skill cast, at fight start, and more as needed.
 - **Conditions:** chance, HP threshold, internal cooldown, once per fight.
-- **Effects:** add or multiply a stat, reflect damage, ignore Guardian Armor, always hit, heal, shield, apply a status (petrify, stun, slow), teleport, survive at 1 HP, change or reset a cooldown.
+- **Effects:** add or multiply a stat, reflect damage, ignore Guardian Def or Res, always hit, heal, shield, apply a status (petrify, stun, slow), teleport, survive at 1 HP, change or reset a cooldown.
 
 A new artifact usually only combines existing parts; a truly new effect adds one part.
 
@@ -215,7 +241,7 @@ A new artifact usually only combines existing parts; a truly new effect adds one
 
 **Passive numeric traits [DECIDED 2026-11-19]:**
 
-- *Multiplicative stat:* multiplies HP, Power, or Armor after flat bonuses. One artifact may multiply a stat by at most **×2**. This is a ceiling for designing future artifacts, so new content cannot break balance, not a target: prototype values stay well below it (Relic ×1.3). CI checks every artifact against the cap. Multipliers from different artifacts multiply together. The Armor cap (50%) still applies.
+- *Multiplicative stat:* multiplies any stat (GDD 6.2) after flat bonuses. One artifact may multiply a stat by at most **×2**. This is a ceiling for designing future artifacts, so new content cannot break balance, not a target: prototype values stay well below it (Relic ×1.3). CI checks every artifact against the cap. Multipliers from different artifacts multiply together.
 - *Conditional by creature type:* more damage dealt to, or less damage taken from, one creature type (Guardians and field monsters). Effects of this kind from different artifacts multiply together.
 
 **Statuses on a Guardian [DECIDED 2026-11-18]:** a status (stun, petrify, fear) interrupts the Guardian's current skill: its telegraphs are removed, the rest of the skill (and any queued combo skill) is cancelled, and there is no recovery window. While the status lasts the Guardian does nothing, then returns to its normal rhythm. A Guardian immune to a status ignores it (Section 4.5). No diminishing returns for now; revisit if a playtest shows a status locking a Guardian down. In the prototype all three statuses behave the same; distinct behavior (such as fear making the Guardian flee) is later work.

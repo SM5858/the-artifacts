@@ -5,7 +5,7 @@ using TheArtifacts.Core.Guardian;
 
 namespace TheArtifacts.Core.Combat
 {
-    public enum Ability { None, HeavyStrike, Guard, Lunge, Punish }
+    public enum Ability { None, HeavyStrike, Guard, Lunge, Punish, LightningBolt }
 
     /// <summary>One tick of player input. Move is a direction on the floor; length above 1 is clamped.</summary>
     public readonly struct PlayerInput
@@ -56,6 +56,8 @@ namespace TheArtifacts.Core.Combat
         StatusApplied,
         StatusResisted,
         TellInterrupted,
+        /// <summary>A player hit was critical; Id is its source, Amount the damage after armor.</summary>
+        CriticalHit,
     }
 
     /// <summary>Feedback for the UI and the per-attempt trace.</summary>
@@ -106,6 +108,8 @@ namespace TheArtifacts.Core.Combat
         public Vec2 PlayerPosition { get; private set; }
         public float PlayerHp { get; private set; }
         public float PlayerMaxHp => Build.MaxHp;
+        public float PlayerMp { get; private set; }
+        public float PlayerMaxMp => Build.MaxMp;
         public float GcdRemaining { get; private set; }
         public float GuardRemaining { get; private set; }
 
@@ -127,7 +131,7 @@ namespace TheArtifacts.Core.Combat
         // ---- Private state ----
         readonly Dictionary<Ability, float> _cooldowns = new Dictionary<Ability, float>
         {
-            { Ability.HeavyStrike, 0f }, { Ability.Guard, 0f }, { Ability.Lunge, 0f }, { Ability.Punish, 0f },
+            { Ability.HeavyStrike, 0f }, { Ability.Guard, 0f }, { Ability.Lunge, 0f }, { Ability.Punish, 0f }, { Ability.LightningBolt, 0f },
         };
         float _playerAutoTimer;
 
@@ -164,6 +168,7 @@ namespace TheArtifacts.Core.Combat
             _takenVsType = build.VersusType(TraitEffectKind.DamageTakenVsType, Guardian.Type);
 
             PlayerHp = build.MaxHp;
+            PlayerMp = build.MaxMp;
             GuardianHp = Tier.MaxHp;
             GuardianPosition = Vec2.Zero;
             PlayerPosition = new Vec2(0f, -GuardianRules.StartDistance);
@@ -201,13 +206,14 @@ namespace TheArtifacts.Core.Combat
             GcdRemaining = Math.Max(0f, GcdRemaining - dt);
             GuardRemaining = Math.Max(0f, GuardRemaining - dt);
             _playerAutoTimer = Math.Max(0f, _playerAutoTimer - dt);
+            PlayerMp = Math.Min(Build.MaxMp, PlayerMp + PlayerRules.MpRegenPerSecond * dt);
         }
 
         void MovePlayer(Vec2 move, float dt)
         {
             if (move.LengthSquared < 1e-8f) return;
             var dir = move.LengthSquared > 1f ? move.Normalized() : move;
-            PlayerPosition = ClampToArena(PlayerPosition + dir * (PlayerRules.RunSpeed * dt));
+            PlayerPosition = ClampToArena(PlayerPosition + dir * (Build.RunSpeed * dt));
         }
 
         /// <summary>Why an ability cannot be used right now, or null if it can.</summary>
@@ -216,6 +222,11 @@ namespace TheArtifacts.Core.Combat
             if (CooldownRemaining(ability) > 0f) return "cooldown";
             if (GcdRemaining > 0f) return "gcd";
             if ((ability == Ability.HeavyStrike || ability == Ability.Punish) && !InMeleeRange) return "range";
+            if (ability == Ability.LightningBolt)
+            {
+                if (PlayerMp < PlayerRules.LightningBoltManaCost) return "mana";
+                if (DistanceToGuardian > PlayerRules.LightningBoltRange) return "range";
+            }
             return null;
         }
 
@@ -232,7 +243,7 @@ namespace TheArtifacts.Core.Combat
             switch (ability)
             {
                 case Ability.HeavyStrike:
-                    DamageGuardian(PlayerRules.HeavyStrikeCoefficient * Build.Power, "heavy_strike");
+                    DamageGuardian(PlayerRules.HeavyStrikeCoefficient * Build.Strength, "heavy_strike", DamageType.Physical, canCrit: true);
                     _cooldowns[ability] = Cooldown(ability, PlayerRules.HeavyStrikeCooldown);
                     break;
 
@@ -246,7 +257,7 @@ namespace TheArtifacts.Core.Combat
                     var toGuardian = GuardianPosition - PlayerPosition;
                     var travel = Math.Max(0f, Math.Min(PlayerRules.LungeDistance, toGuardian.Length - 2f));
                     PlayerPosition = ClampToArena(PlayerPosition + toGuardian.Normalized() * travel);
-                    if (InMeleeRange) DamageGuardian(PlayerRules.LungeCoefficient * Build.Power, "lunge");
+                    if (InMeleeRange) DamageGuardian(PlayerRules.LungeCoefficient * Build.Strength, "lunge", DamageType.Physical, canCrit: true);
                     _cooldowns[ability] = Cooldown(ability, PlayerRules.LungeCooldown);
                     break;
                 }
@@ -254,10 +265,16 @@ namespace TheArtifacts.Core.Combat
                 case Ability.Punish:
                 {
                     var mult = inRecovery ? PlayerRules.PunishRecoveryMultiplier : 1f;
-                    DamageGuardian(PlayerRules.PunishCoefficient * Build.Power * mult, inRecovery ? "punish_recovery" : "punish");
+                    DamageGuardian(PlayerRules.PunishCoefficient * Build.Strength * mult, inRecovery ? "punish_recovery" : "punish", DamageType.Physical, canCrit: true);
                     _cooldowns[ability] = Cooldown(ability, PlayerRules.PunishCooldown);
                     break;
                 }
+
+                case Ability.LightningBolt:
+                    PlayerMp -= PlayerRules.LightningBoltManaCost;
+                    DamageGuardian(PlayerRules.LightningBoltCoefficient * Build.Intelligence, "lightning_bolt", DamageType.Magic, canCrit: true);
+                    _cooldowns[ability] = Cooldown(ability, PlayerRules.LightningBoltCooldown);
+                    break;
             }
 
             GcdRemaining = PlayerRules.GlobalCooldown;
@@ -265,22 +282,30 @@ namespace TheArtifacts.Core.Combat
             FireTraits(TraitTrigger.AbilityUsed, ability, 0f, inRecovery);
         }
 
+        /// <summary>The ability's cooldown (a trait may replace the base), shortened by Agility.</summary>
         float Cooldown(Ability ability, float baseCooldown) =>
-            Build.Passive(TraitEffectKind.SetCooldown, ability)?.Value ?? baseCooldown;
+            (Build.Passive(TraitEffectKind.SetCooldown, ability)?.Value ?? baseCooldown) * (1f - Build.CooldownReduction);
 
         void PlayerAutoAttack()
         {
             if (_playerAutoTimer > 0f || !InMeleeRange) return;
-            DamageGuardian(PlayerRules.AutoCoefficient * Build.Power, "auto");
+            DamageGuardian(PlayerRules.AutoCoefficient * Build.Strength, "auto", DamageType.Physical, canCrit: true);
             _playerAutoTimer = PlayerRules.AutoSwing;
         }
 
-        /// <summary>All player damage, reflects included, is scaled by type traits and reduced by the Guardian's armor (Combat Spec 2).</summary>
-        void DamageGuardian(float amount, string source)
+        /// <summary>
+        /// All player damage, reflects included, is scaled by type traits and reduced by the Guardian's Def or Res
+        /// (Combat Spec 2). Attacks may crit; the roll is skipped at 0 Precision so fights stay deterministic.
+        /// </summary>
+        void DamageGuardian(float amount, string source, DamageType type, bool canCrit = false)
         {
-            amount *= _dealtVsType * (1f - Tier.Armor);
+            var crit = canCrit && Build.CritChance > 0f && _rng.NextDouble() < Build.CritChance;
+            if (crit) amount *= PlayerRules.CritMultiplier;
+            var resist = type == DamageType.Physical ? Guardian.Def : Guardian.Res;
+            amount *= _dealtVsType * (1f - PlayerRules.Rating(resist));
             GuardianHp = Math.Max(0f, GuardianHp - amount);
             Emit(CombatEventType.GuardianDamaged, source, amount);
+            if (crit) Emit(CombatEventType.CriticalHit, source, amount);
         }
 
         void HealPlayer(float amount, string source)
@@ -290,10 +315,11 @@ namespace TheArtifacts.Core.Combat
             Emit(CombatEventType.PlayerHealed, source, healed);
         }
 
-        /// <summary>Damage taken = base × tier multiplier × (1 − Armor) × type traits, reduced by Guard (Combat Spec 2).</summary>
-        void DamagePlayer(float baseDamage, string source)
+        /// <summary>Damage taken = base × tier multiplier × (1 − Def or Res rating) × type traits, reduced by Guard (Combat Spec 2).</summary>
+        void DamagePlayer(float baseDamage, string source, DamageType type)
         {
-            var amount = baseDamage * Tier.DamageMultiplier * (1f - Build.Armor) * _takenVsType;
+            var reduction = type == DamageType.Physical ? Build.PhysicalReduction : Build.MagicReduction;
+            var amount = baseDamage * Tier.DamageMultiplier * (1f - reduction) * _takenVsType;
             if (GuardRemaining > 0f)
             {
                 var blocked = amount * PlayerRules.GuardReduction;
@@ -331,7 +357,7 @@ namespace TheArtifacts.Core.Combat
                     _cooldowns[effect.Ability] = 0f;
                     break;
                 case TraitEffectKind.ReflectPercent:
-                    DamageGuardian(effect.Value * amount, $"{artifact.Id}_reflect");
+                    DamageGuardian(effect.Value * amount, $"{artifact.Id}_reflect", DamageType.Physical);
                     break;
                 case TraitEffectKind.ApplyStatus:
                     ApplyGuardianStatus(effect.Status, effect.Value);
@@ -434,7 +460,7 @@ namespace TheArtifacts.Core.Combat
         void GuardianAutoAttack()
         {
             if (_guardianAutoTimer > 0f || DistanceToGuardian > GuardianRules.MeleeRange) return;
-            DamagePlayer(GuardianRules.AutoBaseDamage * (IsFuryActive ? _furyMultiplier : 1f), "guardian_auto");
+            DamagePlayer(GuardianRules.AutoBaseDamage * (IsFuryActive ? _furyMultiplier : 1f), "guardian_auto", DamageType.Physical);
             _guardianAutoTimer = GuardianRules.AutoSwing;
         }
 
@@ -521,7 +547,7 @@ namespace TheArtifacts.Core.Combat
             if (t.Area.Contains(PlayerPosition))
             {
                 Emit(CombatEventType.SkillHit, skill.Id, 0f);
-                DamagePlayer(skill.BaseDamage, skill.Id);
+                DamagePlayer(skill.BaseDamage, skill.Id, skill.DamageType);
             }
             else
             {

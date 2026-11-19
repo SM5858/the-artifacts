@@ -9,9 +9,13 @@ namespace TheArtifacts.Core.Combat
     public static class PlayerRules
     {
         public const float GlobalCooldown = 1.0f;
+        /// <summary>Base run speed; Speed raises it by Speed% (Combat Spec 2).</summary>
         public const float RunSpeed = 7f;
         public const float MeleeRange = 3f;
-        public const float ArmorCap = 0.5f;
+        /// <summary>Def, Res, Agility, and Precision turn into a percent as value / (value + StatK) (Combat Spec 2).</summary>
+        public const float StatK = 100f;
+        public const float CritMultiplier = 1.5f;
+        public const float MpRegenPerSecond = 2f;
         /// <summary>A single artifact may multiply a stat by at most this much (Combat Spec 5.4).</summary>
         public const float MaxStatMultiplierPerArtifact = 2f;
 
@@ -32,7 +36,17 @@ namespace TheArtifacts.Core.Combat
         public const float PunishCooldown = 15f;
         public const float PunishCoefficient = 4.0f;
         public const float PunishRecoveryMultiplier = 2f;
+
+        public const float LightningBoltCooldown = 8f;
+        public const float LightningBoltCoefficient = 2.0f;
+        public const float LightningBoltManaCost = 30f;
+        public const float LightningBoltRange = 15f;
+
+        /// <summary>Diminishing returns: 0 at 0, 50% at <see cref="StatK"/>, never 100%.</summary>
+        public static float Rating(float value) => value <= 0f ? 0f : value / (value + StatK);
     }
+
+    public enum DamageType { Physical, Magic }
 
     /// <summary>
     /// Guardian rules from Combat Spec 4.1. Values marked "implementation default" are not in the spec
@@ -69,6 +83,7 @@ namespace TheArtifacts.Core.Combat
         public float Tell;
         public float BaseDamage;
         public float Recovery;
+        public DamageType DamageType;
         public int Pulses = 1;          // embers: number of circles
         public float PulseInterval;     // embers: seconds between placements
         public float BuffDuration;      // fury
@@ -80,8 +95,6 @@ namespace TheArtifacts.Core.Combat
         public string Id;
         public float MaxHp;
         public float DamageMultiplier;
-        /// <summary>Percent reduction of player damage taken (Combat Spec 2). 0 for every tier until tuned (Q15).</summary>
-        public float Armor;
     }
 
     /// <summary>Equipment slots (Combat Spec 5.2). Each has an equipment-skill key; Trinket has two slots (D, C).</summary>
@@ -97,24 +110,47 @@ namespace TheArtifacts.Core.Combat
         public string Description;
         public ArtifactSlot Slot;
         public Rarity Rarity;
-        public float Hp;
-        public float Power;
-        public float Armor;
+        public float Hp, Mp, Strength, Intelligence, Agility, Def, Res, Precision, Speed;
         /// <summary>The artifact's trait (Combat Spec 5.4).</summary>
         public IReadOnlyList<TraitPart> Trait = new TraitPart[0];
+    }
+
+    /// <summary>A character's stats before items (GDD 6.2). The prototype has no levels, so these are fixed.</summary>
+    public sealed class BaseStats
+    {
+        public float Hp, Mp, Strength, Intelligence, Agility, Def, Res, Precision, Speed;
+
+        public float this[StatKind stat] => stat switch
+        {
+            StatKind.Hp => Hp, StatKind.Mp => Mp, StatKind.Strength => Strength, StatKind.Intelligence => Intelligence,
+            StatKind.Agility => Agility, StatKind.Def => Def, StatKind.Res => Res, StatKind.Precision => Precision,
+            _ => Speed,
+        };
     }
 
     /// <summary>A player's final numbers after artifacts (Combat Spec 3.3).</summary>
     public sealed class PlayerBuild
     {
-        public float MaxHp { get; }
-        public float Power { get; }
-        public float Armor { get; }
+        readonly Dictionary<StatKind, float> _stats = new Dictionary<StatKind, float>();
+
+        public float this[StatKind stat] => _stats[stat];
+        public float MaxHp => this[StatKind.Hp];
+        public float MaxMp => this[StatKind.Mp];
+        public float Strength => this[StatKind.Strength];
+        public float Intelligence => this[StatKind.Intelligence];
+
+        public float PhysicalReduction => PlayerRules.Rating(this[StatKind.Def]);
+        public float MagicReduction => PlayerRules.Rating(this[StatKind.Res]);
+        public float CooldownReduction => PlayerRules.Rating(this[StatKind.Agility]);
+        public float CritChance => PlayerRules.Rating(this[StatKind.Precision]);
+        public float RunSpeed => PlayerRules.RunSpeed * (1f + this[StatKind.Speed] / 100f);
+
         public IReadOnlyList<ArtifactDef> Artifacts { get; }
         public int GearScore => Artifacts.Sum(a => (int)a.Rarity);
 
-        public PlayerBuild(float baseHp, float basePower, float baseArmor, IEnumerable<ArtifactDef> artifacts)
+        public PlayerBuild(BaseStats baseStats, IEnumerable<ArtifactDef> artifacts)
         {
+            if (baseStats == null) throw new ArgumentNullException(nameof(baseStats));
             Artifacts = (artifacts ?? Enumerable.Empty<ArtifactDef>()).ToArray();
             if (Artifacts.GroupBy(a => a.Slot).Any(g => g.Count() > SlotCapacity(g.Key)))
                 throw new ArgumentException("At most one artifact per slot (two trinkets).");
@@ -124,10 +160,16 @@ namespace TheArtifacts.Core.Combat
                     throw new ArgumentException($"{a.Id} multiplies {stat} by more than x{PlayerRules.MaxStatMultiplierPerArtifact}.");
 
             // Flat bonuses first, then multipliers; multipliers from different artifacts multiply together.
-            MaxHp = (baseHp + Artifacts.Sum(a => a.Hp)) * Multiplier(Artifacts, StatKind.Hp);
-            Power = (basePower + Artifacts.Sum(a => a.Power)) * Multiplier(Artifacts, StatKind.Power);
-            Armor = Math.Min(PlayerRules.ArmorCap, (baseArmor + Artifacts.Sum(a => a.Armor)) * Multiplier(Artifacts, StatKind.Armor));
+            foreach (StatKind stat in Enum.GetValues(typeof(StatKind)))
+                _stats[stat] = (baseStats[stat] + Artifacts.Sum(a => Flat(a, stat))) * Multiplier(Artifacts, stat);
         }
+
+        static float Flat(ArtifactDef a, StatKind stat) => stat switch
+        {
+            StatKind.Hp => a.Hp, StatKind.Mp => a.Mp, StatKind.Strength => a.Strength, StatKind.Intelligence => a.Intelligence,
+            StatKind.Agility => a.Agility, StatKind.Def => a.Def, StatKind.Res => a.Res, StatKind.Precision => a.Precision,
+            _ => a.Speed,
+        };
 
         static float Multiplier(IEnumerable<ArtifactDef> artifacts, StatKind stat) =>
             PassiveEffects(artifacts, TraitEffectKind.MultiplyStat).Where(e => e.Stat == stat)
@@ -157,9 +199,8 @@ namespace TheArtifacts.Core.Combat
     /// <summary>All prototype content from the Combat Spec, in one place.</summary>
     public static class PrototypeContent
     {
-        public const float BaseHp = 1000f;
-        public const float BasePower = 40f;
-        public const float BaseArmor = 0f;
+        /// <summary>Base stats of both test builds (Combat Spec 3.3).</summary>
+        public static BaseStats Base => new BaseStats { Hp = 1000f, Mp = 100f, Strength = 40f, Intelligence = 40f };
 
         public static readonly IReadOnlyList<TierDef> Tiers = new[]
         {
@@ -172,11 +213,11 @@ namespace TheArtifacts.Core.Combat
 
         public static readonly IReadOnlyList<GuardianSkillDef> Skills = new[]
         {
-            new GuardianSkillDef { Id = "cleave", Name = "Cleave", Shape = AreaShape.Cone, AngleDegrees = 90f, Range = 6f, Tell = 1.2f, BaseDamage = 200f, Recovery = 1.0f },
-            new GuardianSkillDef { Id = "slam", Name = "Slam", Shape = AreaShape.Circle, Range = 5f, Tell = 1.6f, BaseDamage = 250f, Recovery = 1.5f },
-            new GuardianSkillDef { Id = "charge", Name = "Charge", Shape = AreaShape.Line, Range = 15f, Width = 3f, Tell = 1.4f, BaseDamage = 220f, Recovery = 2.0f },
-            new GuardianSkillDef { Id = "rings", Name = "Shock Rings", Shape = AreaShape.Ring, InnerRadius = 4f, Range = 12f, Tell = 1.8f, BaseDamage = 180f, Recovery = 1.2f },
-            new GuardianSkillDef { Id = "embers", Name = "Embers", Shape = AreaShape.CirclesOnPlayer, Range = 3f, Tell = 1.0f, BaseDamage = 120f, Recovery = 0.8f, Pulses = 3, PulseInterval = 0.6f },
+            new GuardianSkillDef { Id = "cleave", Name = "Cleave", Shape = AreaShape.Cone, AngleDegrees = 90f, Range = 6f, Tell = 1.2f, BaseDamage = 200f, Recovery = 1.0f, DamageType = DamageType.Physical },
+            new GuardianSkillDef { Id = "slam", Name = "Slam", Shape = AreaShape.Circle, Range = 5f, Tell = 1.6f, BaseDamage = 250f, Recovery = 1.5f, DamageType = DamageType.Physical },
+            new GuardianSkillDef { Id = "charge", Name = "Charge", Shape = AreaShape.Line, Range = 15f, Width = 3f, Tell = 1.4f, BaseDamage = 220f, Recovery = 2.0f, DamageType = DamageType.Physical },
+            new GuardianSkillDef { Id = "rings", Name = "Shock Rings", Shape = AreaShape.Ring, InnerRadius = 4f, Range = 12f, Tell = 1.8f, BaseDamage = 180f, Recovery = 1.2f, DamageType = DamageType.Magic },
+            new GuardianSkillDef { Id = "embers", Name = "Embers", Shape = AreaShape.CirclesOnPlayer, Range = 3f, Tell = 1.0f, BaseDamage = 120f, Recovery = 0.8f, DamageType = DamageType.Magic, Pulses = 3, PulseInterval = 0.6f },
             new GuardianSkillDef { Id = "fury", Name = "Fury", Shape = AreaShape.None, Tell = 1.0f, Recovery = 0f, BuffDuration = 8f, BuffAutoMultiplier = 1.5f },
         };
 
@@ -184,19 +225,19 @@ namespace TheArtifacts.Core.Combat
 
         public static readonly IReadOnlyList<ArtifactDef> Artifacts = new[]
         {
-            new ArtifactDef { Id = "worn_band", Name = "Worn Band", Description = "Power +30%", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Relic, Power = 5f,
-                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Power, Value = 1.3f }) } },
+            new ArtifactDef { Id = "worn_band", Name = "Worn Band", Description = "Strength +30%", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Relic, Strength = 5f,
+                Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Strength, Value = 1.3f }) } },
             new ArtifactDef { Id = "padded_vest", Name = "Padded Vest", Description = "Max HP +30%", Slot = ArtifactSlot.Armor, Rarity = Rarity.Relic, Hp = 100f,
                 Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Hp, Value = 1.3f }) } },
-            new ArtifactDef { Id = "iron_charm", Name = "Iron Charm", Description = "10% less damage taken from Constructs", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Heirloom, Hp = 100f, Armor = 0.05f,
+            new ArtifactDef { Id = "iron_charm", Name = "Iron Charm", Description = "10% less damage taken from Constructs", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Heirloom, Hp = 100f, Def = 6f,
                 Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.DamageTakenVsType, Creature = CreatureType.Construct, Value = -0.10f }) } },
-            new ArtifactDef { Id = "scaled_coat", Name = "Scaled Coat", Description = "15% less damage taken from Constructs", Slot = ArtifactSlot.Armor, Rarity = Rarity.Heirloom, Hp = 200f, Armor = 0.10f,
+            new ArtifactDef { Id = "scaled_coat", Name = "Scaled Coat", Description = "15% less damage taken from Constructs", Slot = ArtifactSlot.Armor, Rarity = Rarity.Heirloom, Hp = 200f, Def = 12f,
                 Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.DamageTakenVsType, Creature = CreatureType.Construct, Value = -0.15f }) } },
-            new ArtifactDef { Id = "keen_edge", Name = "Keen Edge", Description = "Heavy Strike cooldown 6 → 4.5 s", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Treasure, Power = 20f,
+            new ArtifactDef { Id = "keen_edge", Name = "Keen Edge", Description = "Heavy Strike cooldown 6 → 4.5 s", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Treasure, Strength = 20f,
                 Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.SetCooldown, Ability = Ability.HeavyStrike, Value = 4.5f }) } },
-            new ArtifactDef { Id = "wardens_plate", Name = "Warden's Plate", Description = "Guard also heals 5% of max HP", Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 150f, Armor = 0.10f,
+            new ArtifactDef { Id = "wardens_plate", Name = "Warden's Plate", Description = "Guard also heals 5% of max HP", Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 150f, Def = 12f,
                 Trait = new[] { OnAbility(Ability.Guard, new TraitEffect { Kind = TraitEffectKind.HealPercentMaxHp, Value = 0.05f }) } },
-            new ArtifactDef { Id = "echo_blade", Name = "Echo Blade", Description = "Punish in a recovery window resets Lunge", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Mythic, Power = 25f,
+            new ArtifactDef { Id = "echo_blade", Name = "Echo Blade", Description = "Punish in a recovery window resets Lunge", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Mythic, Strength = 25f,
                 Trait = new[] { OnAbility(Ability.Punish, new TraitEffect { Kind = TraitEffectKind.ResetCooldown, Ability = Ability.Lunge }, inRecovery: true) } },
             new ArtifactDef { Id = "stillstone", Name = "Stillstone", Description = "Guard lasts 3 s and reflects 30% of blocked damage", Slot = ArtifactSlot.Trinket, Rarity = Rarity.Mythic, Hp = 150f,
                 Trait = new[]
@@ -214,8 +255,19 @@ namespace TheArtifacts.Core.Combat
             new TraitPart { Mode = TraitMode.Triggered, Trigger = TraitTrigger.AbilityUsed, Ability = ability,
                 RequiresGuardianRecovery = inRecovery, Effects = new[] { effect } };
 
-        /// <summary>The prototype Guardian: a Construct with no status immunities (Combat Spec 4.5).</summary>
-        public static readonly GuardianProfile Guardian = new GuardianProfile { Type = CreatureType.Construct };
+        /// <summary>The three prototype Guardians (GDD 6.4, Combat Spec 4.5). Def and Res are per Guardian, not per tier.</summary>
+        public static readonly IReadOnlyList<GuardianProfile> Guardians = new[]
+        {
+            new GuardianProfile { Id = "alma_mater", Name = "Alma Mater", Type = CreatureType.Construct, Res = 400f },
+            new GuardianProfile { Id = "columbia_lion", Name = "Columbia Lion", Type = CreatureType.Beast },
+            new GuardianProfile { Id = "book_keeper", Name = "Book Keeper", Type = CreatureType.Undead },
+        };
+
+        /// <summary>The Guardian a fight uses when none is given. Which one hosts the comparison is open (GDD Q16).</summary>
+        public static GuardianProfile Guardian => GuardianById("alma_mater");
+
+        public static GuardianProfile GuardianById(string id) => Guardians.FirstOrDefault(g => g.Id == id)
+            ?? throw new ArgumentException($"Unknown Guardian '{id}'.");
 
         public static TierDef Tier(string id) => Tiers.FirstOrDefault(t => t.Id == id);
         public static GuardianSkillDef Skill(string id) => Skills.FirstOrDefault(s => s.Id == id);
@@ -223,7 +275,7 @@ namespace TheArtifacts.Core.Combat
             ?? throw new ArgumentException($"Unknown artifact '{id}'.");
 
         public static PlayerBuild Build(params string[] artifactIds) =>
-            new PlayerBuild(BaseHp, BasePower, BaseArmor, artifactIds.Select(Artifact));
+            new PlayerBuild(Base, artifactIds.Select(Artifact));
 
         /// <summary>Starter test build: no artifacts (Combat Spec 3.3).</summary>
         public static PlayerBuild StarterBuild => Build();

@@ -16,23 +16,28 @@ namespace TheArtifacts.Core.Tests.Combat
             var starter = PrototypeContent.StarterBuild;
             var geared = PrototypeContent.GearedBuild;
 
-            Assert.That((starter.MaxHp, starter.Power, starter.Armor, starter.GearScore), Is.EqualTo((1000f, 40f, 0f, 0)));
+            Assert.That((starter.MaxHp, starter.MaxMp, starter.Strength, starter.Intelligence, starter.GearScore), Is.EqualTo((1000f, 100f, 40f, 40f, 0)));
+            Assert.That((starter.PhysicalReduction, starter.CooldownReduction, starter.CritChance), Is.EqualTo((0f, 0f, 0f)));
             Assert.That(geared.MaxHp, Is.EqualTo(1300f));
-            Assert.That(geared.Power, Is.EqualTo(60f));
-            Assert.That(geared.Armor, Is.EqualTo(0.15f).Within(1e-6));
+            Assert.That(geared.Strength, Is.EqualTo(60f));
+            Assert.That(geared[StatKind.Def], Is.EqualTo(18f));
+            Assert.That(geared.PhysicalReduction, Is.EqualTo(18f / 118f).Within(1e-6));
             Assert.That(geared.GearScore, Is.EqualTo(7));
         }
 
-        [Test]
-        public void Armor_IsCappedAtHalf()
+        [TestCase(0f, 0f)]
+        [TestCase(25f, 0.2f)]
+        [TestCase(100f, 0.5f)]
+        [TestCase(400f, 0.8f)]
+        public void StatRating_HasDiminishingReturns(float value, float expected)
         {
-            Assert.That(new PlayerBuild(1000, 40, 0.9f, null).Armor, Is.EqualTo(0.5f));
+            Assert.That(PlayerRules.Rating(value), Is.EqualTo(expected).Within(1e-6));
         }
 
         [Test]
         public void RelicMultipliers_ApplyAfterFlatBonuses()
         {
-            Assert.That(PrototypeContent.Build("worn_band").Power, Is.EqualTo(45f * 1.3f).Within(1e-3));
+            Assert.That(PrototypeContent.Build("worn_band").Strength, Is.EqualTo(45f * 1.3f).Within(1e-3));
             Assert.That(PrototypeContent.Build("padded_vest").MaxHp, Is.EqualTo(1100f * 1.3f).Within(1e-3));
         }
 
@@ -41,7 +46,7 @@ namespace TheArtifacts.Core.Tests.Combat
         public void EveryArtifact_RespectsTheMultiplierCap()
         {
             foreach (var artifact in PrototypeContent.Artifacts)
-                Assert.DoesNotThrow(() => new PlayerBuild(1000f, 40f, 0f, new[] { artifact }), artifact.Id);
+                Assert.DoesNotThrow(() => new PlayerBuild(PrototypeContent.Base, new[] { artifact }), artifact.Id);
         }
 
         [Test]
@@ -54,12 +59,12 @@ namespace TheArtifacts.Core.Tests.Combat
                 {
                     new TraitPart { Mode = TraitMode.Passive, Effects = new[]
                     {
-                        new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Power, Value = 1.5f },
-                        new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Power, Value = 1.5f },
+                        new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Strength, Value = 1.5f },
+                        new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Strength, Value = 1.5f },
                     } },
                 },
             };
-            Assert.Throws<System.ArgumentException>(() => new PlayerBuild(1000f, 40f, 0f, new[] { greedy }));
+            Assert.Throws<System.ArgumentException>(() => new PlayerBuild(PrototypeContent.Base, new[] { greedy }));
         }
 
         [Test]
@@ -95,7 +100,7 @@ namespace TheArtifacts.Core.Tests.Combat
         // ---------- Player abilities ----------
 
         [Test]
-        public void HeavyStrike_DealsCoefficientTimesPower_AndGoesOnCooldown()
+        public void HeavyStrike_DealsCoefficientTimesStrength_AndGoesOnCooldown()
         {
             var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
             Engage(sim);
@@ -113,22 +118,85 @@ namespace TheArtifacts.Core.Tests.Combat
         }
 
         [Test]
-        public void GuardianArmor_ReducesPlayerDamage()
+        public void GuardianDef_ReducesPhysicalDamage()
         {
-            var tier = PrototypeContent.Tier("T3");
-            tier.Armor = 0.25f;
-            try
-            {
-                var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
-                Engage(sim);
+            var sim = new CombatSim(PrototypeContent.StarterBuild, PrototypeContent.DefaultSetup, seed: 1,
+                new GuardianProfile { Id = "test", Type = CreatureType.Beast, Def = 100f });
+            Engage(sim);
 
-                Use(sim, Ability.HeavyStrike);
-                Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(75f));
-            }
-            finally
-            {
-                tier.Armor = 0f;
-            }
+            Use(sim, Ability.HeavyStrike);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(50f).Within(1e-3));
+        }
+
+        // ---------- Lightning Bolt, Agility, Precision, Speed (Combat Spec 2, 3.2) ----------
+
+        [TestCase("columbia_lion", 80f)]   // 2.0 × Intelligence 40, no Res
+        [TestCase("alma_mater", 16f)]      // Construct: Res 400 → 80% less
+        public void LightningBolt_IsRangedMagic_ResistedByConstructs(string guardianId, float expected)
+        {
+            var sim = new CombatSim(PrototypeContent.StarterBuild, PrototypeContent.DefaultSetup, seed: 1,
+                PrototypeContent.GuardianById(guardianId));
+            Assert.That(sim.DistanceToGuardian, Is.GreaterThan(PlayerRules.MeleeRange));
+
+            Use(sim, Ability.LightningBolt);
+
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "lightning_bolt"), Is.EqualTo(expected).Within(1e-3));
+            Assert.That(sim.PlayerMp, Is.EqualTo(70f).Within(0.1f));
+        }
+
+        [Test]
+        public void LightningBolt_NeedsMana()
+        {
+            var poor = new BaseStats { Hp = 1000f, Mp = 20f, Strength = 40f, Intelligence = 40f };
+            var sim = Sim(new PlayerBuild(poor, null), "T3", "steady", "cleave", "slam", "charge");
+
+            Use(sim, Ability.LightningBolt);
+
+            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("LightningBolt:mana"));
+        }
+
+        [Test]
+        public void Agility_ShortensCooldowns()
+        {
+            var quick = new BaseStats { Hp = 1000f, Mp = 100f, Strength = 40f, Intelligence = 40f, Agility = 100f };
+            var sim = Sim(new PlayerBuild(quick, null), "T3", "steady", "cleave", "slam", "charge");
+
+            Use(sim, Ability.Guard);
+
+            Assert.That(sim.CooldownRemaining(Ability.Guard), Is.EqualTo(PlayerRules.GuardCooldown * 0.5f).Within(Dt));
+        }
+
+        [Test]
+        public void Precision_CritsForOneAndAHalf()
+        {
+            // Precision this high makes a crit all but certain.
+            var sharp = new BaseStats { Hp = 1000f, Mp = 100f, Strength = 40f, Intelligence = 40f, Precision = 1e9f };
+            var sim = Sim(new PlayerBuild(sharp, null), "T3", "steady", "cleave", "slam", "charge");
+            Engage(sim);
+
+            Use(sim, Ability.HeavyStrike);
+
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(150f).Within(1e-3));
+            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.CriticalHit && e.Id == "heavy_strike"), Is.True);
+        }
+
+        [Test]
+        public void Speed_RaisesRunSpeed()
+        {
+            var fast = new BaseStats { Hp = 1000f, Mp = 100f, Strength = 40f, Intelligence = 40f, Speed = 50f };
+            Assert.That(new PlayerBuild(fast, null).RunSpeed, Is.EqualTo(10.5f).Within(1e-4));
+        }
+
+        [Test]
+        public void MagicGuardianSkills_AreReducedByRes()
+        {
+            // Embers is magic: 120 at T3, Res 100 halves it; Def does nothing.
+            var warded = new BaseStats { Hp = 1000f, Mp = 100f, Strength = 40f, Intelligence = 40f, Def = 1000f, Res = 100f };
+            var sim = Sim(new PlayerBuild(warded, null), "T3", "steady", "embers", "slam", "cleave");
+
+            RunUntil(sim, s => s.Events.Any(e => e.Type == CombatEventType.PlayerDamaged && e.Id == "embers"), 15f);
+
+            Assert.That(sim.Events.First(e => e.Type == CombatEventType.PlayerDamaged && e.Id == "embers").Amount, Is.EqualTo(60f).Within(1e-3));
         }
 
         [Test]
@@ -237,12 +305,12 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That(sim.Events.Any(e => e.Type == CombatEventType.SkillMissed && e.Id == "rings"), Is.True);
         }
 
-        // Geared: 15% armor; Iron Charm −10% and Scaled Coat −15% against Constructs. Guard: 60% less.
-        // Against the Construct prototype Guardian: 200 × 0.85 × 0.9 × 0.85 × 0.4 = 52.02; against a Beast: 68.
-        [TestCase(CreatureType.Construct, 52.02f)]
-        [TestCase(CreatureType.Beast, 68f)]
-        public void ArmorGuardAndTypeTraits_ReduceDamage(CreatureType guardianType, float expected)
+        // Geared: Def 18 (18/118 ≈ 15.3% less); Iron Charm −10% and Scaled Coat −15% against Constructs. Guard: 60% less.
+        [TestCase(CreatureType.Construct, 0.9f * 0.85f)]
+        [TestCase(CreatureType.Beast, 1f)]
+        public void DefGuardAndTypeTraits_ReduceDamage(CreatureType guardianType, float typeFactor)
         {
+            var expected = 200f * (1f - 18f / 118f) * typeFactor * 0.4f;
             var sim = new CombatSim(PrototypeContent.GearedBuild, new GuardianSetup("T3", new[] { "cleave", "slam", "charge" }, "steady"),
                 seed: 1, new GuardianProfile { Type = guardianType });
             Engage(sim);
@@ -346,7 +414,7 @@ namespace TheArtifacts.Core.Tests.Combat
                     },
                 },
             };
-            var sim = Sim(new PlayerBuild(1000f, 40f, 0f, new[] { aegis }), "T3", "steady", "embers", "slam", "cleave");
+            var sim = Sim(new PlayerBuild(PrototypeContent.Base, new[] { aegis }), "T3", "steady", "embers", "slam", "cleave");
 
             // Stand still: the first of three Embers circles lands on the player and interrupts the rest.
             RunUntil(sim, s => s.Events.Any(e => e.Type == CombatEventType.TellInterrupted && e.Id == "embers"), 20f);

@@ -46,7 +46,7 @@ namespace TheArtifacts.Core.Combat
         DamageTakenVsType,
     }
 
-    public enum StatKind { Hp, Power, Armor }
+    public enum StatKind { Hp, Mp, Strength, Intelligence, Agility, Def, Res, Precision, Speed }
 
     /// <summary>Guardian and field-monster families that conditional traits target. The full list is open.</summary>
     public enum CreatureType { Construct, Beast, Elemental, Undead }
@@ -57,7 +57,11 @@ namespace TheArtifacts.Core.Combat
     /// <summary>Per-Guardian identity, fixed for the Guardian and never part of the adaptive setup (Combat Spec 4.5).</summary>
     public sealed class GuardianProfile
     {
+        public string Id;
+        public string Name;
         public CreatureType Type;
+        /// <summary>Reduce physical / magic damage taken as value / (value + 100), like the player's (Combat Spec 2).</summary>
+        public float Def, Res;
         public IReadOnlyCollection<GuardianStatus> Immunities = new GuardianStatus[0];
     }
 

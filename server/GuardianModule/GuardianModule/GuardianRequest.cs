@@ -44,10 +44,16 @@ namespace GuardianModule
                 new Dictionary<string, int>
                 {
                     ["max_hp"] = (int)Math.Round(build.MaxHp),
-                    ["power"] = (int)Math.Round(build.Power),
-                    ["armor_percent"] = (int)Math.Round(build.Armor * 100f),
+                    ["max_mp"] = (int)Math.Round(build.MaxMp),
+                    ["strength"] = (int)Math.Round(build.Strength),
+                    ["intelligence"] = (int)Math.Round(build.Intelligence),
+                    ["agility"] = (int)Math.Round(build[StatKind.Agility]),
+                    ["def"] = (int)Math.Round(build[StatKind.Def]),
+                    ["res"] = (int)Math.Round(build[StatKind.Res]),
+                    ["precision"] = (int)Math.Round(build[StatKind.Precision]),
+                    ["speed"] = (int)Math.Round(build[StatKind.Speed]),
                 },
-                new[] { "heavy_strike", "guard", "lunge", "punish" },
+                new[] { "heavy_strike", "guard", "lunge", "punish", "lightning_bolt" },
                 build.Artifacts.Select(a => a.Id),
                 attemptsOnThisGuardian);
 
@@ -73,8 +79,8 @@ namespace GuardianModule
                 },
                 allowed = new
                 {
-                    stat_tiers = tiers.Select(t => new { id = t.Id, max_hp = t.MaxHp, damage_multiplier = t.DamageMultiplier, armor = t.Armor }),
-                    skills = skills.Select(s => new { id = s.Id, name = s.Name, tell_seconds = s.Tell, base_damage = s.BaseDamage, recovery_seconds = s.Recovery, avoid = HowToAvoid(s) }),
+                    stat_tiers = tiers.Select(t => new { id = t.Id, max_hp = t.MaxHp, damage_multiplier = t.DamageMultiplier }),
+                    skills = skills.Select(s => new { id = s.Id, name = s.Name, tell_seconds = s.Tell, base_damage = s.BaseDamage, damage_type = s.DamageType.ToString().ToLowerInvariant(), recovery_seconds = s.Recovery, avoid = HowToAvoid(s) }),
                     strategies = strategies.Select(id => new { id, behavior = StrategyBehavior(id) }),
                     min_skills = space.MinSkills,
                     max_skills = space.MaxSkills,
