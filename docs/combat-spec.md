@@ -87,15 +87,17 @@ A slot with no granted skill leaves its key unused. Equipment skills cost no MP 
 
 ### 4.1 Stat tiers (Q11)
 
-| Tier | HP | Damage multiplier |
-|---|---|---|
-| T1 | 3000 | 0.80 |
-| T2 | 3600 | 0.90 |
-| **T3 (default)** | 4300 | 1.00 |
-| T4 | 5200 | 1.15 |
-| T5 | 6200 | 1.30 |
+Tiers scale HP, damage, and defense together, so low tiers forgive missed dodges and high tiers punish them **[tuned by bot simulation 2026-11-19; retune after playtests]**:
 
-A Guardian's Def and Res belong to the Guardian, not the tier (Section 4.5).
+| Tier | HP | Damage multiplier | Def / Res added |
+|---|---|---|---|
+| T1 | 5500 | 0.50 | 0 |
+| T2 | 6400 | 0.70 | 5 |
+| **T3 (default)** | 7500 | 1.00 | 10 |
+| T4 | 8700 | 1.30 | 20 |
+| T5 | 9800 | 1.60 | 30 |
+
+The tier's Def and Res add to the Guardian's own (Section 4.5); for example, Alma Mater at T3 has Res 410.
 
 The Guardian auto-attacks the player for 20 base damage every 2.5 s when in range.
 
@@ -160,18 +162,20 @@ Challenger strength is the **gear score**: the sum of equipped artifact rarity p
 Bands overlap at their edges, and a geared player can never get a weaker tier than a starter's best case (T3).
 **Gated variant (stretch):** allowed tiers T4–T5 for every gear score.
 
-### 4.7 Expected outcomes (realistic DPS, no Guard used)
+### 4.7 Expected outcomes (bot simulation, 2026-11-19)
 
-| | T1 | T2 | **T3 (default)** | T4 | T5 |
-|---|---|---|---|---|---|
-| Starter: time to kill | 79 s | 95 s | 114 s | 138 s | 164 s |
-| Starter: telegraphed hits it can take | 2.8 | 1.6 | **0.4** | dies to auto-attacks | dies to auto-attacks |
-| Geared: time to kill | 48 s | 58 s | 69 s | 83 s | 99 s |
-| Geared: telegraphed hits it can take | 6.9 | 5.6 | 4.5 | 3.0 | 1.7 |
+From the balance report in CI (`Report_BotFightsAcrossGuardiansTiersAndBuilds`): a bot that reacts in 0.6 s and fails to notice a share of telegraphs, standing in for human mistakes. Steady strategy, physical skill set (the scripted default's skills). **Columbia Lion** (the comparison Guardian); cells are *time to kill / HP left*, or L for a loss.
 
-> **Note (2026-11-19):** this table predates traits, the nine-stat model, and Lightning Bolt. Lightning Bolt adds ranged magic damage against the Columbia Lion and the Book Keeper, so those fights run shorter than shown; against Alma Mater (Res 400) it adds little. The geared rows describe the old geared build; the Columbia geared build (3.3) has less Strength, Def, and HP but adds Precision, Res, and the Robe's damage-cut skill. The rebalance in GDD Q15 recomputes the table.
+| Build | Missed telegraphs | T1 | T2 | **T3 (default)** | T4 | T5 |
+|---|---|---|---|---|---|---|
+| Starter | 0% | 78 s / 75% | 99 s / 58% | 117 s / 28% | L (auto-attacks) | L |
+| Starter | 30% | 80 s / 62% | 99 s / 25% | L | L | L |
+| Starter | 60% | 80 s / 40% | L | L | L | L |
+| Geared | 0% | 49 s / 87% | 58 s / 80% | 66 s / 67% | 87 s / 45% | 111 s / 14% |
+| Geared | 30% | 49 s / 78% | 58 s / 66% | 70 s / 44% | 90 s / 17% | L |
+| Geared | 60% | 49 s / 60% | 58 s / 42% | 70 s / 9% | L | L |
 
-Reading: the scripted default is very hard for a starter and easy for a geared player (the gap the hypothesis targets). Inside their bands, a starter at T1–T2 and a geared player at T4–T5 both land near the 90–120 s target, and the geared player still has more margin, so gear keeps its value.
+Reading: T1 is winnable even when most telegraphs are missed; the scripted default (T3) is hard for a starter and comfortable for the geared build; inside their bands a starter at T1–T2 and a geared player at T4–T5 land at 80–120 s. The Book Keeper plays the same for a starter and about 15% slower for the geared build (no Lion's Fang bonus); Alma Mater runs about 25–30% longer (Lightning Bolt barely hurts it). With the mixed skill set (Slam, Shock Rings, Embers) the magic skills land far more often, and a starter loses from T3 even with perfect dodging.
 
 ## 5. Rewards (Q5)
 
