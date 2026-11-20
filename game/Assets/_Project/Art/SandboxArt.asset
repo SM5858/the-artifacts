@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2b81f15669e416795e960a596af7c11, type: 3}
+  m_Name: SandboxArt
+  m_EditorClassIdentifier: TheArtifacts.PC::TheArtifacts.PC.Combat.SandboxArt
+  Arena: {fileID: 2100000, guid: f704ab957d9794ce2a2686cf513b2443, type: 2}
+  Bookshelf: {fileID: 2100000, guid: 6c9acf213d9e24d0e87f68136bafd6a0, type: 2}
+  Guardians:
+  - GuardianId: alma_mater
+    Material: {fileID: 2100000, guid: 26d881aaf964e4e7797163dc9702c193, type: 2}
+  - GuardianId: columbia_lion
+    Material: {fileID: 2100000, guid: 8231ed38cdce24dfb8522299f637f783, type: 2}
+  - GuardianId: book_keeper
+    Material: {fileID: 2100000, guid: 318758085742642478fc1c9c815b99f6, type: 2}

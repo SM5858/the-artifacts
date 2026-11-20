@@ -150,6 +150,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: TheArtifacts.PC::TheArtifacts.PC.Combat.CombatSandbox
   build: 0
   seed: 1
+  guardianId: columbia_lion
   useDefaultGuardian: 1
   customTier: T2
   customSkills:
@@ -158,6 +159,7 @@ MonoBehaviour:
   - charge
   - embers
   customStrategy: aggressive
+  art: {fileID: 11400000, guid: a92d1bad850d140a68f066dc943a27e2, type: 2}
   cameraDistance: 8
   cameraHeight: 5
 --- !u!4 &383692097
