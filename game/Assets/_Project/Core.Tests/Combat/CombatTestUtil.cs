@@ -40,7 +40,8 @@ namespace TheArtifacts.Core.Tests.Combat
     /// A simple competent player for balance smoke tests: steps out of telegraphs by the quickest
     /// direction, guards (or uses an equipment skill on S) for hits it cannot escape, punishes recovery
     /// windows, keeps melee uptime, and casts Lightning Bolt when out of melee or when melee skills are down.
-    /// A bot that knows the place's lore also answers a noticed tell by setting a lore target alight (GDD 6.7).
+    /// A bot that knows the place's lore keeps the fight within reach of an unburned lore target and answers
+    /// a noticed tell by setting it alight (GDD 6.7).
     /// </summary>
     static class TestBot
     {
@@ -54,7 +55,16 @@ namespace TheArtifacts.Core.Tests.Combat
         public static PlayerInput Decide(CombatSim sim, float reactionTime, ISet<Telegraph> missed, bool knowsLore)
         {
             var input = Decide(sim, reactionTime, missed);
-            if (!knowsLore || sim.Phase != GuardianPhase.Tell) return input;
+            if (!knowsLore) return input;
+            if (sim.Phase != GuardianPhase.Tell)
+            {
+                // Fight within reach of an unburned shelf; the Guardian follows the player there.
+                var shelf = sim.Guardian.LoreTargets.Where(t => !sim.IsLoreSpent(t.Id))
+                    .OrderBy(t => Vec2.Distance(t.Position, sim.PlayerPosition)).FirstOrDefault();
+                if (shelf == null || sim.ActiveTelegraphs.Any() || Vec2.Distance(shelf.Position, sim.PlayerPosition) <= PlayerRules.FireBoltRange - 3f)
+                    return input;
+                return new PlayerInput((shelf.Position - sim.PlayerPosition).Normalized(), input.Ability, input.Equipment);
+            }
             var noticed = sim.ActiveTelegraphs.Any(t => sim.Time - (t.HitTime - t.Tell) >= reactionTime && (missed == null || !missed.Contains(t)));
             var lore = sim.Guardian.LoreTargets.FirstOrDefault(t => sim.BlockReason(Ability.FireBolt, t.Id) == null);
             return noticed && lore != null ? new PlayerInput(input.Move, Ability.FireBolt, input.Equipment, lore.Id) : input;
