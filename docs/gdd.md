@@ -46,7 +46,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 1. **Place unlocks play.** A brief visit to a real landmark opens a dungeon themed on that place. The visit stays short so the trip stays about the place; the play happens later on PC.
 2. **Combat earns the artifact.** Players win by making effective choices with their build. Artifacts are never bought or granted for the visit alone; the visit opens the fight, and the fight earns the artifact.
 3. **The Guardian adapts.** It tunes itself to the challenger, so a newcomer who unlocks a dungeon can still win in a few attempts.
-4. **The place is the puzzle [DECIDED 2026-11-19].** A Guardian's mechanics come from its real place. What a traveler learns there, or already knows, is an advantage in the fight.
+4. **The place is the puzzle [DECIDED 2026-11-19].** Many Guardians' mechanics come from their real place. What a traveler learns there, or already knows, is an advantage in the fight. Not every Guardian has one: some are pure combat-sense fights (2026-11-20).
 
 ## 6. Mechanics [PROPOSED]
 
@@ -151,14 +151,13 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 ### 6.7 Place-based Guardian mechanics [DECIDED 2026-11-19 as direction]
 
-- Each Guardian carries at least one mechanic taken from its place's history, myth, or physical features. Example: at the site of Troy, the spirit of Achilles appears as a giant Guardian that takes damage **only at the heel**. A player who knows the story goes for the ankle at once; one who does not has to discover it.
+- A Guardian may carry a mechanic taken from its place's history, myth, or physical features. Not every Guardian does: some are fought on combat sense alone (reading tells, positioning, build), so a player who prefers that has fights of their own **[DECIDED 2026-11-20]**. Example: at the site of Troy, the spirit of Achilles appears as a giant Guardian that takes damage **only at the heel**. A player who knows the story goes for the ankle at once; one who does not has to discover it.
 - Artifacts follow the same idea (for example, Athena's Shield from a Greco-Roman dungeon petrifying attackers, Section 5.4 of the Combat Spec).
 - Building blocks the engine needs: **weak points** (damage only from a direction or body zone, or much more there), **immunities** (exist: status immunities, Def/Res per Guardian), and **lore hints**.
 - **Fairness [PROPOSED]:** knowledge is an advantage, never a hard gate. Every lore mechanic must be learnable in the game too, for example a short story card at the mobile check-in and a visual hint in the fight (the heel glows when struck), so a player without the background can still win after a few attempts. The adaptive Guardian cannot change a lore mechanic; it belongs to the Guardian, like enrage and immunities.
-- **Prototype mechanics (Q18):** one lore mechanic per Columbia Guardian.
+- **Prototype mechanics (Q18) [DECIDED 2026-11-20]:** only the Book Keeper has a lore mechanic.
   - **Book Keeper [DECIDED 2026-11-19]:** the keeper fears for its books. Three bookshelves stand behind it; a **fire** spell on a shelf burns it and puts the Book Keeper in **Fear** for 6 s, which cancels its current skill and stops all its attacks; the panicked keeper is also open, so player attacks get the opening crit bonus (+50%) for those 6 s. Each shelf burns once per fight, so the player picks when to spend them (best during a dangerous tell). Other spells do nothing to the shelves, so a player who tries can find out. Fire comes from **Fire Bolt**, a new spell on key 6 that anyone can learn (Combat Spec 3.2). Hitting the body still works, so the lore is an advantage, not a gate.
-  - **Alma Mater [OPEN]:** candidate, the small owl hidden in the folds of the statue's robe (a campus legend) as a hidden weak point.
-  - **Columbia Lion [OPEN].**
+  - **Alma Mater and Columbia Lion:** no lore mechanic; pure combat-sense fights. (The hidden-owl weak point stays an idea for later.) The Lion still hosts the comparison playtest (Q16), so the lore mechanic does not affect it.
 
 ## 7. Win, failure, and edge cases [PROPOSED]
 
@@ -242,4 +241,4 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 | Q15 | Prototype content for the five new slots (helm, gloves, boots, left hand, second trinket): artifacts, the fixed general-gear loadout, and the rebalance they need (tier HP, damage, and Def/Res were set by bot simulation on 2026-11-19, Combat Spec 4.1 and 4.7; still open: the fixed general-gear loadout, gear-score bands, content for the new slots, the Combat Spec 4.7 outcome table) | Before the next combat content pass | Design Lead |
 | Q16 | ~~Which of the three Guardians hosts the scripted-versus-adaptive comparison~~ **Resolved 2026-11-19:** the Columbia Lion | Before the first comparison playtest | Design Lead |
 | Q17 | ~~Formulas for the new stats, damage types, mana, and which stats the prototype implements~~ **Resolved 2026-11-19:** ratings as value / (value + 100), physical and magic damage per skill, crits ×1.5, one learned magic skill (Lightning Bolt, key 5); all nine stats implemented (Combat Spec 2, 3) | Before the artifact list is replaced | Design Lead |
-| Q18 | One lore-based mechanic for each Columbia Guardian, and how its hint is delivered. Book Keeper decided (burning bookshelves cause Fear, Section 6.7); Alma Mater and Columbia Lion open | Before the next combat content pass | Design Lead |
+| Q18 | ~~One lore-based mechanic for each Columbia Guardian, and how its hint is delivered~~ **Resolved 2026-11-20:** only the Book Keeper has one (burning bookshelves cause Fear, Section 6.7); Alma Mater and Columbia Lion are combat-sense fights. Hint delivery (story card, in-fight cue) is still [PROPOSED] | Before the next combat content pass | Design Lead |
