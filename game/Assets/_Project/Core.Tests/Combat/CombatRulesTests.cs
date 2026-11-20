@@ -177,11 +177,12 @@ namespace TheArtifacts.Core.Tests.Combat
 
         static PlayerInput Cast(Ability ability, string target) => new PlayerInput(Vec2.Zero, ability, target: target);
 
-        /// <summary>Walks toward a bookshelf until a spell can reach it.</summary>
+        /// <summary>Walks toward a bookshelf until both spells can reach it.</summary>
         static LoreTarget WalkIntoRangeOf(CombatSim sim, string id)
         {
             var shelf = sim.FindLoreTarget(id);
-            RunUntil(sim, s => Vec2.Distance(s.PlayerPosition, shelf.Position) <= PlayerRules.FireBoltRange - 0.5f, 5f,
+            var range = System.Math.Min(PlayerRules.FireBoltRange, PlayerRules.LightningBoltRange) - 0.5f;
+            RunUntil(sim, s => Vec2.Distance(s.PlayerPosition, shelf.Position) <= range, 5f,
                 s => new PlayerInput((shelf.Position - s.PlayerPosition).Normalized()));
             return shelf;
         }
