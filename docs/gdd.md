@@ -102,11 +102,11 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
   - A **gated Guardian** has a floor. With the right base stats and equipment it is manageable; without them it is very hard. Its artifacts are the reason to build up a character.
 - **Prototype Guardians [DECIDED 2026-11-19]:** three open Guardians, one per landmark, each a different creature type so type-conditional traits can be tested:
 
-  | Landmark | Guardian | Creature type |
-  |---|---|---|
-  | Alma Mater statue | Alma Mater | Construct |
-  | Columbia Lion statue | Columbia Lion | Beast |
-  | Columbia bookstore | Book Keeper | Undead |
+  | Landmark | Guardian | Creature type | Look |
+  |---|---|---|---|
+  | Alma Mater statue | Alma Mater | Undead | A robed lich (changed 2026-11-20 from Construct); high magic resistance |
+  | Columbia Lion statue | Columbia Lion | Beast | A lion |
+  | Columbia bookstore | Book Keeper | Construct | A plain golem (changed 2026-11-20 from Undead) |
 
   All three share the engine's skill pool (Combat Spec 4.2); they differ by creature type, immunities, tier range, skill choice, name, and look, so no new skills are needed. The scripted-versus-adaptive comparison (Section 11) runs on **one** of them, so the test conditions stay the same; the other two are content. The comparison runs on the **Columbia Lion** **[DECIDED 2026-11-19]** (Q16).
 - A gated variant is the same Guardian with a higher floor (a configuration change, not new content); it is tested only if time allows.
@@ -185,6 +185,10 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 - **PC:** quest list; in combat, real-time inputs for movement or evasion, basic attack, skills, and artifact effects. Input scheme **[DECIDED]**: tab-target, hotbar keys 1–4, right-click to move out of telegraphs, and Q W E / A S D / X C for equipment skills by slot (changed 2026-11-17 from WASD movement). See [Combat Spec](combat-spec.md), Section 3.2.
 - **Feedback the player must be able to read:** quest status, the Guardian's tell for the coming move, HP changes, their own skill cooldowns, and the reward.
 - Presentation scope is the minimum needed for a fair test: readable tells come before visual polish.
+- **Visual direction [DECIDED 2026-11-20]:**
+  - **Equipment changes the character's look.** The player character is built from parts per slot, so every equipped artifact and general item is visible. [PROPOSED] Trinkets are too small to show and get no mesh; the other six slots (helm, armor, left hand, right hand, gloves, boots) do. Prototype need: a base look for each slot plus the six Columbia artifacts.
+  - **Guardians are living statues**, finished in stone or bronze: Alma Mater a lich in a flowing robe (the hidden owl sits in its folds, Section 6.7), the Columbia Lion a lion, the Book Keeper a plain golem among bookshelves.
+  - Art style and asset sources: [OPEN].
 
 ## 10. Content scope
 

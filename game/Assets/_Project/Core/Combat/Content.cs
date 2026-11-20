@@ -345,7 +345,7 @@ namespace TheArtifacts.Core.Combat
         /// <summary>The three prototype Guardians (GDD 6.4, Combat Spec 4.5). Def and Res are per Guardian, not per tier.</summary>
         public static readonly IReadOnlyList<GuardianProfile> Guardians = new[]
         {
-            new GuardianProfile { Id = "alma_mater", Name = "Alma Mater", Type = CreatureType.Construct, Res = 400f,
+            new GuardianProfile { Id = "alma_mater", Name = "Alma Mater", Type = CreatureType.Undead, Res = 400f,
                 Landmark = "Alma Mater statue", LootPool = new[] { "wreath_of_alma_mater", "staff_of_alma_mater" },
                 // Lore (GDD 6.7): a small owl hides in the folds of the statue's robe. When it peeks out, strike it.
                 WeakPoints = new[]
@@ -354,7 +354,7 @@ namespace TheArtifacts.Core.Combat
                 } },
             new GuardianProfile { Id = "columbia_lion", Name = "Columbia Lion", Type = CreatureType.Beast,
                 Landmark = "Columbia Lion statue", LootPool = new[] { "columbia_lions_fang", "columbia_lions_pelt" } },
-            new GuardianProfile { Id = "book_keeper", Name = "Book Keeper", Type = CreatureType.Undead,
+            new GuardianProfile { Id = "book_keeper", Name = "Book Keeper", Type = CreatureType.Construct,
                 Landmark = "Columbia bookstore", LootPool = new[] { "columbia_blue_mortarboard", "columbia_blue_robe" },
                 // Lore (GDD 6.7): the keeper fears for its books. Burning a shelf behind it makes it flee in fear.
                 LoreTargets = new[]

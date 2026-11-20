@@ -55,7 +55,7 @@ Both builds use the same abilities, so a tester learns one control scheme. The b
 | 2 | Guard | 12 s | 60% less damage taken for 2 s | defend |
 | 3 | Lunge | 10 s | Dash up to 8 m to the Guardian, 1.0 × Strength | switch tactics (re-engage after evading) |
 | 4 | Overpower (ultimate) **[PROPOSED 2026-11-19]** | 45 s | 8.0 × Strength, melee. Best saved for an opening, where it is likely to crit | commit (rewards reading tells) |
-| 5 | Lightning Bolt **[DECIDED 2026-11-19]** | 8 s | Magic: 100 + 1.5 × Intelligence (useful at any Intelligence), range 15 m, costs 30 MP. Strong against most Guardians, nearly useless against Constructs (high Res) | commit at range |
+| 5 | Lightning Bolt **[DECIDED 2026-11-19]** | 8 s | Magic: 100 + 1.5 × Intelligence (useful at any Intelligence), range 15 m, costs 30 MP. Strong against most Guardians, nearly useless against Alma Mater (high Res) | commit at range |
 | 6 | Fire Bolt **[DECIDED 2026-11-19; numbers PROPOSED]** | 6 s | Magic: 60 + 1.0 × Intelligence, range 25 m (reaches the bookshelves from most of the arena), costs 20 MP. Weaker than Lightning Bolt; its value is fire, which sets lore targets alight (4.5) | commit at range, or aim at a lore target |
 | Right-click (or Ctrl+click on a trackpad) | Move | — | Run to the clicked point (hold to steer); walk out of telegraphed areas | evade |
 
@@ -141,15 +141,15 @@ A strategy decides only **when** and **which** skill is used. Damage and recover
 
 Enrage is a **per-Guardian property, off by default.** The prototype's open Guardian has no enrage. Special Guardians in the full game may set an enrage timer as part of their identity; it belongs to that Guardian's configuration, never to the adaptive setup, so the agent cannot turn it on or change it.
 
-**Creature type [DECIDED 2026-11-19]:** every Guardian (and, in the full game, every field monster) has a creature type that conditional traits target. Types so far: Construct, Beast, Elemental, Undead; the full list is open. **The prototype Guardian is a Construct.**
+**Creature type [DECIDED 2026-11-19]:** every Guardian (and, in the full game, every field monster) has a creature type that conditional traits target. Types so far: Construct, Beast, Elemental, Undead; the full list is open. Prototype Guardians (changed 2026-11-20 to match their looks): Alma Mater is Undead (a lich), the Columbia Lion a Beast, the Book Keeper a Construct (a golem).
 
 **The three prototype Guardians** (GDD Section 6.4). Def and Res are per Guardian:
 
 | Guardian | Type | Def | Res | Immunities |
 |---|---|---|---|---|
-| Alma Mater | Construct | 0 | 400 (80%) **[DECIDED 2026-11-19]** | none |
+| Alma Mater | Undead (lich) | 0 | 400 (80%) **[DECIDED 2026-11-19]**; a lich resists magic | none |
 | Columbia Lion | Beast | 0 | 0 | none |
-| Book Keeper | Undead | 0 | 0 | none |
+| Book Keeper | Construct (golem) | 0 | 0 | none |
 
 **Lore targets [DECIDED 2026-11-19] (GDD 6.7):** arena objects fixed to a Guardian, like its immunities, never part of the adaptive setup. A spell (5 or 6) can aim at one instead of the Guardian; a spell of the target's element spends it (once per fight) and puts its status on the Guardian, and any other element does nothing. In the sandbox, left-click a target to aim at it and Esc to aim back at the Guardian.
 
@@ -249,7 +249,7 @@ Every artifact has a **trait**, which general items never have (GDD Section 6.6)
 | Columbia bookstore (Book Keeper) | Columbia Blue Mortarboard | helm | Relic | +20 Precision | 20% more damage to Undead |
 | | Columbia Blue Robe | armor | Treasure | +150 HP, +6 Def, +12 Res | S: take 30% less damage for 4 s (25 s cooldown) |
 
-With the per-landmark roll (5.1), a win gives: Alma Mater, always a Relic (either artifact); Columbia Lion, Fang 86% / Pelt 14%; Book Keeper, Mortarboard 77% / Robe 23%. A first win gives the Fang or Pelt at the Lion (unchanged), the Robe at the bookstore, and a Relic at Alma Mater.
+With the per-landmark roll (5.1), a win gives: Alma Mater, always a Relic (either artifact); Columbia Lion, Fang 86% / Pelt 14%; Book Keeper, Mortarboard 77% / Robe 23%. A first win gives the Fang or Pelt at the Lion (unchanged), the Robe at the bookstore, and a Relic at Alma Mater. Since Alma Mater became Undead (2026-11-20), the Mortarboard's Undead bonus pays off at Alma Mater, not at the bookstore where it drops.
 
 The geared test build wears one artifact from each landmark: **Wreath of Alma Mater, Columbia Lion's Fang, Columbia Blue Robe.** The eight earlier placeholder artifacts were removed; the trait mechanics they used stay covered by test-only fixtures.
 

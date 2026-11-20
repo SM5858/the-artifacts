@@ -20,7 +20,7 @@ namespace TheArtifacts.PC.Combat
         [Header("Fight")]
         [SerializeField] TestBuild build = TestBuild.Starter;
         [SerializeField] int seed = 1;
-        [Tooltip("alma_mater (Construct), columbia_lion (Beast), or book_keeper (Undead).")]
+        [Tooltip("alma_mater (Undead lich), columbia_lion (Beast), or book_keeper (Construct golem).")]
         [SerializeField] string guardianId = "columbia_lion";
         [Tooltip("On: the scripted default Guardian (Combat Spec 4.4). Off: the custom setup below.")]
         [SerializeField] bool useDefaultGuardian = true;

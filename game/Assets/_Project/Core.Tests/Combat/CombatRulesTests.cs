@@ -166,8 +166,8 @@ namespace TheArtifacts.Core.Tests.Combat
         // ---------- Lightning Bolt, Agility, Precision, Speed (Combat Spec 2, 3.2) ----------
 
         [TestCase("columbia_lion")]  // 100 + 1.5 × Intelligence 40 = 160, only the tier's Res
-        [TestCase("alma_mater")]     // Construct: Res 400 on top → about 80% less
-        public void LightningBolt_IsRangedMagic_ResistedByConstructs(string guardianId)
+        [TestCase("alma_mater")]     // the lich: Res 400 on top → about 80% less
+        public void LightningBolt_IsRangedMagic_ResistedByHighRes(string guardianId)
         {
             var res = PrototypeContent.GuardianById(guardianId).Res + PrototypeContent.Tier("T3").Res;
             var expected = 160f * (1f - PlayerRules.Rating(res));
