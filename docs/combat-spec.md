@@ -155,7 +155,7 @@ Enrage is a **per-Guardian property, off by default.** The prototype's open Guar
 
 | Guardian | Lore targets | Element | Effect |
 |---|---|---|---|
-| Book Keeper | 3 bookshelves behind its start, at (−8, 14), (0, 16), (8, 14) | Fire | Fear 4 s: cancels the current skill, no attacks |
+| Book Keeper | 3 bookshelves behind its start, at (−8, 14), (0, 16), (8, 14) | Fire | Fear 6 s: cancels the current skill, no attacks, and counts as an opening (+50% crit chance) |
 
 **Status immunities [DECIDED 2026-11-18]** work the same way: a per-Guardian property that fits its identity (for example, a Lich immune to fear, a Golem immune to petrify), never part of the adaptive setup. The prototype Guardian has none.
 

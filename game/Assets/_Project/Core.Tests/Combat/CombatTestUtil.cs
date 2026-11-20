@@ -114,7 +114,7 @@ namespace TheArtifacts.Core.Tests.Combat
             if (sim.InMeleeRange)
             {
                 // Save Overpower for an opening, where its crit chance is highest.
-                if (sim.Phase == GuardianPhase.Recovery && sim.BlockReason(Ability.Overpower) == null) act = Ability.Overpower;
+                if (sim.IsOpening && sim.BlockReason(Ability.Overpower) == null) act = Ability.Overpower;
                 else if (sim.BlockReason(Ability.HeavyStrike) == null) act = Ability.HeavyStrike;
             }
             else if (sim.DistanceToGuardian > 6f && !threats.Any() && sim.BlockReason(Ability.Lunge) == null)

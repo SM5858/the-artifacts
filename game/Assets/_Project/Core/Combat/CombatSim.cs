@@ -158,6 +158,7 @@ namespace TheArtifacts.Core.Combat
         readonly List<(float Multiplier, float End)> _damageTakenBuffs = new List<(float, float)>();
         readonly HashSet<TraitPart> _usedOncePerFight = new HashSet<TraitPart>();
         readonly HashSet<string> _spentLore = new HashSet<string>();
+        float _loreOpeningEnd = float.NegativeInfinity;
 
         readonly GuardianStrategy _strategy;
         readonly Random _rng;
@@ -205,9 +206,16 @@ namespace TheArtifacts.Core.Combat
         /// <summary>A skill's tell at this fight's tier: base × tier multiplier, never below the skill's fair minimum.</summary>
         public float TellFor(GuardianSkillDef skill) => Math.Max(skill.MinTell, skill.Tell * Tier.TellMultiplier);
 
-        /// <summary>Crit chance right now: the Precision rating, plus the opening bonus while the Guardian recovers.</summary>
+        /// <summary>
+        /// An opening: the Guardian is recovering from a skill, or under a lore status that grants one
+        /// (the Book Keeper's fear, GDD 6.7).
+        /// </summary>
+        public bool IsOpening =>
+            Phase == GuardianPhase.Recovery || (Phase == GuardianPhase.Incapacitated && Time < _loreOpeningEnd);
+
+        /// <summary>Crit chance right now: the Precision rating, plus the opening bonus during an opening.</summary>
         public float CritChance =>
-            Math.Min(1f, Build.CritChance + (Phase == GuardianPhase.Recovery ? PlayerRules.OpeningCritBonus : 0f));
+            Math.Min(1f, Build.CritChance + (IsOpening ? PlayerRules.OpeningCritBonus : 0f));
 
         /// <summary>This Guardian's lore target with the given id, or null.</summary>
         public LoreTarget FindLoreTarget(string id) => Guardian.LoreTargets.FirstOrDefault(t => t.Id == id);
@@ -392,6 +400,8 @@ namespace TheArtifacts.Core.Combat
             _spentLore.Add(lore.Id);
             Emit(CombatEventType.LoreTriggered, lore.Id, 0f);
             ApplyGuardianStatus(lore.Status, lore.Duration);
+            if (lore.GrantsOpening && Phase == GuardianPhase.Incapacitated)
+                _loreOpeningEnd = Math.Max(_loreOpeningEnd, Time + lore.Duration);
         }
 
         /// <summary>The ability's cooldown (a trait may replace the base), shortened by Agility.</summary>

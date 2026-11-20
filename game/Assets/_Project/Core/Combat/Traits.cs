@@ -89,6 +89,8 @@ namespace TheArtifacts.Core.Combat
         public Element Element;
         public GuardianStatus Status;
         public float Duration;
+        /// <summary>While the status lasts, the Guardian is also open: player attacks gain the opening crit bonus.</summary>
+        public bool GrantsOpening;
     }
 
     public sealed class TraitEffect

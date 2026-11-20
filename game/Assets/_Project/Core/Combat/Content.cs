@@ -361,13 +361,13 @@ namespace TheArtifacts.Core.Combat
                 } },
         };
 
-        /// <summary>Fear from a burning bookshelf, in seconds.</summary>
-        public const float BookshelfFearDuration = 4f;
+        /// <summary>Fear from a burning bookshelf, in seconds. The panicked keeper is also open to crits.</summary>
+        public const float BookshelfFearDuration = 6f;
 
         static LoreTarget Bookshelf(string id, float x, float y) => new LoreTarget
         {
             Id = id, Name = "Bookshelf", Position = new Vec2(x, y), Element = Element.Fire,
-            Status = GuardianStatus.Fear, Duration = BookshelfFearDuration,
+            Status = GuardianStatus.Fear, Duration = BookshelfFearDuration, GrantsOpening = true,
         };
 
         /// <summary>The Guardian a fight uses when none is given: the Columbia Lion, which hosts the comparison (GDD Q16).</summary>
