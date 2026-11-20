@@ -93,13 +93,13 @@ namespace TheArtifacts.PC.Editor
                 AssetDatabase.CreateAsset(mat, path);
             }
 
-            mat.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(baseColor));
+            SetTexture(mat, "_BaseMap", baseColor);
             mat.SetColor("_BaseColor", Color.white);
             mat.SetTextureScale("_BaseMap", new Vector2(tiling, tiling));
 
             if (normal != null)
             {
-                mat.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(normal));
+                SetTexture(mat, "_BumpMap", normal);
                 mat.SetFloat("_BumpScale", 1f);
                 mat.EnableKeyword("_NORMALMAP");
             }
@@ -107,7 +107,7 @@ namespace TheArtifacts.PC.Editor
             if (packed != null)
             {
                 // URP Lit reads metallic from R and smoothness from A of this map.
-                mat.SetTexture("_MetallicGlossMap", AssetDatabase.LoadAssetAtPath<Texture2D>(packed));
+                SetTexture(mat, "_MetallicGlossMap", packed);
                 mat.SetFloat("_SmoothnessTextureChannel", 0f);
                 mat.SetFloat("_Smoothness", 1f);
                 mat.SetFloat("_Metallic", 1f);
@@ -116,12 +116,23 @@ namespace TheArtifacts.PC.Editor
 
             if (ao != null)
             {
-                mat.SetTexture("_OcclusionMap", AssetDatabase.LoadAssetAtPath<Texture2D>(ao));
+                SetTexture(mat, "_OcclusionMap", ao);
                 mat.SetFloat("_OcclusionStrength", 1f);
                 mat.EnableKeyword("_OCCLUSIONMAP");
             }
 
             EditorUtility.SetDirty(mat);
+        }
+
+        /// <summary>
+        /// Sets a texture slot, keeping the current one if the file does not load as a texture
+        /// (for example, a .meta file without texture import settings).
+        /// </summary>
+        static void SetTexture(Material mat, string property, string path)
+        {
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (tex != null) mat.SetTexture(property, tex);
+            else Debug.LogWarning($"{path} did not load as a texture; {mat.name}.{property} left unchanged. Check its .meta import settings.");
         }
 
         /// <summary>Writes Name_MetallicSmoothness.png: R = metallic (0 without a map), A = 1 − roughness.</summary>
