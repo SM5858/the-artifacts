@@ -170,11 +170,21 @@ namespace TheArtifacts.PC.Combat
             _reward = $"{artifact.Name} ({artifact.Rarity})  -  {artifact.Description}";
         }
 
-        /// <summary>Right-click (or hold) sets the move target on the arena floor. QWE/ASD/XC are equipment-skill keys.</summary>
+        /// <summary>
+        /// Control + left button counts as a right-click, as on a Mac trackpad without two-finger click
+        /// (macOS turns Control-click into a right-click, but the Input System reports the raw left button).
+        /// </summary>
+        static bool ControlHeld => Keyboard.current != null && Keyboard.current.ctrlKey.isPressed;
+
+        /// <summary>
+        /// Right-click (or hold) sets the move target on the arena floor; Control-click does the same.
+        /// QWE/ASD/XC are equipment-skill keys.
+        /// </summary>
         void ReadMoveTarget()
         {
             var mouse = Mouse.current;
-            if (mouse == null || !mouse.rightButton.isPressed) return;
+            if (mouse == null) return;
+            if (!mouse.rightButton.isPressed && !(ControlHeld && mouse.leftButton.isPressed)) return;
 
             var ray = _camera.ScreenPointToRay(mouse.position.ReadValue());
             if (new Plane(Vector3.up, Vector3.zero).Raycast(ray, out var enter))
@@ -188,7 +198,7 @@ namespace TheArtifacts.PC.Combat
         void ReadSpellTarget()
         {
             var mouse = Mouse.current;
-            if (mouse == null || !mouse.leftButton.wasPressedThisFrame) return;
+            if (mouse == null || !mouse.leftButton.wasPressedThisFrame || ControlHeld) return;
 
             var ray = _camera.ScreenPointToRay(mouse.position.ReadValue());
             if (!new Plane(Vector3.up, Vector3.zero).Raycast(ray, out var enter)) return;
@@ -465,7 +475,7 @@ namespace TheArtifacts.PC.Combat
             GUI.Label(new Rect(16f, 16f, 800f, 130f),
                 $"{build} (gear {_sim.Build.GearScore})   {_sim.Time:0.0}s\n" +
                 $"Guardian: {_sim.Setup}\n" +
-                "Right-click move   1 Heavy  2 Guard  3 Lunge  4 Overpower  5 Lightning Bolt  6 Fire Bolt\n" +
+                "Right-click (or Ctrl+click) move   1 Heavy  2 Guard  3 Lunge  4 Overpower  5 Lightning Bolt  6 Fire Bolt\n" +
                 "Left-click a bookshelf or something on the Guardian to aim at it (Esc: back to the Guardian)" +
                 (_spellTarget != null ? $"   Target: {_sim.FindLoreTarget(_spellTarget)?.Name ?? _sim.FindWeakPoint(_spellTarget)?.Name} ({_spellTarget})" : "") + "\n" +
                 "Equipment skills: Q W E / A S D / X C" + EquipmentSkillList(), _label);

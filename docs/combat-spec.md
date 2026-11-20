@@ -57,7 +57,7 @@ Both builds use the same abilities, so a tester learns one control scheme. The b
 | 4 | Overpower (ultimate) **[PROPOSED 2026-11-19]** | 45 s | 8.0 × Strength, melee. Best saved for an opening, where it is likely to crit | commit (rewards reading tells) |
 | 5 | Lightning Bolt **[DECIDED 2026-11-19]** | 8 s | Magic: 100 + 1.5 × Intelligence (useful at any Intelligence), range 15 m, costs 30 MP. Strong against most Guardians, nearly useless against Constructs (high Res) | commit at range |
 | 6 | Fire Bolt **[DECIDED 2026-11-19; numbers PROPOSED]** | 6 s | Magic: 60 + 1.0 × Intelligence, range 25 m (reaches the bookshelves from most of the arena), costs 20 MP. Weaker than Lightning Bolt; its value is fire, which sets lore targets alight (4.5) | commit at range, or aim at a lore target |
-| Right-click | Move | — | Run to the clicked point (hold to steer); walk out of telegraphed areas | evade |
+| Right-click (or Ctrl+click on a trackpad) | Move | — | Run to the clicked point (hold to steer); walk out of telegraphed areas | evade |
 
 **Equipment-skill keys [DECIDED 2026-11-17].** A skill granted by an equipped artifact (GDD Section 6.6) is cast with the key of the slot it is worn in. The keys follow the body: top row head and hands, middle row torso, bottom row feet. WASD is no longer movement.
 
