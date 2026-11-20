@@ -36,6 +36,11 @@ namespace GuardianModule
         public string SnapshotHash { get; set; }
         public int GearScore { get; set; }
         public int AttemptsOnThisGuardian { get; set; }
+        public string GuardianId { get; set; }
+        /// <summary>The single easing step is unlocked (GDD 6.4): enough failed attempts on this Guardian.</summary>
+        public bool Eased { get; set; }
+        /// <summary>The Guardian's line at fight start (adaptive mode only), or null.</summary>
+        public string Announcement { get; set; }
         public string Model { get; set; }
         public long LatencyMs { get; set; }
         public long InputTokens { get; set; }
@@ -53,10 +58,15 @@ namespace GuardianModule
 
         public GuardianService(IGuardianModel model) => _model = model;
 
-        public async Task<GuardianDecision> DecideAsync(string[] equippedArtifactIds, int attemptsOnThisGuardian, bool adaptive)
+        /// <param name="attemptsOnThisGuardian">Failed attempts on this Guardian since the last win.</param>
+        /// <param name="guardianId">The Guardian being fought; its loot pool sets the easing threshold.</param>
+        public async Task<GuardianDecision> DecideAsync(string[] equippedArtifactIds, int attemptsOnThisGuardian, bool adaptive,
+            string guardianId = null)
         {
+            guardianId ??= PrototypeContent.Guardian.Id;
             var build = PrototypeContent.Build(equippedArtifactIds ?? Array.Empty<string>());
-            var space = PrototypeContent.AllowedSpaceFor(build.GearScore);
+            var eased = PrototypeContent.IsEased(guardianId, attemptsOnThisGuardian);
+            var space = PrototypeContent.AllowedSpaceFor(build.GearScore, eased);
             var defaultSetup = PrototypeContent.DefaultSetup;
 
             var decision = new GuardianDecision
@@ -64,6 +74,7 @@ namespace GuardianModule
                 Adaptive = adaptive,
                 GearScore = build.GearScore,
                 AttemptsOnThisGuardian = attemptsOnThisGuardian,
+                GuardianId = guardianId,
             };
 
             if (!adaptive || _model == null)
@@ -74,7 +85,10 @@ namespace GuardianModule
                 return decision;
             }
 
-            var request = GuardianRequest.Build(GuardianRequest.Snapshot(build, attemptsOnThisGuardian), space);
+            // The scripted baseline never eases or speaks; only the adaptive Guardian does.
+            decision.Eased = eased;
+            decision.Announcement = PrototypeContent.Announcement(build.GearScore, eased);
+            var request = GuardianRequest.Build(GuardianRequest.Snapshot(build, eased), space);
             decision.SnapshotHash = request.SnapshotHash;
             decision.Model = _model.ModelId;
 
@@ -104,6 +118,7 @@ namespace GuardianModule
 
             var result = GuardianSetupValidator.Decide(answer?.Proposal, timer.Elapsed, space, defaultSetup);
             Fill(decision, result);
+            if (result.UsedFallback) decision.Announcement = null;  // the default Guardian did not adapt
             return decision;
         }
 

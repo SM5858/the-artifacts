@@ -110,6 +110,28 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That(tiers.Last(), Is.EqualTo(highest));
         }
 
+        [TestCase(0, "T1")]  // already at the lowest tier: nothing below to add
+        [TestCase(3, "T1")]
+        [TestCase(6, "T2")]
+        public void Easing_AddsOnlyOneTierBelowTheRange(int gearScore, string lowest)
+        {
+            var normal = PrototypeContent.AllowedSpaceFor(gearScore).StatTiers;
+            var eased = PrototypeContent.AllowedSpaceFor(gearScore, eased: true).StatTiers;
+            Assert.That(eased.OrderBy(t => t).First(), Is.EqualTo(lowest));
+            Assert.That(eased.Count - normal.Count, Is.LessThanOrEqualTo(1));
+            Assert.That(normal, Is.SubsetOf(eased));
+        }
+
+        [TestCase("alma_mater", 10)]     // Relic only
+        [TestCase("book_keeper", 50)]    // has a Treasure
+        [TestCase("columbia_lion", 50)]  // has a Mythic
+        public void EasingThreshold_FollowsThePoolsBestGrade(string guardianId, int threshold)
+        {
+            Assert.That(PrototypeContent.EasingThreshold(guardianId), Is.EqualTo(threshold));
+            Assert.That(PrototypeContent.IsEased(guardianId, threshold - 1), Is.False);
+            Assert.That(PrototypeContent.IsEased(guardianId, threshold), Is.True);
+        }
+
         // ---------- Player abilities ----------
 
         [Test]

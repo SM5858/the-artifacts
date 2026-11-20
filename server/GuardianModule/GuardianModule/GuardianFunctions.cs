@@ -21,7 +21,8 @@ namespace GuardianModule
         public GuardianFunctions(ILogger<GuardianFunctions> logger) => _logger = logger;
 
         /// <summary>
-        /// Called by the game before each attempt. The client sends only artifact ids and the attempt count;
+        /// Called by the game before each attempt. The client sends only artifact ids, the Guardian, and the
+        /// failed attempts on it since the last win;
         /// stats are recomputed here from content so the client cannot send its own numbers.
         /// </summary>
         [CloudCodeFunction("ConfigureGuardian")]
@@ -30,7 +31,8 @@ namespace GuardianModule
             ISecretClient secrets,
             string[] equippedArtifactIds,
             int attemptsOnThisGuardian,
-            bool adaptive)
+            bool adaptive,
+            string guardianId = null)
         {
             IGuardianModel model = null;
             if (adaptive)
@@ -47,14 +49,14 @@ namespace GuardianModule
             }
 
             var decision = model == null && adaptive
-                ? Unavailable(await new GuardianService(null).DecideAsync(equippedArtifactIds, attemptsOnThisGuardian, adaptive: false))
-                : await new GuardianService(model).DecideAsync(equippedArtifactIds, attemptsOnThisGuardian, adaptive);
+                ? Unavailable(await new GuardianService(null).DecideAsync(equippedArtifactIds, attemptsOnThisGuardian, adaptive: false, guardianId))
+                : await new GuardianService(model).DecideAsync(equippedArtifactIds, attemptsOnThisGuardian, adaptive, guardianId);
 
             _logger.LogInformation(
-                "guardian_trace player={Player} adaptive={Adaptive} gear={Gear} attempts={Attempts} snapshot={Hash} " +
+                "guardian_trace player={Player} guardian={Guardian} adaptive={Adaptive} gear={Gear} attempts={Attempts} eased={Eased} snapshot={Hash} " +
                 "proposed={Proposed} used={Tier}/{Strategy}/{Skills} fallback={Fallback} reason={Reason} " +
                 "latency_ms={Latency} in={In} out={Out} stop={Stop}",
-                context.PlayerId, decision.Adaptive, decision.GearScore, decision.AttemptsOnThisGuardian, decision.SnapshotHash,
+                context.PlayerId, decision.GuardianId, decision.Adaptive, decision.GearScore, decision.AttemptsOnThisGuardian, decision.Eased, decision.SnapshotHash,
                 decision.ProposedSetup, decision.StatTier, decision.StrategyId, string.Join(",", decision.SkillIds),
                 decision.UsedFallback, decision.FallbackReason, decision.LatencyMs, decision.InputTokens, decision.OutputTokens,
                 decision.StopReason);

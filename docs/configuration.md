@@ -28,7 +28,7 @@ The engine owns the authoritative world state. The Guardian receives only the al
 
 | Authoritative world state (engine only) | Allowed challenger snapshot (sent to the Guardian) | Blocked from agent context |
 |---|---|---|
-| Quest unlocks, inventory, HP, cooldowns, reward rolls, account and visit records | Challenger stats, skills, equipped artifacts, attempts so far on this Guardian, and the setup options and ranges the engine allows | GPS and location history, private player data, hidden reward rolls, unequipped inventory |
+| Quest unlocks, inventory, HP, cooldowns, reward rolls, account and visit records | Challenger stats, skills, equipped artifacts, whether the single easing step is unlocked (not the attempt count, 2026-11-20), and the setup options and ranges the engine allows | GPS and location history, private player data, hidden reward rolls, unequipped inventory |
 
 ### 2.3 Interface (executable extension artifact)
 
@@ -58,7 +58,7 @@ The allowed range belongs to each Guardian and is the guard against the main des
 ### 2.6 Memory policy
 
 - Within a fight: none; the model is not called.
-- Across a player's attempts: only the attempt count in the snapshot. **[OPEN]** C2 — whether the previous attempt's outcome (for example, how close the fight was) should also be included.
+- Across a player's attempts: only whether easing is unlocked (enough failed attempts on this Guardian; GDD 6.4). The attempt count itself stays in the trace, not in the model's input. **[OPEN]** C2 — whether the previous attempt's outcome (for example, how close the fight was) should also be included.
 - Across players: none.
 
 ### 2.7 Model, settings, and limits
@@ -132,7 +132,7 @@ Every handoff states what to use, what to produce, and how acceptance is judged.
 | # | Question | Needed by |
 |---|---|---|
 | C1 | Required fields of the common manifest for the extension artifact (check syllabus) | Before the Guardian interface task |
-| C2 | Should the snapshot include the previous attempt's outcome, beyond the attempt count? | Before adaptive Guardian task |
+| C2 | Should the snapshot include the previous attempt's outcome? (The attempt count was removed from the snapshot on 2026-11-20; only whether easing is unlocked remains.) | Before adaptive Guardian task |
 | C3 | ~~Runtime model and settings for the Guardian~~ **Resolved 2026-11-16:** Claude Haiku 5.5, thinking off, server-side (Section 2.7) | Before adaptive policy task |
 | C4 | Per-session and total evaluation spending limits | Before live evaluation |
 | C5 | Number of live trials per build strength | Before live evaluation |

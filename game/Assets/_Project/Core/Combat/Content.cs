@@ -404,13 +404,46 @@ namespace TheArtifacts.Core.Combat
         public const int MinSkills = 3;
         public const int MaxSkills = 4;
 
-        /// <summary>Open Guardian tuning range by gear score (Combat Spec 4.6).</summary>
-        public static AllowedSetupSpace AllowedSpaceFor(int gearScore)
+        /// <summary>
+        /// Open Guardian tuning range by gear score (Combat Spec 4.6). When easing is unlocked (<see cref="IsEased"/>),
+        /// the range gains the one tier below it, if there is one: easing is a single step.
+        /// </summary>
+        public static AllowedSetupSpace AllowedSpaceFor(int gearScore, bool eased = false)
         {
             string[] tiers = gearScore <= 2 ? new[] { "T1", "T2", "T3" }
                 : gearScore <= 5 ? new[] { "T2", "T3", "T4" }
                 : new[] { "T3", "T4", "T5" };
+            if (eased)
+            {
+                var lowest = Tiers.ToList().FindIndex(t => t.Id == tiers[0]);
+                if (lowest > 0) tiers = new[] { Tiers[lowest - 1].Id }.Concat(tiers).ToArray();
+            }
             return new AllowedSetupSpace(tiers, Skills.Select(s => s.Id), StrategyIds, MinSkills, MaxSkills);
+        }
+
+        /// <summary>Failed attempts before easing unlocks on a Guardian whose best reward is Heirloom or lower.</summary>
+        public const int EasingThresholdUpToHeirloom = 10;
+        /// <summary>Failed attempts before easing unlocks on a Guardian whose pool has a Treasure or Mythic.</summary>
+        public const int EasingThresholdAboveHeirloom = 50;
+
+        /// <summary>Failed attempts on this Guardian that unlock its single easing step (GDD 6.4).</summary>
+        public static int EasingThreshold(string guardianId) =>
+            LootPool(guardianId).Max(a => a.Rarity) <= Rarity.Heirloom ? EasingThresholdUpToHeirloom : EasingThresholdAboveHeirloom;
+
+        public static bool IsEased(string guardianId, int failedAttempts) => failedAttempts >= EasingThreshold(guardianId);
+
+        /// <summary>Gear score at which the Guardian greets the challenger as strong (the top tuning band).</summary>
+        public const int StrongChallengerGearScore = 6;
+
+        /// <summary>
+        /// What the adaptive Guardian says at the start of a fight, so the player sees that it adapted (GDD 6.4):
+        /// a strong challenger is greeted, and an unlocked easing step is announced. Null when there is nothing to say.
+        /// </summary>
+        public static string Announcement(int gearScore, bool eased)
+        {
+            if (gearScore >= StrongChallengerGearScore) return "At last, a worthy challenger. I will not hold back.";
+            if (eased) return "You keep coming back... Very well, I will ease my guard.";
+            return null;
         }
 
         /// <summary>Gated variant (stretch): T4–T5 for every gear score.</summary>

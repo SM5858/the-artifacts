@@ -175,7 +175,9 @@ Challenger strength is the **gear score**: the sum of equipped artifact rarity p
 | 3–5 | T2–T4 | all | 3–4 | all |
 | 6+ | T3–T5 | all | 3–4 | all |
 
-Bands overlap at their edges, and a geared player can never get a weaker tier than a starter's best case (T3).
+Bands overlap at their edges, and a geared player can never get a weaker tier than a starter's best case (T3), except after easing.
+
+**Easing [DECIDED 2026-11-20] (GDD 6.4):** after 10 failed attempts on a Guardian whose best reward is Heirloom or lower (50 when its pool has a Treasure or Mythic), the band gains the one tier below it (0–2 stays T1–T3; 3–5 becomes T1–T4; 6+ becomes T2–T5). One step only; the scripted baseline never eases.
 **Gated variant (stretch):** allowed tiers T4–T5 for every gear score.
 
 ### 4.7 Expected outcomes (bot simulation, 2026-11-19)

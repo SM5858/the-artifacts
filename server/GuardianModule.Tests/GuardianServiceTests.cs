@@ -71,6 +71,42 @@ namespace GuardianModule.Tests
         }
 
         [Test]
+        public async Task Easing_UnlocksOneTierBelowTheRange_AfterTheGuardiansThreshold()
+        {
+            // Alma Mater's pool tops out at Relic: easing after 10 failures. The Lion's has a Mythic: 50.
+            Assert.That(PrototypeContent.EasingThreshold("alma_mater"), Is.EqualTo(10));
+            Assert.That(PrototypeContent.EasingThreshold("columbia_lion"), Is.EqualTo(50));
+
+            var model = FakeModel.Returning("T2", "steady", "slam", "cleave", "charge");
+            var before = await new GuardianService(model).DecideAsync(Geared, 9, adaptive: true, "alma_mater");
+            Assert.That(before.Eased, Is.False);
+            Assert.That(before.FallbackReason, Is.EqualTo("TierOutOfRange"), "T2 is below the geared range (T3-T5)");
+
+            var after = await new GuardianService(model).DecideAsync(Geared, 10, adaptive: true, "alma_mater");
+            Assert.That(after.Eased, Is.True);
+            Assert.That((after.UsedFallback, after.StatTier), Is.EqualTo((false, "T2")));
+            Assert.That(model.LastRequest.UserMessage, Does.Contain("\"eased\":true"));
+
+            var lion = await new GuardianService(model).DecideAsync(Geared, 10, adaptive: true, "columbia_lion");
+            Assert.That(lion.Eased, Is.False);
+        }
+
+        [Test]
+        public async Task StrongChallenger_IsGreeted_OnlyByTheAdaptiveGuardian()
+        {
+            var model = FakeModel.Returning("T4", "steady", "slam", "cleave", "charge");
+
+            var adaptive = await new GuardianService(model).DecideAsync(Geared, 0, adaptive: true);
+            var scripted = await new GuardianService(model).DecideAsync(Geared, 0, adaptive: false);
+            var starter = await new GuardianService(FakeModel.Returning("T1", "steady", "slam", "cleave", "charge"))
+                .DecideAsync(Starter, 0, adaptive: true);
+
+            Assert.That(adaptive.Announcement, Does.Contain("worthy challenger"));
+            Assert.That(scripted.Announcement, Is.Null);
+            Assert.That(starter.Announcement, Is.Null);
+        }
+
+        [Test]
         public async Task ForcedTimeout_UsesDefaultGuardian()
         {
             var model = new FakeModel(async (_, ct) =>
@@ -143,7 +179,7 @@ namespace GuardianModule.Tests
             var challenger = doc.RootElement.GetProperty("challenger").EnumerateObject().Select(p => p.Name);
 
             Assert.That(root, Is.EquivalentTo(new[] { "challenger", "allowed" }));
-            Assert.That(challenger, Is.EquivalentTo(new[] { "stats", "abilities", "equipped_artifacts", "attempts_on_this_guardian" }));
+            Assert.That(challenger, Is.EquivalentTo(new[] { "stats", "abilities", "equipped_artifacts", "eased" }));
 
             var text = model.LastRequest.UserMessage.ToLowerInvariant();
             foreach (var blocked in new[] { "gps", "latitude", "longitude", "location", "inventory", "reward", "email", "player_id" })
@@ -168,8 +204,8 @@ namespace GuardianModule.Tests
         public void Request_IsDeterministic()
         {
             var build = PrototypeContent.GearedBuild;
-            var a = GuardianRequest.Build(GuardianRequest.Snapshot(build, 3), PrototypeContent.AllowedSpaceFor(build.GearScore));
-            var b = GuardianRequest.Build(GuardianRequest.Snapshot(build, 3), PrototypeContent.AllowedSpaceFor(build.GearScore));
+            var a = GuardianRequest.Build(GuardianRequest.Snapshot(build, false), PrototypeContent.AllowedSpaceFor(build.GearScore));
+            var b = GuardianRequest.Build(GuardianRequest.Snapshot(build, false), PrototypeContent.AllowedSpaceFor(build.GearScore));
 
             Assert.That(a.UserMessage, Is.EqualTo(b.UserMessage));
             Assert.That(a.SnapshotHash, Is.EqualTo(b.SnapshotHash));

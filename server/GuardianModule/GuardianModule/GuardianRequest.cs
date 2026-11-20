@@ -39,7 +39,7 @@ namespace GuardianModule
         }
 
         /// <summary>The allowed snapshot for a challenger wearing these artifacts.</summary>
-        public static ChallengerSnapshot Snapshot(PlayerBuild build, int attemptsOnThisGuardian) =>
+        public static ChallengerSnapshot Snapshot(PlayerBuild build, bool eased) =>
             new ChallengerSnapshot(
                 new Dictionary<string, int>
                 {
@@ -55,7 +55,7 @@ namespace GuardianModule
                 },
                 new[] { "heavy_strike", "guard", "lunge", "overpower", "lightning_bolt", "fire_bolt" },
                 build.Artifacts.Select(a => a.Id),
-                attemptsOnThisGuardian);
+                eased);
 
         public static GuardianRequest Build(ChallengerSnapshot snapshot, AllowedSetupSpace space)
         {
@@ -75,7 +75,7 @@ namespace GuardianModule
                     stats = snapshot.Stats,
                     abilities = snapshot.SkillIds,
                     equipped_artifacts = equipped,
-                    attempts_on_this_guardian = snapshot.AttemptsOnThisGuardian,
+                    eased = snapshot.Eased,
                 },
                 allowed = new
                 {

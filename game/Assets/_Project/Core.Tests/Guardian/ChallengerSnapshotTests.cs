@@ -13,7 +13,7 @@ namespace TheArtifacts.Core.Tests.Guardian
             nameof(ChallengerSnapshot.Stats),
             nameof(ChallengerSnapshot.SkillIds),
             nameof(ChallengerSnapshot.EquippedArtifactIds),
-            nameof(ChallengerSnapshot.AttemptsOnThisGuardian),
+            nameof(ChallengerSnapshot.Eased),
         };
 
         [Test]
@@ -33,13 +33,13 @@ namespace TheArtifacts.Core.Tests.Guardian
         public void Snapshot_CopiesInputs()
         {
             var skills = new[] { "skill-a" };
-            var snapshot = new ChallengerSnapshot(null, skills, null, 2);
+            var snapshot = new ChallengerSnapshot(null, skills, null, true);
             skills[0] = "changed";
 
             Assert.That(snapshot.SkillIds, Is.EqualTo(new[] { "skill-a" }));
             Assert.That(snapshot.Stats, Is.Empty);
             Assert.That(snapshot.EquippedArtifactIds, Is.Empty);
-            Assert.That(snapshot.AttemptsOnThisGuardian, Is.EqualTo(2));
+            Assert.That(snapshot.Eased, Is.True);
         }
     }
 }
