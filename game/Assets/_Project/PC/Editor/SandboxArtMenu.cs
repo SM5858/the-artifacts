@@ -1,0 +1,177 @@
+using System.IO;
+using System.Linq;
+using TheArtifacts.PC.Combat;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+
+namespace TheArtifacts.PC.Editor
+{
+    /// <summary>
+    /// Turns the CC0 texture sets in Art/Materials into URP Lit materials and a <see cref="SandboxArt"/> asset,
+    /// and gives it to the combat sandbox. Each set is a folder named Name with Name_BaseColor, Name_Normal,
+    /// Name_Roughness, and optionally Name_Metallic and Name_AO. Sources and licenses: GDD Section 12.
+    /// </summary>
+    public static class SandboxArtMenu
+    {
+        public const string MaterialsRoot = "Assets/_Project/Art/Materials";
+        public const string ArtAssetPath = "Assets/_Project/Art/SandboxArt.asset";
+
+        // (texture set, tiling)
+        static readonly (string Name, float Tiling)[] Sets =
+        {
+            ("StoneFloor", 10f), ("OakWood", 1f), ("GolemStone", 1f), ("AgedBronze", 1f), ("DarkBronze", 1f),
+        };
+
+        [MenuItem("The Artifacts/Build Sandbox Materials")]
+        public static void Build()
+        {
+            foreach (var (name, tiling) in Sets) BuildMaterial(name, tiling);
+
+            var art = AssetDatabase.LoadAssetAtPath<SandboxArt>(ArtAssetPath);
+            if (art == null)
+            {
+                art = ScriptableObject.CreateInstance<SandboxArt>();
+                AssetDatabase.CreateAsset(art, ArtAssetPath);
+            }
+            art.Arena = MaterialAt("StoneFloor");
+            art.Bookshelf = MaterialAt("OakWood");
+            art.Guardians = new[]
+            {
+                new SandboxArt.GuardianMaterial { GuardianId = "alma_mater", Material = MaterialAt("AgedBronze") },
+                new SandboxArt.GuardianMaterial { GuardianId = "columbia_lion", Material = MaterialAt("DarkBronze") },
+                new SandboxArt.GuardianMaterial { GuardianId = "book_keeper", Material = MaterialAt("GolemStone") },
+            };
+            EditorUtility.SetDirty(art);
+            AssetDatabase.SaveAssets();
+
+            var assigned = AssignToOpenSandbox(art);
+            Debug.Log($"Built sandbox materials and {ArtAssetPath}." +
+                      (assigned ? " Assigned to the open combat sandbox scene." : " Open the combat sandbox scene and run this again to assign it."));
+        }
+
+        /// <summary>Gives the art asset to the CombatSandbox in the open scene, if there is one, and saves the scene.</summary>
+        public static bool AssignToOpenSandbox(SandboxArt art)
+        {
+            var sandbox = Object.FindFirstObjectByType<CombatSandbox>();
+            if (sandbox == null || art == null) return false;
+            var so = new SerializedObject(sandbox);
+            so.FindProperty("art").objectReferenceValue = art;
+            so.ApplyModifiedProperties();
+            EditorSceneManager.MarkSceneDirty(sandbox.gameObject.scene);
+            EditorSceneManager.SaveScene(sandbox.gameObject.scene);
+            return true;
+        }
+
+        static string Map(string name, string map) =>
+            Directory.GetFiles(Path.Combine(MaterialsRoot, name), $"{name}_{map}.*")
+                .Where(p => !p.EndsWith(".meta")).Select(p => p.Replace('\\', '/')).FirstOrDefault();
+
+        static Material MaterialAt(string name) =>
+            AssetDatabase.LoadAssetAtPath<Material>($"{MaterialsRoot}/{name}/{name}.mat");
+
+        static void BuildMaterial(string name, float tiling)
+        {
+            var baseColor = Map(name, "BaseColor");
+            var normal = Map(name, "Normal");
+            var roughness = Map(name, "Roughness");
+            var metallic = Map(name, "Metallic");
+            var ao = Map(name, "AO");
+            if (baseColor == null) { Debug.LogWarning($"No base color for {name}; skipped."); return; }
+
+            // Make sure the import settings from ArtTextureImporter are applied before the textures are used.
+            foreach (var p in new[] { baseColor, normal, roughness, metallic, ao }.Where(p => p != null))
+                AssetDatabase.ImportAsset(p, ImportAssetOptions.ForceUpdate);
+
+            var packed = roughness != null ? PackMetallicSmoothness(name, metallic, roughness) : null;
+
+            var path = $"{MaterialsRoot}/{name}/{name}.mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null)
+            {
+                mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                AssetDatabase.CreateAsset(mat, path);
+            }
+
+            mat.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(baseColor));
+            mat.SetColor("_BaseColor", Color.white);
+            mat.SetTextureScale("_BaseMap", new Vector2(tiling, tiling));
+
+            if (normal != null)
+            {
+                mat.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(normal));
+                mat.SetFloat("_BumpScale", 1f);
+                mat.EnableKeyword("_NORMALMAP");
+            }
+
+            if (packed != null)
+            {
+                // URP Lit reads metallic from R and smoothness from A of this map.
+                mat.SetTexture("_MetallicGlossMap", AssetDatabase.LoadAssetAtPath<Texture2D>(packed));
+                mat.SetFloat("_SmoothnessTextureChannel", 0f);
+                mat.SetFloat("_Smoothness", 1f);
+                mat.SetFloat("_Metallic", 1f);
+                mat.EnableKeyword("_METALLICSPECGLOSSMAP");
+            }
+
+            if (ao != null)
+            {
+                mat.SetTexture("_OcclusionMap", AssetDatabase.LoadAssetAtPath<Texture2D>(ao));
+                mat.SetFloat("_OcclusionStrength", 1f);
+                mat.EnableKeyword("_OCCLUSIONMAP");
+            }
+
+            EditorUtility.SetDirty(mat);
+        }
+
+        /// <summary>Writes Name_MetallicSmoothness.png: R = metallic (0 without a map), A = 1 − roughness.</summary>
+        static string PackMetallicSmoothness(string name, string metallicPath, string roughnessPath)
+        {
+            var rough = Load(roughnessPath);
+            var metal = metallicPath != null ? Load(metallicPath) : null;
+            if (metal != null && (metal.width != rough.width || metal.height != rough.height))
+            {
+                Debug.LogWarning($"{name}: metallic and roughness sizes differ; metallic ignored.");
+                metal = null;
+            }
+
+            var r = rough.GetPixels32();
+            var m = metal?.GetPixels32();
+            var outPixels = new Color32[r.Length];
+            for (var i = 0; i < r.Length; i++)
+                outPixels[i] = new Color32(m != null ? m[i].r : (byte)0, 0, 0, (byte)(255 - r[i].r));
+
+            var packed = new Texture2D(rough.width, rough.height, TextureFormat.RGBA32, false);
+            packed.SetPixels32(outPixels);
+            var path = $"{MaterialsRoot}/{name}/{name}_MetallicSmoothness.png";
+            File.WriteAllBytes(path, packed.EncodeToPNG());
+            Object.DestroyImmediate(packed);
+            Object.DestroyImmediate(rough);
+            if (metal != null) Object.DestroyImmediate(metal);
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            return path;
+        }
+
+        /// <summary>Reads the source file directly, so the texture's import settings do not matter.</summary>
+        static Texture2D Load(string path)
+        {
+            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false, linear: true);
+            tex.LoadImage(File.ReadAllBytes(path));
+            return tex;
+        }
+    }
+
+    /// <summary>Import settings for the texture sets: normal maps as normal maps, data maps in linear space.</summary>
+    public sealed class ArtTextureImporter : AssetPostprocessor
+    {
+        void OnPreprocessTexture()
+        {
+            if (!assetPath.StartsWith(SandboxArtMenu.MaterialsRoot)) return;
+            var importer = (TextureImporter)assetImporter;
+            var file = Path.GetFileNameWithoutExtension(assetPath);
+            if (file.EndsWith("_Normal")) importer.textureType = TextureImporterType.NormalMap;
+            else if (file.EndsWith("_Roughness") || file.EndsWith("_Metallic") || file.EndsWith("_AO") || file.EndsWith("_MetallicSmoothness"))
+                importer.sRGBTexture = false;
+        }
+    }
+}

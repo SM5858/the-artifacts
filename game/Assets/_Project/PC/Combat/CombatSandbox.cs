@@ -28,6 +28,10 @@ namespace TheArtifacts.PC.Combat
         [SerializeField] string[] customSkills = { "cleave", "slam", "charge", "embers" };
         [SerializeField] string customStrategy = "aggressive";
 
+        [Header("Art")]
+        [Tooltip("CC0 materials from The Artifacts → Build Sandbox Materials. Empty: flat graybox colors.")]
+        [SerializeField] SandboxArt art;
+
         [Header("Camera")]
         [SerializeField] float cameraDistance = 8f;
         [SerializeField] float cameraHeight = 5f;
@@ -68,6 +72,8 @@ namespace TheArtifacts.PC.Combat
         Shader _lit;
         Transform _weakPoint;
         Material _weakPointMaterial;
+        /// <summary>Textured materials show state through emission or a tint instead of a flat color.</summary>
+        bool _guardianTextured, _loreTextured;
 
         static readonly Color LoreIdle = new Color(0.45f, 0.3f, 0.15f);
         static readonly Color LoreTargeted = new Color(1f, 0.85f, 0.3f);
@@ -261,13 +267,18 @@ namespace TheArtifacts.PC.Combat
             _lit = lit;
             var unlit = Shader.Find("Universal Render Pipeline/Unlit");
 
-            var floor = Primitive(PrimitiveType.Cylinder, "Arena", Lit(lit, new Color(0.35f, 0.35f, 0.38f)));
+            var floor = Primitive(PrimitiveType.Cylinder, "Arena",
+                art != null && art.Arena != null ? art.Arena : Lit(lit, new Color(0.35f, 0.35f, 0.38f)));
             var r = GuardianRules.ArenaRadius;
             floor.localScale = new Vector3(r * 2f, 0.05f, r * 2f);
             floor.position = new Vector3(0f, -0.05f, 0f);
 
             _player = Primitive(PrimitiveType.Capsule, "Player", Lit(lit, PlayerColor));
-            _guardianMaterial = Lit(lit, GuardianIdle);
+            // A textured Guardian (stone or bronze) shows its phase by glowing instead of changing color.
+            var guardianArt = art != null ? art.ForGuardian(guardianId) : null;
+            _guardianTextured = guardianArt != null;
+            _guardianMaterial = _guardianTextured ? new Material(guardianArt) : Lit(lit, GuardianIdle);
+            if (_guardianTextured) _guardianMaterial.EnableKeyword("_EMISSION");
             _guardian = Primitive(PrimitiveType.Capsule, "Guardian", _guardianMaterial);
             _guardian.localScale = Vector3.one * 2f;
 
@@ -297,7 +308,8 @@ namespace TheArtifacts.PC.Combat
             _loreViews.Clear();
             foreach (var lore in _sim.Guardian.LoreTargets)
             {
-                var mat = Lit(_lit, LoreIdle);
+                _loreTextured = art != null && art.Bookshelf != null;
+                var mat = _loreTextured ? new Material(art.Bookshelf) : Lit(_lit, LoreIdle);
                 var shelf = Primitive(PrimitiveType.Cube, lore.Name, mat);
                 shelf.localScale = new Vector3(3f, 3f, 1f);
                 shelf.position = TelegraphMeshes.ToWorld(lore.Position, 1.5f);
@@ -333,21 +345,35 @@ namespace TheArtifacts.PC.Combat
             var f = _sim.GuardianFacing;
             if (f.LengthSquared > 1e-6f) _guardian.rotation = Quaternion.LookRotation(new Vector3(f.X, 0f, f.Y));
 
-            var color = _sim.Phase switch
+            if (_guardianTextured)
             {
-                GuardianPhase.Tell => GuardianTell,
-                GuardianPhase.Recovery => GuardianRecovery,
-                _ => _sim.IsFuryActive ? GuardianFury : GuardianIdle,
-            };
-            _guardianMaterial.SetColor("_BaseColor", color);
+                var glow = _sim.Phase switch
+                {
+                    GuardianPhase.Tell => GuardianTell * 1.5f,
+                    GuardianPhase.Recovery => GuardianRecovery,
+                    _ => _sim.IsFuryActive ? GuardianFury : Color.black,
+                };
+                _guardianMaterial.SetColor("_EmissionColor", glow);
+            }
+            else
+            {
+                var color = _sim.Phase switch
+                {
+                    GuardianPhase.Tell => GuardianTell,
+                    GuardianPhase.Recovery => GuardianRecovery,
+                    _ => _sim.IsFuryActive ? GuardianFury : GuardianIdle,
+                };
+                _guardianMaterial.SetColor("_BaseColor", color);
+            }
 
             var exposed = _sim.Guardian.WeakPoints.FirstOrDefault(wp => _sim.IsWeakPointExposed(wp.Id));
             _weakPoint.gameObject.SetActive(exposed != null);
             if (exposed != null) _weakPointMaterial.SetColor("_BaseColor", exposed.Id == _spellTarget ? LoreTargeted : LoreIdle);
 
+            var shelfIdle = _loreTextured ? Color.white : LoreIdle;  // a textured shelf keeps its wood color
             foreach (var pair in _loreViews)
                 pair.Value.mat.SetColor("_BaseColor",
-                    _sim.IsLoreSpent(pair.Key) ? LoreSpent : pair.Key == _spellTarget ? LoreTargeted : LoreIdle);
+                    _sim.IsLoreSpent(pair.Key) ? LoreSpent : pair.Key == _spellTarget ? LoreTargeted : shelfIdle);
 
             var active = new HashSet<Telegraph>(_sim.ActiveTelegraphs.Where(t => t.Area != null));
             foreach (var gone in _telegraphViews.Keys.Where(t => !active.Contains(t)).ToArray())

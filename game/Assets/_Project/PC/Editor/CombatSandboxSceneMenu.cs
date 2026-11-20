@@ -25,6 +25,8 @@ namespace TheArtifacts.PC.Editor
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath));
             EditorSceneManager.SaveScene(scene, ScenePath);
+            // Use the CC0 materials if they have been built (The Artifacts → Build Sandbox Materials).
+            SandboxArtMenu.AssignToOpenSandbox(AssetDatabase.LoadAssetAtPath<SandboxArt>(SandboxArtMenu.ArtAssetPath));
 
             var scenes = EditorBuildSettings.scenes.Where(s => s.path != ScenePath).ToList();
             scenes.Insert(0, new EditorBuildSettingsScene(ScenePath, true));

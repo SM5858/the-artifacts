@@ -223,10 +223,15 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 | *Dark Souls* | A boss telegraphs an attack and leaves a recovery opening | The readable tell and the opening after it | Stays real-time, but the fight is paced by basic attacks, skill cooldowns, and artifact effects in my own combat rules | Proprietary. Design reference only; no assets or code used. |
 
 - Cover illustration in the pitch deck: AI-generated concept art created for the pitch.
-- Prototype assets and code will be original or used under documented licenses, with terms recorded in this section before use. Asset log (source, license, where it lives) [empty so far]:
+- Prototype assets and code will be original or used under documented licenses, with terms recorded in this section before use. Asset log (source, license, where it lives):
 
   | Asset | Source | License | Location |
   |---|---|---|---|
+  | StoneFloor (arena): *Monastery Stone Floor* by Amal Kumar, 1K maps | [Poly Haven](https://polyhaven.com/a/monastery_stone_floor) | CC0 | `Art/Materials/StoneFloor` |
+  | OakWood (bookshelves): *Oak Wood Planks* by Dimitrios Savva, 1K maps | [Poly Haven](https://polyhaven.com/a/oak_wood_planks) | CC0 | `Art/Materials/OakWood` |
+  | GolemStone (Book Keeper): *Rock 030*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Rock030) | CC0 | `Art/Materials/GolemStone` |
+  | AgedBronze (Alma Mater): *Metal 017*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Metal017) | CC0 | `Art/Materials/AgedBronze` |
+  | DarkBronze (Columbia Lion): *Metal 013*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Metal013) | CC0 | `Art/Materials/DarkBronze` |
 - **Columbia names and landmarks** (Alma Mater, the Columbia Lion, the bookstore, Columbia blue) are used for the class prototype only. A public release needs the university's permission or replacement content.
 - **Concepts considered before this one:**
   - *AI Mafia* — simpler to prototype; set aside because The Artifacts connects real-world discovery with RPG progression.
