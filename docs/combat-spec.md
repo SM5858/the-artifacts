@@ -197,6 +197,19 @@ Measured after Punish was replaced by the opening and Overpower (fights run abou
 
 Reading: the scripted default (T3) is hard for a starter and comfortable for the geared build, the gap the hypothesis targets. T5 is out of reach for a 0.6 s reaction even with no misses (its shortest tells leave about 0.35 s to move), so it is for fast players; the playtest decides whether to keep it. The Book Keeper plays the same for a starter and about 15–20% slower for the geared build (no Lion's Fang bonus); Alma Mater runs about 25–50% longer (Lightning Bolt barely hurts it). With the mixed skill set (Slam, Shock Rings, Embers) a starter loses from T3 even without misses, because Embers lands on the player three times in a row.
 
+### 4.8 Arena and movement [DECIDED 2026-11-20]
+
+Approved after playing the sandbox; art scales to these values.
+
+| Rule | Value | Why |
+|---|---|---|
+| Arena | Circle, radius 20 m | Room for Charge (15 m) and the Book Keeper's bookshelves (14–16 m behind its start) |
+| Start distance | Player 12 m from the Guardian | Spells reach at once; melee takes a few steps |
+| Guardian move speed | 5 m/s (player 7 m/s) | The player can always outrun it, so every hit can be evaded |
+| Chase stop | 2.5 m | Inside melee range (3 m), so both sides can hit once it stops |
+| First skill | One strategy interval into the fight (8 s for Steady) | Time to close in and set up |
+| Charge | Leaves the Guardian at the end of its line | The charge animation moves the Guardian; it is not in place |
+
 ## 5. Rewards (Q5)
 
 ### 5.1 Drop on a win
@@ -285,7 +298,6 @@ Still open (GDD Q14): a power budget per grade.
 
 ## 7. Still open
 
-- **Implementation defaults (in `Core/Combat/Content.cs`, not yet approved):** Guardian move speed 5 m/s (slower than the player's 7 m/s); Guardian stops chasing at 2.5 m; circular arena radius 20 m; player starts 12 m away; Charge leaves the Guardian at the end of its line; a strategy's first skill comes one interval into the fight.
 - **Bot result (first engine build, 2026-11-16):** a bot that dodges every telegraph wins every tier with both builds (starter T3 in 75 s, geared T5 in 70 s), even with a 0.6 s reaction delay, because the default skills' tells are long enough to escape. The "scripted default is very hard for a starter" reading in 4.7 depends on human mistakes; measure telegraph hits per attempt in the first playtest before retuning.
 
 - Exact animation timings will shift tells by ±0.2 s once the Guardian model is animated; recheck readability in a build.

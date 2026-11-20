@@ -107,8 +107,7 @@ namespace TheArtifacts.Core.Combat
     }
 
     /// <summary>
-    /// Guardian rules from Combat Spec 4.1. Values marked "implementation default" are not in the spec
-    /// and are for the Design Lead to confirm.
+    /// Guardian rules from Combat Spec 4.1; arena and movement from 4.8 (approved 2026-11-20).
     /// </summary>
     public static class GuardianRules
     {
@@ -116,13 +115,13 @@ namespace TheArtifacts.Core.Combat
         public const float AutoSwing = 2.5f;
         public const float MeleeRange = 3f;
 
-        /// <summary>Implementation default: slower than the player's 7 m/s so evading is always possible.</summary>
+        /// <summary>Combat Spec 4.8: slower than the player's 7 m/s so evading is always possible.</summary>
         public const float MoveSpeed = 5f;
-        /// <summary>Implementation default: where the Guardian stops when chasing.</summary>
+        /// <summary>Combat Spec 4.8: where the Guardian stops when chasing.</summary>
         public const float ChaseStopDistance = 2.5f;
-        /// <summary>Implementation default: circular arena radius.</summary>
+        /// <summary>Combat Spec 4.8: circular arena radius.</summary>
         public const float ArenaRadius = 20f;
-        /// <summary>Implementation default: player starts this far from the Guardian.</summary>
+        /// <summary>Combat Spec 4.8: player starts this far from the Guardian.</summary>
         public const float StartDistance = 12f;
     }
 
