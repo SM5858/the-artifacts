@@ -55,7 +55,7 @@ namespace TheArtifacts.Core.Combat
         public const float FireBoltBaseDamage = 60f;
         public const float FireBoltCoefficient = 1.0f;
         public const float FireBoltManaCost = 20f;
-        public const float FireBoltRange = 15f;
+        public const float FireBoltRange = 25f;
 
         /// <summary>Diminishing returns: 0 at 0, 50% at <see cref="StatK"/>, never 100%.</summary>
         public static float Rating(float value) => value <= 0f ? 0f : value / (value + StatK);

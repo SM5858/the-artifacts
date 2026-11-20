@@ -242,7 +242,7 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That(sim.IsLoreSpent("bookshelf_center"), Is.False);
         }
 
-        [TestCase("book_keeper", "bookshelf_center", "range")]  // 28 m from the start, beyond the 15 m range
+        [TestCase("book_keeper", "bookshelf_center", "range")]  // 28 m from the start, beyond the 25 m range
         [TestCase("columbia_lion", "bookshelf_center", "target")]  // only the Book Keeper has bookshelves
         public void FireBolt_AtALoreTarget_NeedsRangeAndAKnownTarget(string guardianId, string target, string reason)
         {
