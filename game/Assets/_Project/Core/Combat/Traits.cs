@@ -75,6 +75,23 @@ namespace TheArtifacts.Core.Combat
         public IReadOnlyCollection<GuardianStatus> Immunities = new GuardianStatus[0];
         /// <summary>Objects in the arena tied to the place's lore (GDD 6.7). Fixed for the Guardian, like immunities.</summary>
         public IReadOnlyList<LoreTarget> LoreTargets = new LoreTarget[0];
+        /// <summary>Lore weak points on the Guardian's body (GDD 6.7), such as Alma Mater's hidden owl.</summary>
+        public IReadOnlyList<WeakPoint> WeakPoints = new WeakPoint[0];
+    }
+
+    /// <summary>
+    /// A weak point on the Guardian that shows itself on a fixed schedule: first at <see cref="FirstAppearance"/>,
+    /// then every <see cref="Interval"/> seconds, for <see cref="Duration"/> seconds each time. While it is out,
+    /// player attacks aimed at it deal <see cref="DamageMultiplier"/> × damage. Aimed at it while hidden, they hit the body.
+    /// </summary>
+    public sealed class WeakPoint
+    {
+        public string Id;
+        public string Name;
+        public float FirstAppearance;
+        public float Interval;
+        public float Duration;
+        public float DamageMultiplier;
     }
 
     /// <summary>

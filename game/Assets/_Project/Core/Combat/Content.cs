@@ -347,7 +347,12 @@ namespace TheArtifacts.Core.Combat
         public static readonly IReadOnlyList<GuardianProfile> Guardians = new[]
         {
             new GuardianProfile { Id = "alma_mater", Name = "Alma Mater", Type = CreatureType.Construct, Res = 400f,
-                Landmark = "Alma Mater statue", LootPool = new[] { "wreath_of_alma_mater", "staff_of_alma_mater" } },
+                Landmark = "Alma Mater statue", LootPool = new[] { "wreath_of_alma_mater", "staff_of_alma_mater" },
+                // Lore (GDD 6.7): a small owl hides in the folds of the statue's robe. When it peeks out, strike it.
+                WeakPoints = new[]
+                {
+                    new WeakPoint { Id = "owl", Name = "Owl", FirstAppearance = 12f, Interval = 15f, Duration = 3f, DamageMultiplier = 2f },
+                } },
             new GuardianProfile { Id = "columbia_lion", Name = "Columbia Lion", Type = CreatureType.Beast,
                 Landmark = "Columbia Lion statue", LootPool = new[] { "columbia_lions_fang", "columbia_lions_pelt" } },
             new GuardianProfile { Id = "book_keeper", Name = "Book Keeper", Type = CreatureType.Undead,

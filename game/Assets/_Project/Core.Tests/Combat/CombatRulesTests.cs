@@ -255,6 +255,66 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo($"FireBolt:{reason}"));
         }
 
+        // ---------- Weak points: Alma Mater's owl (GDD 6.7) ----------
+
+        static CombatSim AlmaMater() => new CombatSim(PrototypeContent.StarterBuild, PrototypeContent.DefaultSetup, seed: 1,
+            PrototypeContent.GuardianById("alma_mater"));
+
+        [Test]
+        public void Owl_PeeksOutOnItsSchedule()
+        {
+            var sim = AlmaMater();
+            var owl = sim.FindWeakPoint("owl");
+            bool At(float t) { RunUntil(sim, s => s.Time >= t, 60f); return sim.IsWeakPointExposed("owl"); }
+
+            Assert.That(At(owl.FirstAppearance - 0.5f), Is.False);
+            Assert.That(At(owl.FirstAppearance + 0.5f), Is.True);
+            Assert.That(At(owl.FirstAppearance + owl.Duration + 0.5f), Is.False);
+            Assert.That(At(owl.FirstAppearance + owl.Interval + 0.5f), Is.True);
+        }
+
+        /// <summary>Two identical fights up to <paramref name="time"/>; then Heavy Strike, aimed at the body and at the owl.</summary>
+        static (float Body, float Owl, CombatSim OwlSim) HeavyStrikeAt(float time)
+        {
+            float Strike(string target, out CombatSim sim)
+            {
+                sim = AlmaMater();
+                Engage(sim);
+                RunUntil(sim, s => s.Time >= time, 60f, s => new PlayerInput((s.GuardianPosition - s.PlayerPosition).Normalized() * 0.01f));
+                var before = DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike");
+                sim.Step(Dt, new PlayerInput(Vec2.Zero, Ability.HeavyStrike, target: target));
+                return DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike") - before;
+            }
+            var body = Strike(null, out _);
+            var owl = Strike("owl", out var owlSim);
+            return (body, owl, owlSim);
+        }
+
+        [Test]
+        public void Owl_WhileOut_AttacksAimedAtItDealDoubleDamage()
+        {
+            var (body, owl, sim) = HeavyStrikeAt(12.5f);
+            Assert.That(body, Is.GreaterThan(0f));
+            Assert.That(owl, Is.EqualTo(2f * body).Within(1e-3));
+            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.WeakPointHit && e.Id == "owl"));
+        }
+
+        [Test]
+        public void Owl_WhileHidden_AttacksAimedAtItHitTheBody()
+        {
+            var (body, owl, sim) = HeavyStrikeAt(16f);
+            Assert.That(body, Is.GreaterThan(0f));
+            Assert.That(owl, Is.EqualTo(body).Within(1e-3));
+            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.WeakPointHit), Is.False);
+        }
+
+        [Test]
+        public void Owl_SpellsCanAimAtIt()
+        {
+            var sim = AlmaMater();
+            Assert.That(sim.BlockReason(Ability.LightningBolt, "owl"), Is.Null);
+        }
+
         [Test]
         public void Agility_ShortensCooldowns()
         {

@@ -41,7 +41,7 @@ namespace TheArtifacts.Core.Tests.Combat
     /// direction, guards (or uses an equipment skill on S) for hits it cannot escape, punishes recovery
     /// windows, keeps melee uptime, and casts Lightning Bolt when out of melee or when melee skills are down.
     /// A bot that knows the place's lore keeps the fight within reach of an unburned lore target and answers
-    /// a noticed tell by setting it alight (GDD 6.7).
+    /// a noticed tell by setting it alight, and aims at an exposed weak point (GDD 6.7).
     /// </summary>
     static class TestBot
     {
@@ -56,6 +56,9 @@ namespace TheArtifacts.Core.Tests.Combat
         {
             var input = Decide(sim, reactionTime, missed);
             if (!knowsLore) return input;
+            var exposed = sim.Guardian.WeakPoints.FirstOrDefault(w => sim.IsWeakPointExposed(w.Id));
+            if (exposed != null) input = new PlayerInput(input.Move, input.Ability, input.Equipment, exposed.Id);
+            if (sim.Guardian.LoreTargets.Count == 0) return input;
             if (sim.Phase != GuardianPhase.Tell)
             {
                 // Fight within reach of an unburned shelf; the Guardian follows the player there.

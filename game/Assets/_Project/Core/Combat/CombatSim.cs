@@ -12,7 +12,7 @@ namespace TheArtifacts.Core.Combat
 
     /// <summary>
     /// One tick of player input. Move is a direction on the floor; length above 1 is clamped.
-    /// Target is a lore target id for a spell (GDD 6.7); null means the Guardian.
+    /// Target is a lore target id for a spell, or a weak point id for any attack (GDD 6.7); null means the Guardian.
     /// </summary>
     public readonly struct PlayerInput
     {
@@ -74,6 +74,8 @@ namespace TheArtifacts.Core.Combat
         LoreTriggered,
         /// <summary>A spell of another element hit a lore target and did nothing; Id is "target:ability".</summary>
         LoreNoEffect,
+        /// <summary>A player attack struck an exposed weak point; Id is the weak point, Amount the damage dealt.</summary>
+        WeakPointHit,
     }
 
     /// <summary>Feedback for the UI and the per-attempt trace.</summary>
@@ -159,6 +161,8 @@ namespace TheArtifacts.Core.Combat
         readonly HashSet<TraitPart> _usedOncePerFight = new HashSet<TraitPart>();
         readonly HashSet<string> _spentLore = new HashSet<string>();
         float _loreOpeningEnd = float.NegativeInfinity;
+        /// <summary>This tick's aimed weak point, or null.</summary>
+        WeakPoint _aimedWeakPoint;
 
         readonly GuardianStrategy _strategy;
         readonly Random _rng;
@@ -220,6 +224,18 @@ namespace TheArtifacts.Core.Combat
         /// <summary>This Guardian's lore target with the given id, or null.</summary>
         public LoreTarget FindLoreTarget(string id) => Guardian.LoreTargets.FirstOrDefault(t => t.Id == id);
 
+        /// <summary>This Guardian's weak point with the given id, or null.</summary>
+        public WeakPoint FindWeakPoint(string id) => Guardian.WeakPoints.FirstOrDefault(w => w.Id == id);
+
+        /// <summary>Whether the weak point is out right now (its fixed schedule).</summary>
+        public bool IsWeakPointExposed(string id)
+        {
+            var w = FindWeakPoint(id);
+            if (w == null) return false;
+            var t = Time - w.FirstAppearance;
+            return t >= 0f && t % w.Interval < w.Duration;
+        }
+
         /// <summary>A lore target works once per fight.</summary>
         public bool IsLoreSpent(string id) => _spentLore.Contains(id);
 
@@ -234,6 +250,7 @@ namespace TheArtifacts.Core.Combat
             Time += dt;
             TickPlayerTimers(dt);
             MovePlayer(input.Move, dt);
+            _aimedWeakPoint = input.Target != null ? FindWeakPoint(input.Target) : null;
             if (input.Ability != Ability.None) TryUse(input.Ability, input.Target);
             if (input.Equipment != EquipmentKey.None) TryUseEquipment(input.Equipment);
             PlayerAutoAttack();
@@ -313,6 +330,7 @@ namespace TheArtifacts.Core.Combat
         /// </summary>
         public string BlockReason(Ability ability, string target = null)
         {
+            if (target != null && FindWeakPoint(target) != null) target = null;  // a weak point is on the Guardian
             if (CooldownRemaining(ability) > 0f) return "cooldown";
             if (GcdRemaining > 0f) return "gcd";
             if ((ability == Ability.HeavyStrike || ability == Ability.Overpower) && !InMeleeRange) return "range";
@@ -333,7 +351,7 @@ namespace TheArtifacts.Core.Combat
 
         void TryUse(Ability ability, string target = null)
         {
-            if (!IsSpell(ability)) target = null;
+            if (!IsSpell(ability) || (target != null && FindWeakPoint(target) != null)) target = null;
             var reason = BlockReason(ability, target);
             if (reason != null)
             {
@@ -424,11 +442,14 @@ namespace TheArtifacts.Core.Combat
             var chance = CritChance;
             var crit = canCrit && chance > 0f && _rng.NextDouble() < chance;
             if (crit) amount *= PlayerRules.CritMultiplier;
+            var weakPoint = canCrit && _aimedWeakPoint != null && IsWeakPointExposed(_aimedWeakPoint.Id) ? _aimedWeakPoint : null;
+            if (weakPoint != null) amount *= weakPoint.DamageMultiplier;
             var resist = type == DamageType.Physical ? Guardian.Def + Tier.Def : Guardian.Res + Tier.Res;
             amount *= _dealtVsType * (1f - PlayerRules.Rating(resist));
             GuardianHp = Math.Max(0f, GuardianHp - amount);
             Emit(CombatEventType.GuardianDamaged, source, amount);
             if (crit) Emit(CombatEventType.CriticalHit, source, amount);
+            if (weakPoint != null) Emit(CombatEventType.WeakPointHit, weakPoint.Id, amount);
         }
 
         void HealPlayer(float amount, string source)

@@ -50,7 +50,10 @@ namespace TheArtifacts.PC.Combat
         int _wins;
         string _reward;
         Vec2? _moveTarget;
-        /// <summary>A lore target picked with left-click; spells (5, 6) go to it instead of the Guardian. Null is the Guardian.</summary>
+        /// <summary>
+        /// Picked with left-click: a lore target (spells 5 and 6 go to it) or a weak point on the Guardian (every attack
+        /// aims at it). Null is the Guardian's body.
+        /// </summary>
         string _spellTarget;
         int _eventCursor;
         readonly List<string> _log = new List<string>();
@@ -63,6 +66,8 @@ namespace TheArtifacts.PC.Combat
             new Dictionary<Telegraph, (GameObject, Material)>();
         readonly Dictionary<string, (GameObject go, Material mat)> _loreViews = new Dictionary<string, (GameObject, Material)>();
         Shader _lit;
+        Transform _weakPoint;
+        Material _weakPointMaterial;
 
         static readonly Color LoreIdle = new Color(0.45f, 0.3f, 0.15f);
         static readonly Color LoreTargeted = new Color(1f, 0.85f, 0.3f);
@@ -189,6 +194,13 @@ namespace TheArtifacts.PC.Combat
             if (!new Plane(Vector3.up, Vector3.zero).Raycast(ray, out var enter)) return;
             var hit = ray.GetPoint(enter);
             var point = new Vec2(hit.x, hit.z);
+            // Clicking the Guardian while its weak point is out aims at the weak point; it stays aimed until Esc.
+            var weakPoint = _sim.Guardian.WeakPoints.FirstOrDefault(wp => _sim.IsWeakPointExposed(wp.Id));
+            if (weakPoint != null && Vec2.Distance(_sim.GuardianPosition, point) <= 2.5f)
+            {
+                _spellTarget = weakPoint.Id;
+                return;
+            }
             _spellTarget = _sim.Guardian.LoreTargets
                 .Where(t => !_sim.IsLoreSpent(t.Id) && Vec2.Distance(t.Position, point) <= 2f)
                 .OrderBy(t => Vec2.Distance(t.Position, point))
@@ -255,6 +267,13 @@ namespace TheArtifacts.PC.Combat
             nose.localPosition = new Vector3(0f, 0.3f, 0.5f);
             nose.localScale = new Vector3(0.3f, 0.2f, 0.4f);
 
+            // Alma Mater's owl: a small sphere on the Guardian's back, shown only while it is out.
+            _weakPointMaterial = Lit(lit, LoreIdle);
+            _weakPoint = Primitive(PrimitiveType.Sphere, "Owl", _weakPointMaterial);
+            _weakPoint.SetParent(_guardian, false);
+            _weakPoint.localPosition = new Vector3(0.35f, 0.1f, -0.45f);
+            _weakPoint.localScale = Vector3.one * 0.3f;
+
             _moveMarker = Primitive(PrimitiveType.Cylinder, "Move Target", Lit(lit, PlayerColor));
             _moveMarker.localScale = new Vector3(0.5f, 0.01f, 0.5f);
 
@@ -312,6 +331,10 @@ namespace TheArtifacts.PC.Combat
             };
             _guardianMaterial.SetColor("_BaseColor", color);
 
+            var exposed = _sim.Guardian.WeakPoints.FirstOrDefault(wp => _sim.IsWeakPointExposed(wp.Id));
+            _weakPoint.gameObject.SetActive(exposed != null);
+            if (exposed != null) _weakPointMaterial.SetColor("_BaseColor", exposed.Id == _spellTarget ? LoreTargeted : LoreIdle);
+
             foreach (var pair in _loreViews)
                 pair.Value.mat.SetColor("_BaseColor",
                     _sim.IsLoreSpent(pair.Key) ? LoreSpent : pair.Key == _spellTarget ? LoreTargeted : LoreIdle);
@@ -361,6 +384,7 @@ namespace TheArtifacts.PC.Combat
                     CombatEventType.CriticalHit => "  critical!",
                     CombatEventType.StatusApplied => $"Guardian {e.Id.ToLowerInvariant()}",
                     CombatEventType.StatusResisted => $"Guardian resists {e.Id.ToLowerInvariant()}",
+                    CombatEventType.WeakPointHit => $"  {_sim.FindWeakPoint(e.Id)?.Name.ToLowerInvariant()} struck!",
                     CombatEventType.LoreTriggered => $"The {_sim.FindLoreTarget(e.Id)?.Name.ToLowerInvariant()} burns!",
                     CombatEventType.LoreNoEffect => $"Nothing happens to the {_sim.FindLoreTarget(e.Id.Split(':')[0])?.Name.ToLowerInvariant()}",
                     CombatEventType.Win => "Guardian defeated",
@@ -442,8 +466,8 @@ namespace TheArtifacts.PC.Combat
                 $"{build} (gear {_sim.Build.GearScore})   {_sim.Time:0.0}s\n" +
                 $"Guardian: {_sim.Setup}\n" +
                 "Right-click move   1 Heavy  2 Guard  3 Lunge  4 Overpower  5 Lightning Bolt  6 Fire Bolt\n" +
-                "Left-click a bookshelf to aim spells at it (Esc: back to the Guardian)" +
-                (_spellTarget != null ? $"   Target: {_sim.FindLoreTarget(_spellTarget).Name} ({_spellTarget})" : "") + "\n" +
+                "Left-click a bookshelf or something on the Guardian to aim at it (Esc: back to the Guardian)" +
+                (_spellTarget != null ? $"   Target: {_sim.FindLoreTarget(_spellTarget)?.Name ?? _sim.FindWeakPoint(_spellTarget)?.Name} ({_spellTarget})" : "") + "\n" +
                 "Equipment skills: Q W E / A S D / X C" + EquipmentSkillList(), _label);
             GUI.Label(new Rect(16f, h - 190f, 360f, 170f), string.Join("\n", _log), _label);
 

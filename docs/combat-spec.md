@@ -157,6 +157,12 @@ Enrage is a **per-Guardian property, off by default.** The prototype's open Guar
 |---|---|---|---|
 | Book Keeper | 3 bookshelves behind its start, at (−8, 14), (0, 16), (8, 14) | Fire | Fear 6 s: cancels the current skill, no attacks, and counts as an opening (+50% crit chance) |
 
+**Weak points [DECIDED 2026-11-20] (GDD 6.7):** a lore spot on the Guardian's body that comes out on a fixed schedule (not part of the adaptive setup). While it is out, any player attack aimed at it (melee, auto-attacks, spells) deals more damage; aimed at it while it hides, attacks hit the body. Reflects and other trait damage are not aimed. In the sandbox, left-click the Guardian while the weak point shows to aim at it; Esc aims back at the body.
+
+| Guardian | Weak point | Schedule [PROPOSED] | Effect |
+|---|---|---|---|
+| Alma Mater | Owl hidden in the robe | first at 12 s, then every 15 s, out 3 s | ×2 damage |
+
 **Status immunities [DECIDED 2026-11-18]** work the same way: a per-Guardian property that fits its identity (for example, a Lich immune to fear, a Golem immune to petrify), never part of the adaptive setup. The prototype Guardian has none.
 
 ### 4.6 Tuning range by challenger strength (open Guardian)
