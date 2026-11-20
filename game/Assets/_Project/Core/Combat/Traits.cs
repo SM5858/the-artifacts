@@ -73,6 +73,22 @@ namespace TheArtifacts.Core.Combat
         /// <summary>Artifact ids a win here can give (GDD 6.5, Combat Spec 5.3).</summary>
         public IReadOnlyList<string> LootPool = new string[0];
         public IReadOnlyCollection<GuardianStatus> Immunities = new GuardianStatus[0];
+        /// <summary>Objects in the arena tied to the place's lore (GDD 6.7). Fixed for the Guardian, like immunities.</summary>
+        public IReadOnlyList<LoreTarget> LoreTargets = new LoreTarget[0];
+    }
+
+    /// <summary>
+    /// An arena object that a spell of the right element can hit once per fight to put a status on the Guardian
+    /// (the Book Keeper's bookshelves: fire causes fear). Other elements have no effect, so the player can learn by trying.
+    /// </summary>
+    public sealed class LoreTarget
+    {
+        public string Id;
+        public string Name;
+        public Vec2 Position;
+        public Element Element;
+        public GuardianStatus Status;
+        public float Duration;
     }
 
     public sealed class TraitEffect

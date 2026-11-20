@@ -170,6 +170,87 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("LightningBolt:mana"));
         }
 
+        // ---------- Fire Bolt and lore targets (Combat Spec 3.2, GDD 6.7) ----------
+
+        static CombatSim BookKeeper() => new CombatSim(PrototypeContent.StarterBuild, PrototypeContent.DefaultSetup, seed: 1,
+            PrototypeContent.GuardianById("book_keeper"));
+
+        static PlayerInput Cast(Ability ability, string target) => new PlayerInput(Vec2.Zero, ability, target: target);
+
+        /// <summary>Walks toward a bookshelf until a spell can reach it.</summary>
+        static LoreTarget WalkIntoRangeOf(CombatSim sim, string id)
+        {
+            var shelf = sim.FindLoreTarget(id);
+            RunUntil(sim, s => Vec2.Distance(s.PlayerPosition, shelf.Position) <= PlayerRules.FireBoltRange - 0.5f, 5f,
+                s => new PlayerInput((shelf.Position - s.PlayerPosition).Normalized()));
+            return shelf;
+        }
+
+        [Test]
+        public void FireBolt_DamagesTheGuardian()  // 60 + 1.0 × Intelligence 40 = 100, only the tier's Res
+        {
+            var sim = BookKeeper();
+            Use(sim, Ability.FireBolt);
+
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "fire_bolt"),
+                Is.EqualTo(100f * (1f - PlayerRules.Rating(PrototypeContent.Tier("T3").Res))).Within(1e-3));
+            Assert.That(sim.PlayerMp, Is.EqualTo(80f).Within(0.1f));
+        }
+
+        [Test]
+        public void FireBolt_OnABookshelf_FearsTheBookKeeper_AndInterruptsItsTell()
+        {
+            var sim = BookKeeper();
+            WalkIntoRangeOf(sim, "bookshelf_center");
+            RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 15f);
+            Assert.That(sim.Phase, Is.EqualTo(GuardianPhase.Tell));
+            var hp = sim.GuardianHp;
+            var autos = DamageTo(sim, CombatEventType.GuardianDamaged, "auto");
+
+            sim.Step(Dt, Cast(Ability.FireBolt, "bookshelf_center"));
+
+            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.TellInterrupted));
+            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.LoreTriggered && e.Id == "bookshelf_center"));
+            Assert.That(sim.Phase, Is.EqualTo(GuardianPhase.Incapacitated));
+            Assert.That(sim.ActiveStatus, Is.EqualTo(GuardianStatus.Fear));
+            Assert.That(sim.ActiveTelegraphs, Is.Empty);
+            Assert.That(sim.IsLoreSpent("bookshelf_center"));
+            Assert.That(sim.GuardianHp, Is.EqualTo(hp - (DamageTo(sim, CombatEventType.GuardianDamaged, "auto") - autos)).Within(1e-3),
+                "the bolt hits the shelf, not the Guardian");
+
+            // Fear lasts its duration, then the Guardian fights again; a burned shelf cannot be used twice.
+            RunFor(sim, PrototypeContent.BookshelfFearDuration + 0.1f);
+            Assert.That(sim.Phase, Is.Not.EqualTo(GuardianPhase.Incapacitated));
+            RunFor(sim, PlayerRules.FireBoltCooldown);
+            sim.Step(Dt, Cast(Ability.FireBolt, "bookshelf_center"));
+            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("FireBolt:target"));
+        }
+
+        [Test]
+        public void LightningBolt_OnABookshelf_HasNoEffect()
+        {
+            var sim = BookKeeper();
+            WalkIntoRangeOf(sim, "bookshelf_center");
+
+            sim.Step(Dt, Cast(Ability.LightningBolt, "bookshelf_center"));
+
+            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.LoreNoEffect && e.Id == "bookshelf_center:LightningBolt"));
+            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.StatusApplied), Is.False);
+            Assert.That(sim.IsLoreSpent("bookshelf_center"), Is.False);
+        }
+
+        [TestCase("book_keeper", "bookshelf_center", "range")]  // 28 m from the start, beyond the 15 m range
+        [TestCase("columbia_lion", "bookshelf_center", "target")]  // only the Book Keeper has bookshelves
+        public void FireBolt_AtALoreTarget_NeedsRangeAndAKnownTarget(string guardianId, string target, string reason)
+        {
+            var sim = new CombatSim(PrototypeContent.StarterBuild, PrototypeContent.DefaultSetup, seed: 1,
+                PrototypeContent.GuardianById(guardianId));
+
+            sim.Step(Dt, Cast(Ability.FireBolt, target));
+
+            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo($"FireBolt:{reason}"));
+        }
+
         [Test]
         public void Agility_ShortensCooldowns()
         {

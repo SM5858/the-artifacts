@@ -40,6 +40,7 @@ namespace TheArtifacts.Core.Tests.Combat
     /// A simple competent player for balance smoke tests: steps out of telegraphs by the quickest
     /// direction, guards (or uses an equipment skill on S) for hits it cannot escape, punishes recovery
     /// windows, keeps melee uptime, and casts Lightning Bolt when out of melee or when melee skills are down.
+    /// A bot that knows the place's lore also answers a noticed tell by setting a lore target alight (GDD 6.7).
     /// </summary>
     static class TestBot
     {
@@ -48,6 +49,16 @@ namespace TheArtifacts.Core.Tests.Combat
             .ToArray();
 
         public static PlayerInput Decide(CombatSim sim) => Decide(sim, 0f, null);
+
+        /// <param name="knowsLore">Whether the bot uses lore targets: Fire Bolt on a bookshelf when it notices a tell.</param>
+        public static PlayerInput Decide(CombatSim sim, float reactionTime, ISet<Telegraph> missed, bool knowsLore)
+        {
+            var input = Decide(sim, reactionTime, missed);
+            if (!knowsLore || sim.Phase != GuardianPhase.Tell) return input;
+            var noticed = sim.ActiveTelegraphs.Any(t => sim.Time - (t.HitTime - t.Tell) >= reactionTime && (missed == null || !missed.Contains(t)));
+            var lore = sim.Guardian.LoreTargets.FirstOrDefault(t => sim.BlockReason(Ability.FireBolt, t.Id) == null);
+            return noticed && lore != null ? new PlayerInput(input.Move, Ability.FireBolt, input.Equipment, lore.Id) : input;
+        }
 
         /// <param name="reactionTime">Seconds after a telegraph appears before the bot notices it.</param>
         /// <param name="missed">Telegraphs the bot fails to notice at all.</param>
@@ -113,7 +124,8 @@ namespace TheArtifacts.Core.Tests.Combat
 
         /// <param name="missChance">Chance the bot never notices a given telegraph, standing in for human mistakes.</param>
         public static CombatSim Play(PlayerBuild build, GuardianSetup setup, int seed,
-            float reactionTime = 0f, float maxSeconds = 600f, GuardianProfile guardian = null, float missChance = 0f)
+            float reactionTime = 0f, float maxSeconds = 600f, GuardianProfile guardian = null, float missChance = 0f,
+            bool knowsLore = false)
         {
             var sim = new CombatSim(build, setup, seed, guardian);
             var rng = new Random(seed * 7919 + 17);
@@ -123,7 +135,7 @@ namespace TheArtifacts.Core.Tests.Combat
             {
                 foreach (var t in s.ActiveTelegraphs)
                     if (seen.Add(t) && rng.NextDouble() < missChance) missed.Add(t);
-                return Decide(s, reactionTime, missed);
+                return Decide(s, reactionTime, missed, knowsLore);
             });
             return sim;
         }

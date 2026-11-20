@@ -56,6 +56,7 @@ Both builds use the same abilities, so a tester learns one control scheme. The b
 | 3 | Lunge | 10 s | Dash up to 8 m to the Guardian, 1.0 × Strength | switch tactics (re-engage after evading) |
 | 4 | Overpower (ultimate) **[PROPOSED 2026-11-19]** | 45 s | 8.0 × Strength, melee. Best saved for an opening, where it is likely to crit | commit (rewards reading tells) |
 | 5 | Lightning Bolt **[DECIDED 2026-11-19]** | 8 s | Magic: 100 + 1.5 × Intelligence (useful at any Intelligence), range 15 m, costs 30 MP. Strong against most Guardians, nearly useless against Constructs (high Res) | commit at range |
+| 6 | Fire Bolt **[DECIDED 2026-11-19; numbers PROPOSED]** | 6 s | Magic: 60 + 1.0 × Intelligence, range 15 m, costs 20 MP. Weaker than Lightning Bolt; its value is fire, which sets lore targets alight (4.5) | commit at range, or aim at a lore target |
 | Right-click | Move | — | Run to the clicked point (hold to steer); walk out of telegraphed areas | evade |
 
 **Equipment-skill keys [DECIDED 2026-11-17].** A skill granted by an equipped artifact (GDD Section 6.6) is cast with the key of the slot it is worn in. The keys follow the body: top row head and hands, middle row torso, bottom row feet. WASD is no longer movement.
@@ -149,6 +150,12 @@ Enrage is a **per-Guardian property, off by default.** The prototype's open Guar
 | Alma Mater | Construct | 0 | 400 (80%) **[DECIDED 2026-11-19]** | none |
 | Columbia Lion | Beast | 0 | 0 | none |
 | Book Keeper | Undead | 0 | 0 | none |
+
+**Lore targets [DECIDED 2026-11-19] (GDD 6.7):** arena objects fixed to a Guardian, like its immunities, never part of the adaptive setup. A spell (5 or 6) can aim at one instead of the Guardian; a spell of the target's element spends it (once per fight) and puts its status on the Guardian, and any other element does nothing. In the sandbox, left-click a target to aim at it and Esc to aim back at the Guardian.
+
+| Guardian | Lore targets | Element | Effect |
+|---|---|---|---|
+| Book Keeper | 3 bookshelves behind its start, at (−8, 14), (0, 16), (8, 14) | Fire | Fear 4 s: cancels the current skill, no attacks |
 
 **Status immunities [DECIDED 2026-11-18]** work the same way: a per-Guardian property that fits its identity (for example, a Lich immune to fear, a Golem immune to petrify), never part of the adaptive setup. The prototype Guardian has none.
 

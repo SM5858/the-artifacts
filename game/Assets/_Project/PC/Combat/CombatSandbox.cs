@@ -50,6 +50,8 @@ namespace TheArtifacts.PC.Combat
         int _wins;
         string _reward;
         Vec2? _moveTarget;
+        /// <summary>A lore target picked with left-click; spells (5, 6) go to it instead of the Guardian. Null is the Guardian.</summary>
+        string _spellTarget;
         int _eventCursor;
         readonly List<string> _log = new List<string>();
 
@@ -59,6 +61,12 @@ namespace TheArtifacts.PC.Combat
         Material _guardianMaterial, _telegraphTemplate;
         readonly Dictionary<Telegraph, (GameObject go, Material mat)> _telegraphViews =
             new Dictionary<Telegraph, (GameObject, Material)>();
+        readonly Dictionary<string, (GameObject go, Material mat)> _loreViews = new Dictionary<string, (GameObject, Material)>();
+        Shader _lit;
+
+        static readonly Color LoreIdle = new Color(0.45f, 0.3f, 0.15f);
+        static readonly Color LoreTargeted = new Color(1f, 0.85f, 0.3f);
+        static readonly Color LoreSpent = new Color(0.08f, 0.06f, 0.05f);
 
         PlayerBuild CurrentBuild => build == TestBuild.Geared ? PrototypeContent.GearedBuild : PrototypeContent.StarterBuild;
 
@@ -83,7 +91,9 @@ namespace TheArtifacts.PC.Combat
             _pendingEquipment = EquipmentKey.None;
             _reward = null;
             _moveTarget = null;
+            _spellTarget = null;
             _sim = new CombatSim(CurrentBuild, CurrentSetup, seed, PrototypeContent.GuardianById(guardianId));
+            BuildLoreViews();
             SyncViews();
         }
 
@@ -113,14 +123,18 @@ namespace TheArtifacts.PC.Combat
                 else if (kb.digit3Key.wasPressedThisFrame) _pendingAbility = Ability.Lunge;
                 else if (kb.digit4Key.wasPressedThisFrame) _pendingAbility = Ability.Overpower;
                 else if (kb.digit5Key.wasPressedThisFrame) _pendingAbility = Ability.LightningBolt;
+                else if (kb.digit6Key.wasPressedThisFrame) _pendingAbility = Ability.FireBolt;
             }
+            if (kb.escapeKey.wasPressedThisFrame) _spellTarget = null;
             if (_pendingEquipment == EquipmentKey.None) _pendingEquipment = ReadEquipmentKey(kb);
 
             ReadMoveTarget();
+            ReadSpellTarget();
             _accumulator = Mathf.Min(_accumulator + Time.deltaTime, 0.25f);
             while (_accumulator >= SimStep && _sim.Outcome == CombatOutcome.Ongoing)
             {
-                _sim.Step(SimStep, new PlayerInput(MoveTowardTarget(), _pendingAbility, _pendingEquipment));
+                _sim.Step(SimStep, new PlayerInput(MoveTowardTarget(), _pendingAbility, _pendingEquipment, _spellTarget));
+                if (_spellTarget != null && _sim.IsLoreSpent(_spellTarget)) _spellTarget = null;
                 _pendingAbility = Ability.None;
                 _pendingEquipment = EquipmentKey.None;
                 _accumulator -= SimStep;
@@ -165,6 +179,23 @@ namespace TheArtifacts.PC.Combat
             }
         }
 
+        /// <summary>Left-click on a lore target (a bookshelf) to aim spells at it; left-click elsewhere aims at the Guardian.</summary>
+        void ReadSpellTarget()
+        {
+            var mouse = Mouse.current;
+            if (mouse == null || !mouse.leftButton.wasPressedThisFrame) return;
+
+            var ray = _camera.ScreenPointToRay(mouse.position.ReadValue());
+            if (!new Plane(Vector3.up, Vector3.zero).Raycast(ray, out var enter)) return;
+            var hit = ray.GetPoint(enter);
+            var point = new Vec2(hit.x, hit.z);
+            _spellTarget = _sim.Guardian.LoreTargets
+                .Where(t => !_sim.IsLoreSpent(t.Id) && Vec2.Distance(t.Position, point) <= 2f)
+                .OrderBy(t => Vec2.Distance(t.Position, point))
+                .Select(t => t.Id)
+                .FirstOrDefault();
+        }
+
         /// <summary>Unit direction to the target, shortened on the last step so the player stops on it.</summary>
         Vec2 MoveTowardTarget()
         {
@@ -205,6 +236,7 @@ namespace TheArtifacts.PC.Combat
             }
 
             var lit = Shader.Find("Universal Render Pipeline/Lit");
+            _lit = lit;
             var unlit = Shader.Find("Universal Render Pipeline/Unlit");
 
             var floor = Primitive(PrimitiveType.Cylinder, "Arena", Lit(lit, new Color(0.35f, 0.35f, 0.38f)));
@@ -227,6 +259,22 @@ namespace TheArtifacts.PC.Combat
             _moveMarker.localScale = new Vector3(0.5f, 0.01f, 0.5f);
 
             _telegraphTemplate = new Material(unlit != null ? unlit : lit);
+        }
+
+        /// <summary>One box per lore target of this fight's Guardian (the Book Keeper's bookshelves).</summary>
+        void BuildLoreViews()
+        {
+            foreach (var view in _loreViews.Values) Destroy(view.go);
+            _loreViews.Clear();
+            foreach (var lore in _sim.Guardian.LoreTargets)
+            {
+                var mat = Lit(_lit, LoreIdle);
+                var shelf = Primitive(PrimitiveType.Cube, lore.Name, mat);
+                shelf.localScale = new Vector3(3f, 3f, 1f);
+                shelf.position = TelegraphMeshes.ToWorld(lore.Position, 1.5f);
+                shelf.rotation = Quaternion.LookRotation(new Vector3(-lore.Position.X, 0f, -lore.Position.Y));
+                _loreViews[lore.Id] = (shelf.gameObject, mat);
+            }
         }
 
         static Material Lit(Shader shader, Color color)
@@ -263,6 +311,10 @@ namespace TheArtifacts.PC.Combat
                 _ => _sim.IsFuryActive ? GuardianFury : GuardianIdle,
             };
             _guardianMaterial.SetColor("_BaseColor", color);
+
+            foreach (var pair in _loreViews)
+                pair.Value.mat.SetColor("_BaseColor",
+                    _sim.IsLoreSpent(pair.Key) ? LoreSpent : pair.Key == _spellTarget ? LoreTargeted : LoreIdle);
 
             var active = new HashSet<Telegraph>(_sim.ActiveTelegraphs.Where(t => t.Area != null));
             foreach (var gone in _telegraphViews.Keys.Where(t => !active.Contains(t)).ToArray())
@@ -309,6 +361,8 @@ namespace TheArtifacts.PC.Combat
                     CombatEventType.CriticalHit => "  critical!",
                     CombatEventType.StatusApplied => $"Guardian {e.Id.ToLowerInvariant()}",
                     CombatEventType.StatusResisted => $"Guardian resists {e.Id.ToLowerInvariant()}",
+                    CombatEventType.LoreTriggered => $"The {_sim.FindLoreTarget(e.Id)?.Name.ToLowerInvariant()} burns!",
+                    CombatEventType.LoreNoEffect => $"Nothing happens to the {_sim.FindLoreTarget(e.Id.Split(':')[0])?.Name.ToLowerInvariant()}",
                     CombatEventType.Win => "Guardian defeated",
                     CombatEventType.Loss => "You fell",
                     _ => null,
@@ -350,6 +404,11 @@ namespace TheArtifacts.PC.Combat
                 Bar(cast, 1f, GuardianRecovery);
                 GUI.Label(cast, "OPENING  -  crit chance +50%", _center);
             }
+            else if (_sim.Phase == GuardianPhase.Incapacitated)
+            {
+                Bar(cast, 1f, new Color(0.4f, 0.4f, 0.75f));
+                GUI.Label(cast, $"{_sim.ActiveStatus.ToString().ToUpperInvariant()}  -  it cannot attack", _center);
+            }
 
             // Player HP and hotbar
             var hp = new Rect(w * 0.5f - 250f, h - 132f, 500f, 20f);
@@ -362,25 +421,28 @@ namespace TheArtifacts.PC.Combat
             var abilities = new[]
             {
                 (Ability.HeavyStrike, "1 Heavy"), (Ability.Guard, "2 Guard"), (Ability.Lunge, "3 Lunge"), (Ability.Overpower, "4 Overpower"),
-                (Ability.LightningBolt, "5 Bolt"),
+                (Ability.LightningBolt, "5 Lightning"), (Ability.FireBolt, "6 Fire"),
             };
             for (var i = 0; i < abilities.Length; i++)
             {
                 var (ability, label) = abilities[i];
-                var slot = new Rect(w * 0.5f - 250f + i * 102f, h - 80f, 94f, 50f);
+                var slot = new Rect(w * 0.5f - 306f + i * 102f, h - 80f, 94f, 50f);
                 var cd = _sim.CooldownRemaining(ability);
-                var blocked = _sim.BlockReason(ability);
+                var spell = ability == Ability.LightningBolt || ability == Ability.FireBolt;
+                var blocked = _sim.BlockReason(ability, spell ? _spellTarget : null);
                 Bar(slot, 1f, blocked == null ? new Color(0.2f, 0.25f, 0.35f) : new Color(0.12f, 0.12f, 0.14f));
-                GUI.Label(slot, cd > 0f ? $"{label}\n{cd:0.0}" : blocked is "range" or "mana" ? $"{label}\n{blocked}" : label, _center);
+                GUI.Label(slot, cd > 0f ? $"{label}\n{cd:0.0}" : blocked is "range" or "mana" or "target" ? $"{label}\n{blocked}" : label, _center);
             }
             if (_sim.GcdRemaining > 0f)
                 Bar(new Rect(w * 0.5f - 250f, h - 28f, 500f * _sim.GcdRemaining / PlayerRules.GlobalCooldown, 4f), 1f, Color.white);
 
             // Info and log
-            GUI.Label(new Rect(16f, 16f, 700f, 110f),
+            GUI.Label(new Rect(16f, 16f, 800f, 130f),
                 $"{build} (gear {_sim.Build.GearScore})   {_sim.Time:0.0}s\n" +
                 $"Guardian: {_sim.Setup}\n" +
-                "Right-click move   1 Heavy  2 Guard  3 Lunge  4 Overpower  5 Lightning Bolt\n" +
+                "Right-click move   1 Heavy  2 Guard  3 Lunge  4 Overpower  5 Lightning Bolt  6 Fire Bolt\n" +
+                "Left-click a bookshelf to aim spells at it (Esc: back to the Guardian)" +
+                (_spellTarget != null ? $"   Target: {_sim.FindLoreTarget(_spellTarget).Name} ({_spellTarget})" : "") + "\n" +
                 "Equipment skills: Q W E / A S D / X C" + EquipmentSkillList(), _label);
             GUI.Label(new Rect(16f, h - 190f, 360f, 170f), string.Join("\n", _log), _label);
 

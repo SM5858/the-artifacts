@@ -47,11 +47,24 @@ namespace TheArtifacts.Core.Combat
         public const float LightningBoltManaCost = 30f;
         public const float LightningBoltRange = 15f;
 
+        /// <summary>
+        /// Fire Bolt, key 6: a weaker, cheaper spell whose value is fire. It can target the Guardian or a lore
+        /// target such as the Book Keeper's bookshelves (GDD 6.7).
+        /// </summary>
+        public const float FireBoltCooldown = 6f;
+        public const float FireBoltBaseDamage = 60f;
+        public const float FireBoltCoefficient = 1.0f;
+        public const float FireBoltManaCost = 20f;
+        public const float FireBoltRange = 15f;
+
         /// <summary>Diminishing returns: 0 at 0, 50% at <see cref="StatK"/>, never 100%.</summary>
         public static float Rating(float value) => value <= 0f ? 0f : value / (value + StatK);
     }
 
     public enum DamageType { Physical, Magic }
+
+    /// <summary>A spell's element. Damage uses <see cref="DamageType"/>; the element only matters to lore targets (GDD 6.7).</summary>
+    public enum Element { None, Fire, Lightning }
 
     /// <summary>General (non-artifact) item grades, from shops up to crafted Masterpieces (GDD 6.6).</summary>
     public enum GeneralGrade { Standard, Fine, Superior, Masterpiece }
@@ -338,7 +351,23 @@ namespace TheArtifacts.Core.Combat
             new GuardianProfile { Id = "columbia_lion", Name = "Columbia Lion", Type = CreatureType.Beast,
                 Landmark = "Columbia Lion statue", LootPool = new[] { "columbia_lions_fang", "columbia_lions_pelt" } },
             new GuardianProfile { Id = "book_keeper", Name = "Book Keeper", Type = CreatureType.Undead,
-                Landmark = "Columbia bookstore", LootPool = new[] { "columbia_blue_mortarboard", "columbia_blue_robe" } },
+                Landmark = "Columbia bookstore", LootPool = new[] { "columbia_blue_mortarboard", "columbia_blue_robe" },
+                // Lore (GDD 6.7): the keeper fears for its books. Burning a shelf behind it makes it flee in fear.
+                LoreTargets = new[]
+                {
+                    Bookshelf("bookshelf_left", -8f, 14f),
+                    Bookshelf("bookshelf_center", 0f, 16f),
+                    Bookshelf("bookshelf_right", 8f, 14f),
+                } },
+        };
+
+        /// <summary>Fear from a burning bookshelf, in seconds.</summary>
+        public const float BookshelfFearDuration = 4f;
+
+        static LoreTarget Bookshelf(string id, float x, float y) => new LoreTarget
+        {
+            Id = id, Name = "Bookshelf", Position = new Vec2(x, y), Element = Element.Fire,
+            Status = GuardianStatus.Fear, Duration = BookshelfFearDuration,
         };
 
         /// <summary>The Guardian a fight uses when none is given: the Columbia Lion, which hosts the comparison (GDD Q16).</summary>

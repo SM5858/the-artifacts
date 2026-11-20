@@ -5,23 +5,28 @@ using TheArtifacts.Core.Guardian;
 
 namespace TheArtifacts.Core.Combat
 {
-    public enum Ability { None, HeavyStrike, Guard, Lunge, Overpower, LightningBolt }
+    public enum Ability { None, HeavyStrike, Guard, Lunge, Overpower, LightningBolt, FireBolt }
 
     /// <summary>Equipment-skill keys, laid out like the body (Combat Spec 3.2).</summary>
     public enum EquipmentKey { None, Q, W, E, A, S, D, X, C }
 
-    /// <summary>One tick of player input. Move is a direction on the floor; length above 1 is clamped.</summary>
+    /// <summary>
+    /// One tick of player input. Move is a direction on the floor; length above 1 is clamped.
+    /// Target is a lore target id for a spell (GDD 6.7); null means the Guardian.
+    /// </summary>
     public readonly struct PlayerInput
     {
         public readonly Vec2 Move;
         public readonly Ability Ability;
         public readonly EquipmentKey Equipment;
+        public readonly string Target;
 
-        public PlayerInput(Vec2 move, Ability ability = Ability.None, EquipmentKey equipment = EquipmentKey.None)
+        public PlayerInput(Vec2 move, Ability ability = Ability.None, EquipmentKey equipment = EquipmentKey.None, string target = null)
         {
             Move = move;
             Ability = ability;
             Equipment = equipment;
+            Target = target;
         }
 
         public static readonly PlayerInput None = new PlayerInput(Vec2.Zero);
@@ -65,6 +70,10 @@ namespace TheArtifacts.Core.Combat
         CriticalHit,
         /// <summary>A trait left the player at 1 HP instead of dying; Id is the artifact.</summary>
         SurvivedLethal,
+        /// <summary>A spell of the right element hit a lore target; Id is the target. Its status follows.</summary>
+        LoreTriggered,
+        /// <summary>A spell of another element hit a lore target and did nothing; Id is "target:ability".</summary>
+        LoreNoEffect,
     }
 
     /// <summary>Feedback for the UI and the per-attempt trace.</summary>
@@ -142,11 +151,13 @@ namespace TheArtifacts.Core.Combat
         readonly Dictionary<Ability, float> _cooldowns = new Dictionary<Ability, float>
         {
             { Ability.HeavyStrike, 0f }, { Ability.Guard, 0f }, { Ability.Lunge, 0f }, { Ability.Overpower, 0f }, { Ability.LightningBolt, 0f },
+            { Ability.FireBolt, 0f },
         };
         float _playerAutoTimer;
         readonly Dictionary<string, float> _equipmentCooldowns = new Dictionary<string, float>();
         readonly List<(float Multiplier, float End)> _damageTakenBuffs = new List<(float, float)>();
         readonly HashSet<TraitPart> _usedOncePerFight = new HashSet<TraitPart>();
+        readonly HashSet<string> _spentLore = new HashSet<string>();
 
         readonly GuardianStrategy _strategy;
         readonly Random _rng;
@@ -198,6 +209,12 @@ namespace TheArtifacts.Core.Combat
         public float CritChance =>
             Math.Min(1f, Build.CritChance + (Phase == GuardianPhase.Recovery ? PlayerRules.OpeningCritBonus : 0f));
 
+        /// <summary>This Guardian's lore target with the given id, or null.</summary>
+        public LoreTarget FindLoreTarget(string id) => Guardian.LoreTargets.FirstOrDefault(t => t.Id == id);
+
+        /// <summary>A lore target works once per fight.</summary>
+        public bool IsLoreSpent(string id) => _spentLore.Contains(id);
+
         public float CooldownRemaining(Ability ability) => _cooldowns.TryGetValue(ability, out var t) ? t : 0f;
 
         /// <summary>Advances the fight by <paramref name="dt"/> seconds with this tick's input.</summary>
@@ -209,7 +226,7 @@ namespace TheArtifacts.Core.Combat
             Time += dt;
             TickPlayerTimers(dt);
             MovePlayer(input.Move, dt);
-            if (input.Ability != Ability.None) TryUse(input.Ability);
+            if (input.Ability != Ability.None) TryUse(input.Ability, input.Target);
             if (input.Equipment != EquipmentKey.None) TryUseEquipment(input.Equipment);
             PlayerAutoAttack();
             if (CheckEnd()) return;
@@ -276,23 +293,40 @@ namespace TheArtifacts.Core.Combat
             PlayerPosition = ClampToArena(PlayerPosition + dir * (Build.RunSpeed * dt));
         }
 
-        /// <summary>Why an ability cannot be used right now, or null if it can.</summary>
-        public string BlockReason(Ability ability)
+        static bool IsSpell(Ability ability) => ability == Ability.LightningBolt || ability == Ability.FireBolt;
+
+        static (float ManaCost, float Range) SpellCost(Ability ability) => ability == Ability.FireBolt
+            ? (PlayerRules.FireBoltManaCost, PlayerRules.FireBoltRange)
+            : (PlayerRules.LightningBoltManaCost, PlayerRules.LightningBoltRange);
+
+        /// <summary>
+        /// Why an ability cannot be used right now, or null if it can. A spell may target a lore target by id
+        /// ("target" if it is unknown or spent); other abilities always hit the Guardian.
+        /// </summary>
+        public string BlockReason(Ability ability, string target = null)
         {
             if (CooldownRemaining(ability) > 0f) return "cooldown";
             if (GcdRemaining > 0f) return "gcd";
             if ((ability == Ability.HeavyStrike || ability == Ability.Overpower) && !InMeleeRange) return "range";
-            if (ability == Ability.LightningBolt)
+            if (IsSpell(ability))
             {
-                if (PlayerMp < PlayerRules.LightningBoltManaCost) return "mana";
-                if (DistanceToGuardian > PlayerRules.LightningBoltRange) return "range";
+                var (manaCost, range) = SpellCost(ability);
+                if (PlayerMp < manaCost) return "mana";
+                if (target != null)
+                {
+                    var lore = FindLoreTarget(target);
+                    if (lore == null || IsLoreSpent(target)) return "target";
+                    if (Vec2.Distance(PlayerPosition, lore.Position) > range) return "range";
+                }
+                else if (DistanceToGuardian > range) return "range";
             }
             return null;
         }
 
-        void TryUse(Ability ability)
+        void TryUse(Ability ability, string target = null)
         {
-            var reason = BlockReason(ability);
+            if (!IsSpell(ability)) target = null;
+            var reason = BlockReason(ability, target);
             if (reason != null)
             {
                 Emit(CombatEventType.AbilityRejected, $"{ability}:{reason}", 0f);
@@ -329,14 +363,35 @@ namespace TheArtifacts.Core.Combat
 
                 case Ability.LightningBolt:
                     PlayerMp -= PlayerRules.LightningBoltManaCost;
-                    DamageGuardian(PlayerRules.LightningBoltBaseDamage + PlayerRules.LightningBoltCoefficient * Build.Intelligence, "lightning_bolt", DamageType.Magic, canCrit: true);
+                    if (target != null) HitLore(FindLoreTarget(target), Element.Lightning, ability);
+                    else DamageGuardian(PlayerRules.LightningBoltBaseDamage + PlayerRules.LightningBoltCoefficient * Build.Intelligence, "lightning_bolt", DamageType.Magic, canCrit: true);
                     _cooldowns[ability] = Cooldown(ability, PlayerRules.LightningBoltCooldown);
+                    break;
+
+                case Ability.FireBolt:
+                    PlayerMp -= PlayerRules.FireBoltManaCost;
+                    if (target != null) HitLore(FindLoreTarget(target), Element.Fire, ability);
+                    else DamageGuardian(PlayerRules.FireBoltBaseDamage + PlayerRules.FireBoltCoefficient * Build.Intelligence, "fire_bolt", DamageType.Magic, canCrit: true);
+                    _cooldowns[ability] = Cooldown(ability, PlayerRules.FireBoltCooldown);
                     break;
             }
 
             GcdRemaining = PlayerRules.GlobalCooldown;
             Emit(CombatEventType.AbilityUsed, ability.ToString(), 0f);
             FireTraits(TraitTrigger.AbilityUsed, ability, 0f, inRecovery);
+        }
+
+        /// <summary>A spell of the lore target's element spends it and puts its status on the Guardian (GDD 6.7).</summary>
+        void HitLore(LoreTarget lore, Element element, Ability ability)
+        {
+            if (lore.Element != element)
+            {
+                Emit(CombatEventType.LoreNoEffect, $"{lore.Id}:{ability}", 0f);
+                return;
+            }
+            _spentLore.Add(lore.Id);
+            Emit(CombatEventType.LoreTriggered, lore.Id, 0f);
+            ApplyGuardianStatus(lore.Status, lore.Duration);
         }
 
         /// <summary>The ability's cooldown (a trait may replace the base), shortened by Agility.</summary>

@@ -42,6 +42,7 @@ namespace TheArtifacts.Core.Tests.Combat
         /// <summary>
         /// Balance report for the Q15 rebalance: every Guardian, build, tier, and skill set, with a bot that reacts
         /// in 0.6 s and misses a share of telegraphs entirely (0%, 30%, 60%) as a stand-in for human mistakes.
+        /// Guardians with lore targets are played twice, without and with the lore (lore column 0/1).
         /// Printed to the test log as REPORT lines (steady strategy). Not a playtest.
         /// </summary>
         [TestCase(0f)]
@@ -52,13 +53,14 @@ namespace TheArtifacts.Core.Tests.Combat
             const float reactionTime = 0.6f;
             var skillSets = new[] { ("physical", DefaultSkills), ("mixed", new[] { "slam", "rings", "embers" }) };
             var builds = new[] { ("starter", PrototypeContent.StarterBuild), ("geared", PrototypeContent.GearedBuild) };
-            TestContext.WriteLine("REPORT|miss|guardian|skills|build|tier|outcome|seconds|hp_left|max_hp|telegraph_hits|bolt_share|robe_uses|crits");
+            TestContext.WriteLine("REPORT|miss|guardian|skills|build|tier|outcome|seconds|hp_left|max_hp|telegraph_hits|bolt_share|robe_uses|crits|lore|fears");
             foreach (var guardian in PrototypeContent.Guardians)
+            foreach (var knowsLore in guardian.LoreTargets.Count > 0 ? new[] { false, true } : new[] { false })
             foreach (var (setName, skills) in skillSets)
             foreach (var (name, build) in builds)
             foreach (var tier in PrototypeContent.Tiers)
             {
-                var sim = TestBot.Play(build, new GuardianSetup(tier.Id, skills, "steady"), seed: 1, reactionTime, guardian: guardian, missChance: missChance);
+                var sim = TestBot.Play(build, new GuardianSetup(tier.Id, skills, "steady"), seed: 1, reactionTime, guardian: guardian, missChance: missChance, knowsLore: knowsLore);
                 var dealt = sim.Events.Where(e => e.Type == CombatEventType.GuardianDamaged).Sum(e => e.Amount);
                 var bolt = sim.Events.Where(e => e.Type == CombatEventType.GuardianDamaged && e.Id == "lightning_bolt").Sum(e => e.Amount);
                 TestContext.WriteLine(string.Join("|", "REPORT", missChance.ToString("0.0"), guardian.Id, setName, name, tier.Id,
@@ -66,7 +68,9 @@ namespace TheArtifacts.Core.Tests.Combat
                     sim.Events.Count(e => e.Type == CombatEventType.SkillHit),
                     dealt > 0f ? (bolt / dealt).ToString("0.00") : "0",
                     sim.Events.Count(e => e.Type == CombatEventType.AbilityUsed && e.Id == "columbia_blue_robe"),
-                    sim.Events.Count(e => e.Type == CombatEventType.CriticalHit)));
+                    sim.Events.Count(e => e.Type == CombatEventType.CriticalHit),
+                    knowsLore ? 1 : 0,
+                    sim.Events.Count(e => e.Type == CombatEventType.LoreTriggered)));
                 Assert.That(sim.Outcome, Is.Not.EqualTo(CombatOutcome.Ongoing), "every fight must end");
             }
         }
