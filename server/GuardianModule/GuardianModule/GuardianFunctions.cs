@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using TheArtifacts.Core.Guardian;
 using Unity.Services.CloudCode.Apis;
 using Unity.Services.CloudCode.Apis.Extensions;
 using Unity.Services.CloudCode.Core;

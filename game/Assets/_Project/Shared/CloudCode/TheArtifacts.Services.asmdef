@@ -1,0 +1,28 @@
+{
+    "name": "TheArtifacts.Services",
+    "rootNamespace": "TheArtifacts.Services",
+    "references": [
+        "TheArtifacts.Core",
+        "TheArtifacts.Shared",
+        "Unity.Services.Core",
+        "Unity.Services.Authentication",
+        "Unity.Services.CloudCode"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "THE_ARTIFACTS_CLOUD_CODE"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.services.cloudcode",
+            "expression": "2.0.0",
+            "define": "THE_ARTIFACTS_CLOUD_CODE"
+        }
+    ],
+    "noEngineReferences": false
+}

@@ -370,7 +370,7 @@ MonoBehaviour:
   build: 0
   seed: 1
   guardianId: columbia_lion
-  useDefaultGuardian: 1
+  guardianMode: 2
   customTier: T2
   customSkills:
   - cleave

@@ -8,7 +8,7 @@ server/
 │   ├── GuardianModule.sln          the solution UGS deploys (main project only)
 │   └── GuardianModule/             module "GuardianModule"
 │       ├── GuardianFunctions.cs    [CloudCodeFunction("ConfigureGuardian")] + UGS setup
-│       ├── GuardianService.cs      one call, 3 s deadline, validate, fall back, trace
+│       ├── GuardianService.cs      one call, 3 s deadline, validate, fall back, trace (returns Core's GuardianDecision)
 │       ├── GuardianRequest.cs      allowed snapshot + allowed options → model input
 │       └── ClaudeGuardianModel.cs  Claude Haiku 5.5, thinking off, forced strict tool call
 └── GuardianModule.Tests/           fake-model tests; not in the .sln, never deployed
@@ -18,7 +18,7 @@ The module compiles the engine-free Core from `game/Assets/_Project/Core` and em
 
 ## The function
 
-`ConfigureGuardian(equippedArtifactIds, attemptsOnThisGuardian, adaptive)` returns the setup to fight plus its trace (proposed setup, fallback and reason, latency, tokens, snapshot hash). The client sends only artifact ids and the attempt count; stats are recomputed on the server from content. With `adaptive = false` it returns the scripted default without calling the model (the human override in Configuration Document 2.10).
+`ConfigureGuardian(equippedArtifactIds, attemptsOnThisGuardian, adaptive, guardianId)` returns a `GuardianDecision` (in Core, shared with the client): the setup to fight plus its trace (proposed setup, fallback and reason, latency, tokens, snapshot hash). The client sends only artifact ids and the attempt count; stats are recomputed on the server from content. With `adaptive = false` it returns the scripted default without calling the model (the human override in Configuration Document 2.10).
 
 ## Tests
 
@@ -47,7 +47,13 @@ Live calls are billed to your Anthropic account: about $0.00035 per attempt (Con
 - That Cloud Code's 15 s execution limit and outbound HTTP behave as documented with the Claude API.
 - Where the `guardian_trace` log lines appear in the dashboard, and whether to also store traces in Cloud Save for BI.
 
+## The client
+
+- `Core/Guardian/GuardianClient.cs` (tested in CI): one call per attempt, 3.5 s client timeout, re-validation against the client's content, local default on any failure, and the session flagged after a call error.
+- `game/Assets/_Project/Shared/CloudCode/` (assembly `TheArtifacts.Services`): signs in anonymously at startup and calls `GuardianModule/ConfigureGuardian` with `CallModuleEndpointAsync`. It compiles **only when the Cloud Code package is installed** (step 2), so the game runs without it and uses the default Guardian.
+- The combat sandbox uses it in **Adaptive** mode. After deploying, play once and check the info line: `adaptive, server N ms` means the live call worked; `server not used: ServiceUnavailable` means sign-in or the call failed (the Console has a warning with the reason).
+
 ## Not done yet
 
-- The game does not call this module yet. Wiring the Unity client (sign-in, `CallModuleEndpointAsync`, a 3.5 s client-side timeout with a local default fallback, flagging the session after a `ServiceUnavailable`) comes after the module is deployed, so it can be tested against the real service.
+- Not yet run against the deployed module (needs the one-time setup above).
 - Equipped artifacts come from the client for now. Once artifacts are saved in Cloud Save, the server should read them there instead.

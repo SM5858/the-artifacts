@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TheArtifacts.Core.Combat;
 using TheArtifacts.Core.Guardian;
+using TheArtifacts.Shared;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using PlayerInput = TheArtifacts.Core.Combat.PlayerInput;
@@ -11,9 +12,16 @@ namespace TheArtifacts.PC.Combat
     public enum TestBuild { Starter, Geared }
 
     /// <summary>
+    /// Who picks the Guardian's setup: the scripted default (Combat Spec 4.4), the custom fields below, or the
+    /// adaptive Guardian on the server (Configuration Document 2), which falls back to the default without it.
+    /// </summary>
+    public enum GuardianMode { Default, Custom, Adaptive }
+
+    /// <summary>
     /// Graybox PC fight: drives a Core <see cref="CombatSim"/> at a fixed step, builds primitive visuals,
     /// follows the player with a lock-on camera, and draws a minimal HUD (tells, HP, cooldowns, outcome).
-    /// The Guardian setup is fixed for the fight; no model is called here.
+    /// Before each attempt the Guardian's setup comes from <see cref="GuardianMode"/>; in Adaptive mode the server is
+    /// asked once, and the fight waits for it at most <see cref="GuardianClient.ClientTimeout"/>.
     /// </summary>
     public sealed class CombatSandbox : MonoBehaviour
     {
@@ -22,8 +30,9 @@ namespace TheArtifacts.PC.Combat
         [SerializeField] int seed = 1;
         [Tooltip("alma_mater (Undead lich), columbia_lion (Beast), or book_keeper (Construct golem).")]
         [SerializeField] string guardianId = "columbia_lion";
-        [Tooltip("On: the scripted default Guardian (Combat Spec 4.4). Off: the custom setup below.")]
-        [SerializeField] bool useDefaultGuardian = true;
+        [Tooltip("Default: the scripted Guardian (Combat Spec 4.4). Custom: the setup below. Adaptive: ask the Guardian server " +
+                 "(falls back to Default when it is not set up). M on the result screen cycles the mode.")]
+        [SerializeField] GuardianMode guardianMode = GuardianMode.Adaptive;
         [SerializeField] string customTier = "T2";
         [SerializeField] string[] customSkills = { "cleave", "slam", "charge", "embers" };
         [SerializeField] string customStrategy = "aggressive";
@@ -48,6 +57,16 @@ namespace TheArtifacts.PC.Combat
         static readonly Color TelegraphHit = new Color(1f, 0.1f, 0.05f);
 
         CombatSim _sim;
+        GuardianClient _guardianClient;
+        readonly AttemptRecord _attempts = new AttemptRecord();
+        /// <summary>The current attempt's setup and where it came from; null while the server is being asked.</summary>
+        FightSetup _fight;
+        /// <summary>Bumped on every restart so a late answer for an older attempt is ignored.</summary>
+        int _attemptToken;
+        bool _outcomeRecorded;
+        /// <summary>The Guardian's opening line stays on screen until this time.</summary>
+        float _announcementUntil;
+        const float AnnouncementSeconds = 4f;
         float _accumulator;
         Ability _pendingAbility;
         SkillBarSlot _pendingArtifactSkill;
@@ -91,18 +110,30 @@ namespace TheArtifacts.PC.Combat
 
         PlayerBuild CurrentBuild => build == TestBuild.Geared ? PrototypeContent.GearedBuild : PrototypeContent.StarterBuild;
 
-        GuardianSetup CurrentSetup => useDefaultGuardian
-            ? PrototypeContent.DefaultSetup
-            : new GuardianSetup(customTier, customSkills, customStrategy);
-
         void Start()
         {
+            _guardianClient = new GuardianClient(GuardianBackends.Live);
             BuildWorld();
             Restart();
         }
 
-        void Restart()
+        async void Restart()
         {
+            var token = ++_attemptToken;
+            _fight = null;
+            _announcementUntil = 0f;
+            _outcomeRecorded = false;
+            FightSetup fight;
+            if (guardianMode == GuardianMode.Custom)
+                fight = new FightSetup(new GuardianSetup(customTier, customSkills, customStrategy), SetupSource.Scripted, null, null, false, 0);
+            else
+                fight = await _guardianClient.ConfigureAsync(new GuardianCall(guardianId, CurrentBuild.Artifacts.Select(a => a.Id),
+                    _attempts.FailedAttempts(guardianId), adaptive: guardianMode == GuardianMode.Adaptive));
+            if (token != _attemptToken || this == null) return;  // restarted again, or the scene closed, while waiting
+
+            _fight = fight;
+            if (fight.Announcement != null) _announcementUntil = Time.time + AnnouncementSeconds;
+
             foreach (var view in _telegraphViews.Values) Destroy(view.go);
             _telegraphViews.Clear();
             _log.Clear();
@@ -115,7 +146,7 @@ namespace TheArtifacts.PC.Combat
             _reward = null;
             _moveTarget = null;
             _spellTarget = null;
-            _sim = new CombatSim(CurrentBuild, CurrentSetup, seed, PrototypeContent.GuardianById(guardianId));
+            _sim = new CombatSim(CurrentBuild, fight.Setup, seed, PrototypeContent.GuardianById(guardianId));
             if (_preferredBar != null)
             {
                 try { _sim.SetArtifactSkillBar(_preferredBar); }
@@ -130,12 +161,23 @@ namespace TheArtifacts.PC.Combat
         void Update()
         {
             var kb = Keyboard.current;
-            if (kb == null) return;
+            if (kb == null || _sim == null || _fight == null) return;
 
             if (_sim.Outcome != CombatOutcome.Ongoing)
             {
+                if (!_outcomeRecorded)
+                {
+                    _outcomeRecorded = true;
+                    if (_sim.Outcome == CombatOutcome.Win) _attempts.RecordWin(guardianId);
+                    else _attempts.RecordLoss(guardianId);
+                }
                 if (_sim.Outcome == CombatOutcome.Win && _reward == null) RollReward();
                 if (kb.rKey.wasPressedThisFrame) Restart();
+                if (kb.mKey.wasPressedThisFrame)
+                {
+                    guardianMode = (GuardianMode)(((int)guardianMode + 1) % 3);
+                    Restart();
+                }
                 if (kb.bKey.wasPressedThisFrame)
                 {
                     build = build == TestBuild.Starter ? TestBuild.Geared : TestBuild.Starter;
@@ -489,21 +531,29 @@ namespace TheArtifacts.PC.Combat
 
         static string Name(string skillId) => PrototypeContent.Skill(skillId)?.Name ?? skillId;
 
-        GUIStyle _label, _center, _big;
+        GUIStyle _label, _center, _big, _quote;
         const float ReferenceWidth = 1280f, ReferenceHeight = 720f;
         float _guiScale = 1f;
 
         void OnGUI()
         {
-            if (_sim == null) return;
             _label ??= new GUIStyle(GUI.skin.label) { fontSize = 14, normal = { textColor = Color.white } };
             _center ??= new GUIStyle(_label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
             _big ??= new GUIStyle(_center) { fontSize = 40 };
+            _quote ??= new GUIStyle(_center) { fontSize = 22, fontStyle = FontStyle.BoldAndItalic, wordWrap = true };
 
             // Lay the HUD out at 1280×720 and scale it to the Game view, so it fits a small window.
             _guiScale = Mathf.Min(Screen.width / ReferenceWidth, Screen.height / ReferenceHeight);
             GUI.matrix = Matrix4x4.Scale(new Vector3(_guiScale, _guiScale, 1f));
             float w = Screen.width / _guiScale, h = Screen.height / _guiScale;
+
+            if (_fight == null)
+            {
+                Bar(new Rect(0f, h * 0.4f, w, 60f), 1f, new Color(0f, 0f, 0f, 0.7f));
+                GUI.Label(new Rect(0f, h * 0.4f, w, 60f), "The Guardian is sizing you up...", _center);
+                return;
+            }
+            if (_sim == null) return;
 
             // Guardian HP and cast bar
             var top = new Rect(w * 0.5f - 250f, 20f, 500f, 22f);
@@ -562,20 +612,47 @@ namespace TheArtifacts.PC.Combat
             // Info and log
             GUI.Label(new Rect(16f, 16f, 800f, 130f),
                 $"{build} (gear {_sim.Build.GearScore})   {_sim.Time:0.0}s\n" +
-                $"Guardian: {_sim.Setup}\n" +
+                $"Guardian: {_sim.Setup}   [{SetupLine()}]\n" +
                 "Right-click (or Ctrl+click) move   Q Heavy  W Guard  E Lunge  R Overpower  T Lightning Bolt  F Fire Bolt  A auto-attack on/off\n" +
                 "Left-click a bookshelf or something on the Guardian to aim at it (Esc: back to the Guardian)" +
                 (_spellTarget != null ? $"   Target: {_sim.FindLoreTarget(_spellTarget)?.Name ?? _sim.FindWeakPoint(_spellTarget)?.Name} ({_spellTarget})" : "") + "\n" +
                 "Artifact skills: 1 2 3 4 C V (click two slots on the right to swap them)", _label);
             GUI.Label(new Rect(16f, h - 190f, 360f, 170f), string.Join("\n", _log), _label);
 
+            // The adaptive Guardian's opening line (GDD 6.4): shown at fight start, then fades.
+            var left = _announcementUntil - Time.time;
+            if (left > 0f && _fight.Announcement != null)
+            {
+                var old = GUI.color;
+                GUI.color = new Color(1f, 1f, 1f, Mathf.Clamp01(left));
+                Bar(new Rect(w * 0.5f - 360f, h * 0.2f, 720f, 70f), 1f, new Color(0.08f, 0.05f, 0.02f, 0.75f));
+                GUI.Label(new Rect(w * 0.5f - 350f, h * 0.2f, 700f, 70f), $"{_sim.Guardian.Name}: \"{_fight.Announcement}\"", _quote);
+                GUI.color = old;
+            }
+
             if (_sim.Outcome != CombatOutcome.Ongoing)
             {
                 Bar(new Rect(0f, h * 0.35f, w, 150f), 1f, new Color(0f, 0f, 0f, 0.7f));
                 GUI.Label(new Rect(0f, h * 0.35f, w, 90f), _sim.Outcome == CombatOutcome.Win ? "VICTORY" : "DEFEAT", _big);
                 GUI.Label(new Rect(0f, h * 0.35f + 90f, w, 40f),
-                    (_reward != null ? $"Reward: {_reward}\n" : "") + $"{_sim.Time:0.0}s    R retry    B switch build (now {build})", _center);
+                    (_reward != null ? $"Reward: {_reward}\n" : "") +
+                    $"{_sim.Time:0.0}s    R retry    B switch build (now {build})    M Guardian mode (now {guardianMode})", _center);
             }
+        }
+
+        /// <summary>Where this attempt's setup came from, for the info line.</summary>
+        string SetupLine()
+        {
+            var failed = _attempts.FailedAttempts(guardianId);
+            var where = _fight.Source switch
+            {
+                SetupSource.Server when _fight.FallbackReason == nameof(FallbackReason.None) => $"adaptive, server {_fight.LatencyMs} ms",
+                SetupSource.Server => $"server fell back: {_fight.FallbackReason}",
+                SetupSource.LocalFallback => $"default, server not used: {_fight.FallbackReason}" +
+                    (_guardianClient.SessionFlagged ? " (session flagged)" : ""),
+                _ => guardianMode == GuardianMode.Custom ? "custom" : "scripted default",
+            };
+            return $"{guardianMode}: {where}" + (_fight.Eased ? ", eased" : "") + $"   failed attempts {failed}";
         }
 
         /// <summary>

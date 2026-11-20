@@ -52,6 +52,7 @@ The Guardian ships as a **function-calling interface**: the model must answer by
 2. Valid → the engine builds the Guardian from the setup and starts the fight.
 3. Out of range, malformed, or later than the **3 s** deadline → the engine uses the **default Guardian** (the scripted baseline's setup), starts the fight, and records the fallback in the trace.
 4. Service unavailable → every attempt uses the default Guardian and the session is flagged.
+5. The game client checks again **[DECIDED 2026-11-20]**: it waits at most **3.5 s** for the server (the 3 s deadline plus the round trip), re-validates the returned setup against its own content, and uses its local default Guardian if the reply is late, out of range, or missing. A call error flags the session, and later attempts skip the call. Code: `Core/Guardian/GuardianClient.cs`.
 
 The allowed range belongs to each Guardian and is the guard against the main design risk, that tuning makes gear pointless. An **open** Guardian has a wide range, so a newcomer can win. A **gated** Guardian has a floor the agent cannot tune below, so it stays very hard without the right stats and equipment. The agent never sees or changes the range; it only chooses inside it. The prototype ships one open Guardian; a gated range is a configuration variant.
 
@@ -69,6 +70,7 @@ The allowed range belongs to each Guardian and is the guard against the main des
 | Thinking | Disabled for the first build (Haiku 5.5 allows this at effort `high` or below), so the 300-token output cap holds and latency stays low; compare low-effort adaptive thinking in the live trials | Latency and validity measured per C5 |
 | Where it runs | Server side only, in a Unity Gaming Services Cloud Code C# module; the API key lives in UGS secrets, never in the game client | Section 2.4; GDD Q1 |
 | Deadline per call | 3 s at fight start, then default Guardian | A short loading wait before the fight; combat never waits. To verify against measured latency |
+| Client timeout | 3.5 s, then the local default Guardian | Server deadline plus the round trip (Section 2.5) |
 | Retries | 0 (fallback instead) | A retry would break the deadline |
 | Input cap | 2,000 tokens per call | Snapshot plus options plus instructions |
 | Output cap | 300 tokens per call | One tool call with three fields |
