@@ -215,12 +215,15 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That(sim.ActiveStatus, Is.EqualTo(GuardianStatus.Fear));
             Assert.That(sim.ActiveTelegraphs, Is.Empty);
             Assert.That(sim.IsLoreSpent("bookshelf_center"));
+            Assert.That(sim.IsOpening, "the panicked keeper is open to crits");
+            Assert.That(sim.CritChance, Is.EqualTo(sim.Build.CritChance + PlayerRules.OpeningCritBonus).Within(1e-6));
             Assert.That(sim.GuardianHp, Is.EqualTo(hp - (DamageTo(sim, CombatEventType.GuardianDamaged, "auto") - autos)).Within(1e-3),
                 "the bolt hits the shelf, not the Guardian");
 
             // Fear lasts its duration, then the Guardian fights again; a burned shelf cannot be used twice.
             RunFor(sim, PrototypeContent.BookshelfFearDuration + 0.1f);
             Assert.That(sim.Phase, Is.Not.EqualTo(GuardianPhase.Incapacitated));
+            Assert.That(sim.Phase == GuardianPhase.Recovery || !sim.IsOpening, "the fear opening ends with the fear");
             RunFor(sim, PlayerRules.FireBoltCooldown);
             sim.Step(Dt, Cast(Ability.FireBolt, "bookshelf_center"));
             Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("FireBolt:target"));

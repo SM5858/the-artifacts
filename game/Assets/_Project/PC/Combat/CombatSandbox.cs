@@ -407,7 +407,8 @@ namespace TheArtifacts.PC.Combat
             else if (_sim.Phase == GuardianPhase.Incapacitated)
             {
                 Bar(cast, 1f, new Color(0.4f, 0.4f, 0.75f));
-                GUI.Label(cast, $"{_sim.ActiveStatus.ToString().ToUpperInvariant()}  -  it cannot attack", _center);
+                GUI.Label(cast, $"{_sim.ActiveStatus.ToString().ToUpperInvariant()}  -  it cannot attack" +
+                    (_sim.IsOpening ? ", crit chance +50%" : ""), _center);
             }
 
             // Player HP and hotbar
