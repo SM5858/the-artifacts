@@ -64,7 +64,10 @@ namespace TheArtifacts.PC.Combat
 
         Camera _camera;
         Vector3 _cameraBack = Vector3.back;
-        Transform _player, _guardian, _moveMarker;
+        Transform _player, _guardian, _moveMarker, _meleeRing;
+        Material _playerMaterial;
+        /// <summary>The player flashes red until this time after taking damage.</summary>
+        float _hurtUntil;
         Material _guardianMaterial, _telegraphTemplate;
         readonly Dictionary<Telegraph, (GameObject go, Material mat)> _telegraphViews =
             new Dictionary<Telegraph, (GameObject, Material)>();
@@ -267,13 +270,15 @@ namespace TheArtifacts.PC.Combat
             _lit = lit;
             var unlit = Shader.Find("Universal Render Pipeline/Unlit");
 
-            var floor = Primitive(PrimitiveType.Cylinder, "Arena",
-                art != null && art.Arena != null ? art.Arena : Lit(lit, new Color(0.35f, 0.35f, 0.38f)));
-            var r = GuardianRules.ArenaRadius;
-            floor.localScale = new Vector3(r * 2f, 0.05f, r * 2f);
-            floor.position = new Vector3(0f, -0.05f, 0f);
+            // A flat disc with planar UVs (0–1 across the arena), so a floor material tiles evenly.
+            var floor = new GameObject("Arena");
+            floor.transform.SetParent(transform, false);
+            floor.AddComponent<MeshFilter>().sharedMesh = Disc(GuardianRules.ArenaRadius, 96);
+            floor.AddComponent<MeshRenderer>().sharedMaterial =
+                art != null && art.Arena != null ? art.Arena : Lit(lit, new Color(0.35f, 0.35f, 0.38f));
 
-            _player = Primitive(PrimitiveType.Capsule, "Player", Lit(lit, PlayerColor));
+            _playerMaterial = Lit(lit, PlayerColor);
+            _player = Primitive(PrimitiveType.Capsule, "Player", _playerMaterial);
             // A textured Guardian (stone or bronze) shows its phase by glowing instead of changing color.
             var guardianArt = art != null ? art.ForGuardian(guardianId) : null;
             _guardianTextured = guardianArt != null;
@@ -294,6 +299,16 @@ namespace TheArtifacts.PC.Combat
             _weakPoint.SetParent(_guardian, false);
             _weakPoint.localPosition = new Vector3(0.35f, 0.1f, -0.45f);
             _weakPoint.localScale = Vector3.one * 0.3f;
+
+            // The Guardian's melee reach: inside this ring its auto-attacks hit you, with no telegraph.
+            var ringMaterial = new Material(unlit != null ? unlit : lit);
+            ringMaterial.SetColor("_BaseColor", new Color(0.6f, 0.1f, 0.08f));
+            var ring = new GameObject("Guardian Melee Range");
+            ring.transform.SetParent(transform, false);
+            ring.AddComponent<MeshFilter>().sharedMesh =
+                TelegraphMeshes.Build(new RingArea(Vec2.Zero, GuardianRules.MeleeRange - 0.08f, GuardianRules.MeleeRange), TelegraphY);
+            ring.AddComponent<MeshRenderer>().sharedMaterials = new[] { ringMaterial, ringMaterial };
+            _meleeRing = ring.transform;
 
             _moveMarker = Primitive(PrimitiveType.Cylinder, "Move Target", Lit(lit, PlayerColor));
             _moveMarker.localScale = new Vector3(0.5f, 0.01f, 0.5f);
@@ -318,6 +333,32 @@ namespace TheArtifacts.PC.Combat
             }
         }
 
+        /// <summary>A flat disc on the floor (y = 0) facing up, with UVs mapping its square bounds to 0–1.</summary>
+        static Mesh Disc(float radius, int segments)
+        {
+            var verts = new Vector3[segments + 1];
+            var uvs = new Vector2[segments + 1];
+            var tris = new int[segments * 3];
+            uvs[0] = new Vector2(0.5f, 0.5f);
+            for (var i = 0; i < segments; i++)
+            {
+                var a = 2f * Mathf.PI * i / segments;
+                var x = Mathf.Cos(a) * radius;
+                var z = Mathf.Sin(a) * radius;
+                verts[i + 1] = new Vector3(x, 0f, z);
+                uvs[i + 1] = new Vector2(x / (2f * radius) + 0.5f, z / (2f * radius) + 0.5f);
+                // Clockwise seen from above, so the face points up.
+                tris[i * 3] = 0;
+                tris[i * 3 + 1] = (i + 1) % segments + 1;
+                tris[i * 3 + 2] = i + 1;
+            }
+            var mesh = new Mesh { name = "Arena Disc", vertices = verts, uv = uvs, triangles = tris };
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
         static Material Lit(Shader shader, Color color)
         {
             var m = new Material(shader);
@@ -338,6 +379,8 @@ namespace TheArtifacts.PC.Combat
         void SyncViews()
         {
             _player.position = TelegraphMeshes.ToWorld(_sim.PlayerPosition, 1f);
+            _playerMaterial.SetColor("_BaseColor", Time.time < _hurtUntil ? new Color(1f, 0.15f, 0.1f) : PlayerColor);
+            _meleeRing.position = TelegraphMeshes.ToWorld(_sim.GuardianPosition);
             _guardian.position = TelegraphMeshes.ToWorld(_sim.GuardianPosition, 2f);
             _moveMarker.gameObject.SetActive(_moveTarget.HasValue);
             if (_moveTarget is Vec2 target) _moveMarker.position = TelegraphMeshes.ToWorld(target, TelegraphY);
@@ -409,8 +452,10 @@ namespace TheArtifacts.PC.Combat
             for (; _eventCursor < events.Count; _eventCursor++)
             {
                 var e = events[_eventCursor];
+                if (e.Type == CombatEventType.PlayerDamaged && e.Amount > 0f) _hurtUntil = Time.time + 0.15f;
                 string line = e.Type switch
                 {
+                    CombatEventType.PlayerDamaged when e.Id == "guardian_auto" => $"Guardian strikes you {e.Amount:0}",
                     CombatEventType.TellStarted => $"Guardian readies {Name(e.Id)}",
                     CombatEventType.SkillHit => $"{Name(e.Id)} hits you",
                     CombatEventType.SkillMissed => $"You avoid {Name(e.Id)}",
