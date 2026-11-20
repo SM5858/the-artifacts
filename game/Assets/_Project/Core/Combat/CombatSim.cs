@@ -7,8 +7,11 @@ namespace TheArtifacts.Core.Combat
 {
     public enum Ability { None, HeavyStrike, Guard, Lunge, Overpower, LightningBolt, FireBolt }
 
-    /// <summary>Equipment-skill keys, laid out like the body (Combat Spec 3.2).</summary>
-    public enum EquipmentKey { None, Q, W, E, A, S, D, X, C }
+    /// <summary>
+    /// The six artifact skill bar slots, on keys 1, 2, 3, 4, C, V (Combat Spec 3.2). The player chooses which
+    /// equipped artifact's skill sits in each slot; artifact skills that do not fit cannot be used.
+    /// </summary>
+    public enum SkillBarSlot { None, Slot1, Slot2, Slot3, Slot4, Slot5, Slot6 }
 
     /// <summary>
     /// One tick of player input. Move is a direction on the floor; length above 1 is clamped.
@@ -18,16 +21,22 @@ namespace TheArtifacts.Core.Combat
     {
         public readonly Vec2 Move;
         public readonly Ability Ability;
-        public readonly EquipmentKey Equipment;
+        public readonly SkillBarSlot ArtifactSkill;
         public readonly string Target;
+        /// <summary>Turns auto-attack on or off (key A).</summary>
+        public readonly bool ToggleAutoAttack;
 
-        public PlayerInput(Vec2 move, Ability ability = Ability.None, EquipmentKey equipment = EquipmentKey.None, string target = null)
+        public PlayerInput(Vec2 move, Ability ability = Ability.None, SkillBarSlot artifactSkill = SkillBarSlot.None,
+            string target = null, bool toggleAutoAttack = false)
         {
             Move = move;
             Ability = ability;
-            Equipment = equipment;
+            ArtifactSkill = artifactSkill;
             Target = target;
+            ToggleAutoAttack = toggleAutoAttack;
         }
+
+        public PlayerInput WithToggleAutoAttack() => new PlayerInput(Move, Ability, ArtifactSkill, Target, true);
 
         public static readonly PlayerInput None = new PlayerInput(Vec2.Zero);
     }
@@ -133,6 +142,10 @@ namespace TheArtifacts.Core.Combat
         public float PlayerMaxMp => Build.MaxMp;
         public float GcdRemaining { get; private set; }
         public float GuardRemaining { get; private set; }
+        /// <summary>Auto-attack swings while this is on and the Guardian is in melee range. Off at the start.</summary>
+        public bool AutoAttacking { get; private set; }
+        /// <summary>Artifact ids in skill bar slots 1–6 (null for an empty slot).</summary>
+        public IReadOnlyList<string> ArtifactSkillBar => _skillBar;
 
         public GuardianSetup Setup { get; }
         public TierDef Tier { get; }
@@ -157,6 +170,7 @@ namespace TheArtifacts.Core.Combat
         };
         float _playerAutoTimer;
         readonly Dictionary<string, float> _equipmentCooldowns = new Dictionary<string, float>();
+        readonly string[] _skillBar;
         readonly List<(float Multiplier, float End)> _damageTakenBuffs = new List<(float, float)>();
         readonly HashSet<TraitPart> _usedOncePerFight = new HashSet<TraitPart>();
         readonly HashSet<string> _spentLore = new HashSet<string>();
@@ -203,6 +217,7 @@ namespace TheArtifacts.Core.Combat
             PlayerPosition = new Vec2(0f, -GuardianRules.StartDistance);
             GuardianFacing = new Vec2(0f, -1f);
             _nextSkillTime = _strategy.Interval;
+            _skillBar = build.DefaultSkillBar.ToArray();
         }
 
         public float DistanceToGuardian => Vec2.Distance(PlayerPosition, GuardianPosition);
@@ -251,8 +266,13 @@ namespace TheArtifacts.Core.Combat
             TickPlayerTimers(dt);
             MovePlayer(input.Move, dt);
             _aimedWeakPoint = input.Target != null ? FindWeakPoint(input.Target) : null;
+            if (input.ToggleAutoAttack)
+            {
+                AutoAttacking = !AutoAttacking;
+                Emit(CombatEventType.AbilityUsed, AutoAttacking ? "auto_attack_on" : "auto_attack_off", 0f);
+            }
             if (input.Ability != Ability.None) TryUse(input.Ability, input.Target);
-            if (input.Equipment != EquipmentKey.None) TryUseEquipment(input.Equipment);
+            if (input.ArtifactSkill != SkillBarSlot.None) TryUseArtifactSkill(input.ArtifactSkill);
             PlayerAutoAttack();
             if (CheckEnd()) return;
 
@@ -280,31 +300,63 @@ namespace TheArtifacts.Core.Combat
         static TraitPart EquipmentSkill(ArtifactDef artifact) =>
             artifact?.Trait.FirstOrDefault(p => p.Mode == TraitMode.EquipmentSkill);
 
-        public float EquipmentCooldownRemaining(EquipmentKey key)
+        /// <summary>The equipped artifact whose skill sits in this bar slot, or null.</summary>
+        public ArtifactDef ArtifactAt(SkillBarSlot slot)
         {
-            var artifact = Build.EquippedAt(key);
+            var i = (int)slot - 1;
+            if (i < 0 || i >= _skillBar.Length || _skillBar[i] == null) return null;
+            return Build.Artifacts.FirstOrDefault(a => a.Id == _skillBar[i]);
+        }
+
+        /// <summary>
+        /// Rearranges the skill bar (the player's choice, Combat Spec 3.2): up to six ids, null for an empty slot.
+        /// Each id must be an equipped artifact with an equipment skill, at most once. Cooldowns follow the artifact.
+        /// </summary>
+        public void SetArtifactSkillBar(IReadOnlyList<string> ids)
+        {
+            if (ids == null) throw new ArgumentNullException(nameof(ids));
+            if (ids.Count > PlayerRules.SkillBarSize) throw new ArgumentException($"At most {PlayerRules.SkillBarSize} slots.");
+            var placed = ids.Where(id => id != null).ToArray();
+            if (placed.Distinct().Count() != placed.Length) throw new ArgumentException("An artifact can sit in only one slot.");
+            foreach (var id in placed)
+                if (EquipmentSkill(Build.Artifacts.FirstOrDefault(a => a.Id == id)) == null)
+                    throw new ArgumentException($"'{id}' is not an equipped artifact with an equipment skill.");
+            for (var i = 0; i < _skillBar.Length; i++) _skillBar[i] = i < ids.Count ? ids[i] : null;
+        }
+
+        /// <summary>Swaps two skill bar slots.</summary>
+        public void SwapArtifactSkills(SkillBarSlot a, SkillBarSlot b)
+        {
+            int i = (int)a - 1, j = (int)b - 1;
+            if (i < 0 || j < 0 || i >= _skillBar.Length || j >= _skillBar.Length) return;
+            (_skillBar[i], _skillBar[j]) = (_skillBar[j], _skillBar[i]);
+        }
+
+        public float ArtifactSkillCooldownRemaining(SkillBarSlot slot)
+        {
+            var artifact = ArtifactAt(slot);
             return artifact != null && _equipmentCooldowns.TryGetValue(artifact.Id, out var t) ? t : 0f;
         }
 
-        /// <summary>Why this key's equipment skill cannot be cast now ("none" if the slot has no skill), or null.</summary>
-        public string EquipmentBlockReason(EquipmentKey key)
+        /// <summary>Why this slot's artifact skill cannot be cast now ("none" if the slot is empty), or null.</summary>
+        public string ArtifactSkillBlockReason(SkillBarSlot slot)
         {
-            if (EquipmentSkill(Build.EquippedAt(key)) == null) return "none";
-            if (EquipmentCooldownRemaining(key) > 0f) return "cooldown";
+            if (EquipmentSkill(ArtifactAt(slot)) == null) return "none";
+            if (ArtifactSkillCooldownRemaining(slot) > 0f) return "cooldown";
             return null;
         }
 
-        /// <summary>Equipment skills cost no MP and neither need nor trigger the GCD.</summary>
-        void TryUseEquipment(EquipmentKey key)
+        /// <summary>Artifact skills cost no MP and neither need nor trigger the GCD.</summary>
+        void TryUseArtifactSkill(SkillBarSlot slot)
         {
-            var reason = EquipmentBlockReason(key);
+            var reason = ArtifactSkillBlockReason(slot);
             if (reason != null)
             {
-                Emit(CombatEventType.AbilityRejected, $"{key}:{reason}", 0f);
+                Emit(CombatEventType.AbilityRejected, $"{slot}:{reason}", 0f);
                 return;
             }
 
-            var artifact = Build.EquippedAt(key);
+            var artifact = ArtifactAt(slot);
             var part = EquipmentSkill(artifact);
             foreach (var effect in part.Effects) ApplyTraitEffect(artifact, effect, 0f);
             _equipmentCooldowns[artifact.Id] = part.Cooldown * (1f - Build.CooldownReduction);
@@ -428,7 +480,7 @@ namespace TheArtifacts.Core.Combat
 
         void PlayerAutoAttack()
         {
-            if (_playerAutoTimer > 0f || !InMeleeRange) return;
+            if (!AutoAttacking || _playerAutoTimer > 0f || !InMeleeRange) return;
             DamageGuardian(PlayerRules.AutoCoefficient * Build.Strength, "auto", DamageType.Physical, canCrit: true);
             _playerAutoTimer = PlayerRules.AutoSwing;
         }

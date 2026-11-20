@@ -50,7 +50,14 @@ namespace TheArtifacts.PC.Combat
         CombatSim _sim;
         float _accumulator;
         Ability _pendingAbility;
-        EquipmentKey _pendingEquipment;
+        SkillBarSlot _pendingArtifactSkill;
+        bool _pendingAutoToggle;
+        /// <summary>The player's skill bar order, kept across retries; reapplied when it still fits the build.</summary>
+        string[] _preferredBar;
+        /// <summary>The first slot clicked when rearranging the skill bar, or None.</summary>
+        SkillBarSlot _swapFrom;
+        /// <summary>Screen areas of the HUD (GUI coordinates); clicks there do not aim at the floor.</summary>
+        readonly List<Rect> _hudRects = new List<Rect>();
         int _wins;
         string _reward;
         Vec2? _moveTarget;
@@ -64,7 +71,7 @@ namespace TheArtifacts.PC.Combat
 
         Camera _camera;
         Vector3 _cameraBack = Vector3.back;
-        Transform _player, _guardian, _moveMarker, _meleeRing;
+        Transform _player, _guardian, _moveMarker;
         Material _playerMaterial;
         /// <summary>The player flashes red until this time after taking damage.</summary>
         float _hurtUntil;
@@ -102,11 +109,18 @@ namespace TheArtifacts.PC.Combat
             _eventCursor = 0;
             _accumulator = 0f;
             _pendingAbility = Ability.None;
-            _pendingEquipment = EquipmentKey.None;
+            _pendingArtifactSkill = SkillBarSlot.None;
+            _pendingAutoToggle = false;
+            _swapFrom = SkillBarSlot.None;
             _reward = null;
             _moveTarget = null;
             _spellTarget = null;
             _sim = new CombatSim(CurrentBuild, CurrentSetup, seed, PrototypeContent.GuardianById(guardianId));
+            if (_preferredBar != null)
+            {
+                try { _sim.SetArtifactSkillBar(_preferredBar); }
+                catch (System.ArgumentException) { _preferredBar = null; }  // the build changed; use its default bar
+            }
             BuildLoreViews();
             SyncViews();
         }
@@ -130,27 +144,30 @@ namespace TheArtifacts.PC.Combat
                 return;
             }
 
+            // Skills on Q W E R T F, auto-attack toggle on A, artifact skill bar on 1 2 3 4 C V (Combat Spec 3.2).
             if (_pendingAbility == Ability.None)
             {
-                if (kb.digit1Key.wasPressedThisFrame) _pendingAbility = Ability.HeavyStrike;
-                else if (kb.digit2Key.wasPressedThisFrame) _pendingAbility = Ability.Guard;
-                else if (kb.digit3Key.wasPressedThisFrame) _pendingAbility = Ability.Lunge;
-                else if (kb.digit4Key.wasPressedThisFrame) _pendingAbility = Ability.Overpower;
-                else if (kb.digit5Key.wasPressedThisFrame) _pendingAbility = Ability.LightningBolt;
-                else if (kb.digit6Key.wasPressedThisFrame) _pendingAbility = Ability.FireBolt;
+                if (kb.qKey.wasPressedThisFrame) _pendingAbility = Ability.HeavyStrike;
+                else if (kb.wKey.wasPressedThisFrame) _pendingAbility = Ability.Guard;
+                else if (kb.eKey.wasPressedThisFrame) _pendingAbility = Ability.Lunge;
+                else if (kb.rKey.wasPressedThisFrame) _pendingAbility = Ability.Overpower;
+                else if (kb.tKey.wasPressedThisFrame) _pendingAbility = Ability.LightningBolt;
+                else if (kb.fKey.wasPressedThisFrame) _pendingAbility = Ability.FireBolt;
             }
+            if (kb.aKey.wasPressedThisFrame) _pendingAutoToggle = !_pendingAutoToggle;
             if (kb.escapeKey.wasPressedThisFrame) _spellTarget = null;
-            if (_pendingEquipment == EquipmentKey.None) _pendingEquipment = ReadEquipmentKey(kb);
+            if (_pendingArtifactSkill == SkillBarSlot.None) _pendingArtifactSkill = ReadSkillBarKey(kb);
 
             ReadMoveTarget();
             ReadSpellTarget();
             _accumulator = Mathf.Min(_accumulator + Time.deltaTime, 0.25f);
             while (_accumulator >= SimStep && _sim.Outcome == CombatOutcome.Ongoing)
             {
-                _sim.Step(SimStep, new PlayerInput(MoveTowardTarget(), _pendingAbility, _pendingEquipment, _spellTarget));
+                _sim.Step(SimStep, new PlayerInput(MoveTowardTarget(), _pendingAbility, _pendingArtifactSkill, _spellTarget, _pendingAutoToggle));
                 if (_spellTarget != null && _sim.IsLoreSpent(_spellTarget)) _spellTarget = null;
                 _pendingAbility = Ability.None;
-                _pendingEquipment = EquipmentKey.None;
+                _pendingArtifactSkill = SkillBarSlot.None;
+                _pendingAutoToggle = false;
                 _accumulator -= SimStep;
             }
 
@@ -158,17 +175,17 @@ namespace TheArtifacts.PC.Combat
             CollectEvents();
         }
 
-        static EquipmentKey ReadEquipmentKey(Keyboard kb)
+        static readonly string[] SkillBarKeyNames = { "1", "2", "3", "4", "C", "V" };
+
+        static SkillBarSlot ReadSkillBarKey(Keyboard kb)
         {
-            if (kb.qKey.wasPressedThisFrame) return EquipmentKey.Q;
-            if (kb.wKey.wasPressedThisFrame) return EquipmentKey.W;
-            if (kb.eKey.wasPressedThisFrame) return EquipmentKey.E;
-            if (kb.aKey.wasPressedThisFrame) return EquipmentKey.A;
-            if (kb.sKey.wasPressedThisFrame) return EquipmentKey.S;
-            if (kb.dKey.wasPressedThisFrame) return EquipmentKey.D;
-            if (kb.xKey.wasPressedThisFrame) return EquipmentKey.X;
-            if (kb.cKey.wasPressedThisFrame) return EquipmentKey.C;
-            return EquipmentKey.None;
+            if (kb.digit1Key.wasPressedThisFrame) return SkillBarSlot.Slot1;
+            if (kb.digit2Key.wasPressedThisFrame) return SkillBarSlot.Slot2;
+            if (kb.digit3Key.wasPressedThisFrame) return SkillBarSlot.Slot3;
+            if (kb.digit4Key.wasPressedThisFrame) return SkillBarSlot.Slot4;
+            if (kb.cKey.wasPressedThisFrame) return SkillBarSlot.Slot5;
+            if (kb.vKey.wasPressedThisFrame) return SkillBarSlot.Slot6;
+            return SkillBarSlot.None;
         }
 
         /// <summary>Rolls this landmark's reward (Combat Spec 5.1); the first win this session counts as a first win.</summary>
@@ -208,6 +225,9 @@ namespace TheArtifacts.PC.Combat
         {
             var mouse = Mouse.current;
             if (mouse == null || !mouse.leftButton.wasPressedThisFrame || ControlHeld) return;
+            var screen = mouse.position.ReadValue();
+            var gui = new Vector2(screen.x, Screen.height - screen.y);
+            if (_hudRects.Any(r => r.Contains(gui))) return;  // a click on the HUD, not the floor
 
             var ray = _camera.ScreenPointToRay(mouse.position.ReadValue());
             if (!new Plane(Vector3.up, Vector3.zero).Raycast(ray, out var enter)) return;
@@ -300,16 +320,6 @@ namespace TheArtifacts.PC.Combat
             _weakPoint.localPosition = new Vector3(0.35f, 0.1f, -0.45f);
             _weakPoint.localScale = Vector3.one * 0.3f;
 
-            // The Guardian's melee reach: inside this ring its auto-attacks hit you, with no telegraph.
-            var ringMaterial = new Material(unlit != null ? unlit : lit);
-            ringMaterial.SetColor("_BaseColor", new Color(0.6f, 0.1f, 0.08f));
-            var ring = new GameObject("Guardian Melee Range");
-            ring.transform.SetParent(transform, false);
-            ring.AddComponent<MeshFilter>().sharedMesh =
-                TelegraphMeshes.Build(new RingArea(Vec2.Zero, GuardianRules.MeleeRange - 0.08f, GuardianRules.MeleeRange), TelegraphY);
-            ring.AddComponent<MeshRenderer>().sharedMaterials = new[] { ringMaterial, ringMaterial };
-            _meleeRing = ring.transform;
-
             _moveMarker = Primitive(PrimitiveType.Cylinder, "Move Target", Lit(lit, PlayerColor));
             _moveMarker.localScale = new Vector3(0.5f, 0.01f, 0.5f);
 
@@ -380,7 +390,6 @@ namespace TheArtifacts.PC.Combat
         {
             _player.position = TelegraphMeshes.ToWorld(_sim.PlayerPosition, 1f);
             _playerMaterial.SetColor("_BaseColor", Time.time < _hurtUntil ? new Color(1f, 0.15f, 0.1f) : PlayerColor);
-            _meleeRing.position = TelegraphMeshes.ToWorld(_sim.GuardianPosition);
             _guardian.position = TelegraphMeshes.ToWorld(_sim.GuardianPosition, 2f);
             _moveMarker.gameObject.SetActive(_moveTarget.HasValue);
             if (_moveTarget is Vec2 target) _moveMarker.position = TelegraphMeshes.ToWorld(target, TelegraphY);
@@ -519,15 +528,16 @@ namespace TheArtifacts.PC.Combat
             // Player HP and hotbar
             var hp = new Rect(w * 0.5f - 250f, h - 132f, 500f, 20f);
             Bar(hp, _sim.PlayerHp / _sim.PlayerMaxHp, new Color(0.2f, 0.75f, 0.3f));
-            GUI.Label(hp, $"{_sim.PlayerHp:0} / {_sim.PlayerMaxHp:0}" + (_sim.GuardRemaining > 0f ? "   GUARD" : ""), _center);
+            GUI.Label(hp, $"{_sim.PlayerHp:0} / {_sim.PlayerMaxHp:0}" + (_sim.GuardRemaining > 0f ? "   GUARD" : "") +
+                (_sim.AutoAttacking ? "   AUTO-ATTACK ON" : "   auto-attack off (A)"), _center);
             var mp = new Rect(w * 0.5f - 250f, h - 108f, 500f, 16f);
             Bar(mp, _sim.PlayerMp / _sim.PlayerMaxMp, new Color(0.25f, 0.4f, 0.95f));
             GUI.Label(mp, $"MP {_sim.PlayerMp:0} / {_sim.PlayerMaxMp:0}", _center);
 
             var abilities = new[]
             {
-                (Ability.HeavyStrike, "1 Heavy"), (Ability.Guard, "2 Guard"), (Ability.Lunge, "3 Lunge"), (Ability.Overpower, "4 Overpower"),
-                (Ability.LightningBolt, "5 Lightning"), (Ability.FireBolt, "6 Fire"),
+                (Ability.HeavyStrike, "Q Heavy"), (Ability.Guard, "W Guard"), (Ability.Lunge, "E Lunge"), (Ability.Overpower, "R Overpower"),
+                (Ability.LightningBolt, "T Lightning"), (Ability.FireBolt, "F Fire"),
             };
             for (var i = 0; i < abilities.Length; i++)
             {
@@ -542,14 +552,16 @@ namespace TheArtifacts.PC.Combat
             if (_sim.GcdRemaining > 0f)
                 Bar(new Rect(w * 0.5f - 250f, h - 28f, 500f * _sim.GcdRemaining / PlayerRules.GlobalCooldown, 4f), 1f, Color.white);
 
+            ArtifactSkillBar(w, h);
+
             // Info and log
             GUI.Label(new Rect(16f, 16f, 800f, 130f),
                 $"{build} (gear {_sim.Build.GearScore})   {_sim.Time:0.0}s\n" +
                 $"Guardian: {_sim.Setup}\n" +
-                "Right-click (or Ctrl+click) move   1 Heavy  2 Guard  3 Lunge  4 Overpower  5 Lightning Bolt  6 Fire Bolt\n" +
+                "Right-click (or Ctrl+click) move   Q Heavy  W Guard  E Lunge  R Overpower  T Lightning Bolt  F Fire Bolt  A auto-attack on/off\n" +
                 "Left-click a bookshelf or something on the Guardian to aim at it (Esc: back to the Guardian)" +
                 (_spellTarget != null ? $"   Target: {_sim.FindLoreTarget(_spellTarget)?.Name ?? _sim.FindWeakPoint(_spellTarget)?.Name} ({_spellTarget})" : "") + "\n" +
-                "Equipment skills: Q W E / A S D / X C" + EquipmentSkillList(), _label);
+                "Artifact skills: 1 2 3 4 C V (click two slots on the right to swap them)", _label);
             GUI.Label(new Rect(16f, h - 190f, 360f, 170f), string.Join("\n", _log), _label);
 
             if (_sim.Outcome != CombatOutcome.Ongoing)
@@ -561,13 +573,35 @@ namespace TheArtifacts.PC.Combat
             }
         }
 
-        string EquipmentSkillList()
+        /// <summary>
+        /// The six artifact skill slots, stacked at the right edge. Click one slot, then another, to swap them;
+        /// the order is kept for later retries.
+        /// </summary>
+        void ArtifactSkillBar(float w, float h)
         {
-            var ready = new[] { EquipmentKey.Q, EquipmentKey.W, EquipmentKey.E, EquipmentKey.A, EquipmentKey.S, EquipmentKey.D, EquipmentKey.X, EquipmentKey.C }
-                .Where(k => _sim.EquipmentBlockReason(k) != "none")
-                .Select(k => $"{k} {_sim.Build.EquippedAt(k).Name}" + (_sim.EquipmentCooldownRemaining(k) > 0f ? $" {_sim.EquipmentCooldownRemaining(k):0}s" : ""));
-            var list = string.Join(", ", ready);
-            return list.Length > 0 ? $"  ({list})" : "";
+            _hudRects.Clear();
+            for (var i = 0; i < PlayerRules.SkillBarSize; i++)
+            {
+                var slot = (SkillBarSlot)(i + 1);
+                var rect = new Rect(w - 196f, h * 0.5f - 165f + i * 56f, 180f, 50f);
+                _hudRects.Add(rect);
+                var artifact = _sim.ArtifactAt(slot);
+                var cd = _sim.ArtifactSkillCooldownRemaining(slot);
+                var color = slot == _swapFrom ? new Color(0.55f, 0.45f, 0.1f)
+                    : artifact == null ? new Color(0.1f, 0.1f, 0.12f)
+                    : cd > 0f ? new Color(0.12f, 0.12f, 0.14f) : new Color(0.2f, 0.25f, 0.35f);
+                Bar(rect, 1f, color);
+                var label = $"{SkillBarKeyNames[i]}  {(artifact != null ? artifact.Name : "(empty)")}" + (cd > 0f ? $"\n{cd:0.0}s" : "");
+                if (GUI.Button(rect, label, _center)) ClickSkillBarSlot(slot);
+            }
+        }
+
+        void ClickSkillBarSlot(SkillBarSlot slot)
+        {
+            if (_swapFrom == SkillBarSlot.None) { _swapFrom = slot; return; }
+            if (_swapFrom != slot) _sim.SwapArtifactSkills(_swapFrom, slot);
+            _swapFrom = SkillBarSlot.None;
+            _preferredBar = _sim.ArtifactSkillBar.ToArray();
         }
 
         static void Bar(Rect r, float fill, Color color)

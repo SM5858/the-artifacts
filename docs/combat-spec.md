@@ -46,28 +46,20 @@ The nine stats are defined in GDD Section 6.2. In combat:
 
 ### 3.2 Abilities (same for both builds)
 
-Both builds use the same abilities, so a tester learns one control scheme. The builds differ only in stats and artifacts. Keys 1–4 are physical; key 5 is the one learned magic skill in the prototype.
+Both builds use the same abilities, so a tester learns one control scheme. The builds differ only in stats and artifacts. Keys Q W E R are physical; T and F are learned magic skills. Key layout changed on 2026-11-20 after a sandbox playtest (skills had been on 1–6).
 
 | Key | Ability | Cooldown | Effect | Intent |
 |---|---|---|---|---|
-| auto | Auto-attack | 2.0 s swing | 1.0 × Strength while in range | commit |
-| 1 | Heavy Strike | 6 s | 2.5 × Strength | commit |
-| 2 | Guard | 12 s | 60% less damage taken for 2 s | defend |
-| 3 | Lunge | 10 s | Dash up to 8 m to the Guardian, 1.0 × Strength | switch tactics (re-engage after evading) |
-| 4 | Overpower (ultimate) **[PROPOSED 2026-11-19]** | 45 s | 8.0 × Strength, melee. Best saved for an opening, where it is likely to crit | commit (rewards reading tells) |
-| 5 | Lightning Bolt **[DECIDED 2026-11-19]** | 8 s | Magic: 100 + 1.5 × Intelligence (useful at any Intelligence), range 15 m, costs 30 MP. Strong against most Guardians, nearly useless against Alma Mater (high Res) | commit at range |
-| 6 | Fire Bolt **[DECIDED 2026-11-19; numbers PROPOSED]** | 6 s | Magic: 60 + 1.0 × Intelligence, range 25 m (reaches the bookshelves from most of the arena), costs 20 MP. Weaker than Lightning Bolt; its value is fire, which sets lore targets alight (4.5) | commit at range, or aim at a lore target |
+| A | Auto-attack (toggle) **[DECIDED 2026-11-20]** | 2.0 s swing | 1.0 × Strength while in range. Off at the start of a fight; A turns it on or off. Moving does not stop it (Section 2) | commit |
+| Q | Heavy Strike | 6 s | 2.5 × Strength | commit |
+| W | Guard | 12 s | 60% less damage taken for 2 s | defend |
+| E | Lunge | 10 s | Dash up to 8 m to the Guardian, 1.0 × Strength | switch tactics (re-engage after evading) |
+| R | Overpower (ultimate) **[PROPOSED 2026-11-19]** | 45 s | 8.0 × Strength, melee. Best saved for an opening, where it is likely to crit | commit (rewards reading tells) |
+| T | Lightning Bolt **[DECIDED 2026-11-19]** | 8 s | Magic: 100 + 1.5 × Intelligence (useful at any Intelligence), range 15 m, costs 30 MP. Strong against most Guardians, nearly useless against Alma Mater (high Res) | commit at range |
+| F | Fire Bolt **[DECIDED 2026-11-19; numbers PROPOSED]** | 6 s | Magic: 60 + 1.0 × Intelligence, range 25 m (reaches the bookshelves from most of the arena), costs 20 MP. Weaker than Lightning Bolt; its value is fire, which sets lore targets alight (4.5) | commit at range, or aim at a lore target |
 | Right-click (or Ctrl+click on a trackpad) | Move | — | Run to the clicked point (hold to steer); walk out of telegraphed areas | evade |
 
-**Equipment-skill keys [DECIDED 2026-11-17].** A skill granted by an equipped artifact (GDD Section 6.6) is cast with the key of the slot it is worn in. The keys follow the body: top row head and hands, middle row torso, bottom row feet. WASD is no longer movement.
-
-| Key | Slot | | Key | Slot | | Key | Slot |
-|---|---|---|---|---|---|---|---|
-| Q | Left hand | | W | Helm | | E | Right hand |
-| A | Gloves | | S | Armor | | D | Trinket 1 |
-| — | — | | X | Boots | | C | Trinket 2 |
-
-A slot with no granted skill leaves its key unused. Equipment skills cost no MP and neither need nor trigger the GCD **[DECIDED 2026-11-19]**, so a defensive one can be used in reaction to a tell.
+**Artifact skill bar [DECIDED 2026-11-20]** (replaces the per-slot keys of 2026-11-17). A skill granted by an equipped artifact (GDD Section 6.6) sits in one of **six bar slots on keys 1, 2, 3, 4, C, V**. The player chooses which artifact skill goes in which slot (in the sandbox: click two slots to swap them); by default the skills fill the bar in equip order. With more than six artifact skills equipped, only the six on the bar can be used, so choosing them is part of the build. An empty slot does nothing. Equipment skills cost no MP and neither need nor trigger the GCD **[DECIDED 2026-11-19]**, so a defensive one can be used in reaction to a tell.
 
 ### 3.3 Test builds
 
@@ -227,7 +219,7 @@ The **first win** on a Guardian gives Heirloom or better when the landmark's poo
 
 ### 5.2 Slots and what rarity changes
 
-Eight slots **[DECIDED 2026-11-17]**: **helm, armor, left hand, right hand, gloves, boots,** and **two trinket slots.** One item per slot; a trinket fits either trinket slot. Each slot has an equipment-skill key (Section 3.2). The prototype artifacts (5.3) cover helm, right hand, and armor; content for the other slots is open (GDD Q15).
+Eight slots **[DECIDED 2026-11-17]**: **helm, armor, left hand, right hand, gloves, boots,** and **two trinket slots.** One item per slot; a trinket fits either trinket slot. Artifact skills go on the six-slot skill bar (Section 3.2). The prototype artifacts (5.3) cover helm, right hand, and armor; content for the other slots is open (GDD Q15).
 
 Every artifact has a **trait**, which general items never have (GDD Section 6.6). The Effect column is that trait.
 
@@ -247,7 +239,7 @@ Every artifact has a **trait**, which general items never have (GDD Section 6.6)
 | Columbia Lion statue (Columbia Lion) | Columbia Lion's Fang | right hand (dagger) | Heirloom | +15 Strength, +10 Precision | 20% more damage to Beasts |
 | | Columbia Lion's Pelt | helm | Mythic | +150 HP, +12 Def, +10 Speed | Once per fight, survive a killing blow at 1 HP |
 | Columbia bookstore (Book Keeper) | Columbia Blue Mortarboard | helm | Relic | +20 Precision | 20% more damage to Undead |
-| | Columbia Blue Robe | armor | Treasure | +150 HP, +6 Def, +12 Res | S: take 30% less damage for 4 s (25 s cooldown) |
+| | Columbia Blue Robe | armor | Treasure | +150 HP, +6 Def, +12 Res | Skill: take 30% less damage for 4 s (25 s cooldown) |
 
 With the per-landmark roll (5.1), a win gives: Alma Mater, always a Relic (either artifact); Columbia Lion, Fang 86% / Pelt 14%; Book Keeper, Mortarboard 77% / Robe 23%. A first win gives the Fang or Pelt at the Lion (unchanged), the Robe at the bookstore, and a Relic at Alma Mater. Since Alma Mater became Undead (2026-11-20), the Mortarboard's Undead bonus pays off at Alma Mater, not at the bookstore where it drops.
 

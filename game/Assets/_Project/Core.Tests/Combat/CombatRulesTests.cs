@@ -547,27 +547,65 @@ namespace TheArtifacts.Core.Tests.Combat
         // ---------- Columbia artifact traits ----------
 
         [Test]
-        public void BlueRobe_EquipmentSkillOnS_CutsDamageTaken()
+        public void BlueRobe_ArtifactSkill_CutsDamageTaken()
         {
             // Slam 250 at T3; Robe Def 6 → 6/106 less; the S skill takes 30% off for 4 s.
             var sim = Sim(PrototypeContent.Build("columbia_blue_robe"), "T3", "steady", "slam", "cleave", "charge");
             Engage(sim);
             RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 15f);
 
-            sim.Step(Dt, new PlayerInput(Vec2.Zero, Ability.None, EquipmentKey.S));
+            sim.Step(Dt, new PlayerInput(Vec2.Zero, Ability.None, SkillBarSlot.Slot1));
             RunUntil(sim, s => s.Phase == GuardianPhase.Recovery, 3f);
 
             Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "slam"), Is.EqualTo(250f * (1f - 6f / 106f) * 0.7f).Within(1e-2));
-            Assert.That(sim.EquipmentCooldownRemaining(EquipmentKey.S), Is.GreaterThan(20f));
+            Assert.That(sim.ArtifactSkillCooldownRemaining(SkillBarSlot.Slot1), Is.GreaterThan(20f));
             Assert.That(sim.GcdRemaining, Is.Zero);
         }
 
         [Test]
-        public void EquipmentKey_WithNoSkill_IsRejected()
+        public void SkillBarSlot_WithNoSkill_IsRejected()
         {
             var sim = Sim(PrototypeContent.Build("wreath_of_alma_mater"), "T3", "steady", "slam", "cleave", "charge");
-            sim.Step(Dt, new PlayerInput(Vec2.Zero, Ability.None, EquipmentKey.W));
-            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("W:none"));
+            sim.Step(Dt, new PlayerInput(Vec2.Zero, Ability.None, SkillBarSlot.Slot1));
+            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("Slot1:none"));
+        }
+
+        // ---------- Skill bar and auto-attack toggle (Combat Spec 3.2) ----------
+
+        [Test]
+        public void SkillBar_DefaultsToArtifactsWithSkills_AndCanBeRearranged()
+        {
+            var sim = Sim(PrototypeContent.GearedBuild, "T3", "steady", "slam", "cleave", "charge");
+            Assert.That(sim.ArtifactSkillBar, Is.EqualTo(new[] { "columbia_blue_robe", null, null, null, null, null }),
+                "only the Robe has an artifact skill; the Wreath and Fang are passive");
+
+            sim.SwapArtifactSkills(SkillBarSlot.Slot1, SkillBarSlot.Slot6);
+            Assert.That(sim.ArtifactAt(SkillBarSlot.Slot6).Id, Is.EqualTo("columbia_blue_robe"));
+            Assert.That(sim.ArtifactAt(SkillBarSlot.Slot1), Is.Null);
+
+            sim.SetArtifactSkillBar(new[] { null, "columbia_blue_robe" });
+            Assert.That(sim.ArtifactAt(SkillBarSlot.Slot2).Id, Is.EqualTo("columbia_blue_robe"));
+            Assert.Throws<System.ArgumentException>(() => sim.SetArtifactSkillBar(new[] { "wreath_of_alma_mater" }), "no skill");
+            Assert.Throws<System.ArgumentException>(() => sim.SetArtifactSkillBar(new[] { "columbia_blue_robe", "columbia_blue_robe" }));
+            Assert.Throws<System.ArgumentException>(() => sim.SetArtifactSkillBar(new string[7]));
+        }
+
+        [Test]
+        public void AutoAttack_IsOffUntilToggled()
+        {
+            var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "slam", "cleave", "charge");
+            Engage(sim);
+            RunFor(sim, 3f);
+            Assert.That(sim.AutoAttacking, Is.False);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "auto"), Is.Zero);
+
+            sim.Step(Dt, PlayerInput.None.WithToggleAutoAttack());
+            RunFor(sim, 3f);
+            Assert.That(sim.AutoAttacking, Is.True);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "auto"), Is.GreaterThan(0f));
+
+            sim.Step(Dt, PlayerInput.None.WithToggleAutoAttack());
+            Assert.That(sim.AutoAttacking, Is.False);
         }
 
         [Test]

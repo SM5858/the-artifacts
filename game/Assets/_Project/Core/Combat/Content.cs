@@ -9,6 +9,8 @@ namespace TheArtifacts.Core.Combat
     public static class PlayerRules
     {
         public const float GlobalCooldown = 1.0f;
+        /// <summary>Artifact skill bar slots, on keys 1, 2, 3, 4, C, V.</summary>
+        public const int SkillBarSize = 6;
         /// <summary>Base run speed; Speed raises it by Speed% (Combat Spec 2).</summary>
         public const float RunSpeed = 7f;
         public const float MeleeRange = 3f;
@@ -258,20 +260,18 @@ namespace TheArtifacts.Core.Combat
 
         public static int SlotCapacity(ArtifactSlot slot) => slot == ArtifactSlot.Trinket ? 2 : 1;
 
-        /// <summary>The artifact cast by an equipment-skill key (Combat Spec 3.2), or null. D and C are the first and second trinket.</summary>
-        public ArtifactDef EquippedAt(EquipmentKey key)
+        /// <summary>
+        /// The skill bar before the player rearranges it: equipped artifacts that have an equipment skill, in equip
+        /// order, in slots 1–6 (null for empty). Artifact skills beyond six do not fit and cannot be used.
+        /// </summary>
+        public IReadOnlyList<string> DefaultSkillBar
         {
-            switch (key)
+            get
             {
-                case EquipmentKey.Q: return Artifacts.FirstOrDefault(a => a.Slot == ArtifactSlot.LeftHand);
-                case EquipmentKey.W: return Artifacts.FirstOrDefault(a => a.Slot == ArtifactSlot.Helm);
-                case EquipmentKey.E: return Artifacts.FirstOrDefault(a => a.Slot == ArtifactSlot.RightHand);
-                case EquipmentKey.A: return Artifacts.FirstOrDefault(a => a.Slot == ArtifactSlot.Gloves);
-                case EquipmentKey.S: return Artifacts.FirstOrDefault(a => a.Slot == ArtifactSlot.Armor);
-                case EquipmentKey.X: return Artifacts.FirstOrDefault(a => a.Slot == ArtifactSlot.Boots);
-                case EquipmentKey.D: return Artifacts.Where(a => a.Slot == ArtifactSlot.Trinket).ElementAtOrDefault(0);
-                case EquipmentKey.C: return Artifacts.Where(a => a.Slot == ArtifactSlot.Trinket).ElementAtOrDefault(1);
-                default: return null;
+                var bar = new string[PlayerRules.SkillBarSize];
+                var withSkill = Artifacts.Where(a => a.Trait.Any(p => p.Mode == TraitMode.EquipmentSkill)).Take(bar.Length).ToArray();
+                for (var i = 0; i < withSkill.Length; i++) bar[i] = withSkill[i].Id;
+                return bar;
             }
         }
     }
@@ -330,7 +330,7 @@ namespace TheArtifacts.Core.Combat
             new ArtifactDef { Id = "columbia_blue_mortarboard", Name = "Columbia Blue Mortarboard", Description = "20% more damage to Undead",
                 Slot = ArtifactSlot.Helm, Rarity = Rarity.Relic, Precision = 20f,
                 Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.DamageDealtVsType, Creature = CreatureType.Undead, Value = 0.2f }) } },
-            new ArtifactDef { Id = "columbia_blue_robe", Name = "Columbia Blue Robe", Description = "S: take 30% less damage for 4 s (25 s cooldown)",
+            new ArtifactDef { Id = "columbia_blue_robe", Name = "Columbia Blue Robe", Description = "Skill: take 30% less damage for 4 s (25 s cooldown)",
                 Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 150f, Def = 6f, Res = 12f,
                 Trait = new[]
                 {

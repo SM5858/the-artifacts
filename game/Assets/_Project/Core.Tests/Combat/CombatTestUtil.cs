@@ -38,7 +38,7 @@ namespace TheArtifacts.Core.Tests.Combat
 
     /// <summary>
     /// A simple competent player for balance smoke tests: steps out of telegraphs by the quickest
-    /// direction, guards (or uses an equipment skill on S) for hits it cannot escape, punishes recovery
+    /// direction, turns auto-attack on, guards (or uses a ready artifact skill) for hits it cannot escape, punishes recovery
     /// windows, keeps melee uptime, and casts Lightning Bolt when out of melee or when melee skills are down.
     /// A bot that knows the place's lore keeps the fight within reach of an unburned lore target and answers
     /// a noticed tell by setting it alight, and aims at an exposed weak point (GDD 6.7).
@@ -57,7 +57,7 @@ namespace TheArtifacts.Core.Tests.Combat
             var input = Decide(sim, reactionTime, missed);
             if (!knowsLore) return input;
             var exposed = sim.Guardian.WeakPoints.FirstOrDefault(w => sim.IsWeakPointExposed(w.Id));
-            if (exposed != null) input = new PlayerInput(input.Move, input.Ability, input.Equipment, exposed.Id);
+            if (exposed != null) input = new PlayerInput(input.Move, input.Ability, input.ArtifactSkill, exposed.Id);
             if (sim.Guardian.LoreTargets.Count == 0) return input;
             if (sim.Phase != GuardianPhase.Tell)
             {
@@ -66,11 +66,11 @@ namespace TheArtifacts.Core.Tests.Combat
                     .OrderBy(t => Vec2.Distance(t.Position, sim.PlayerPosition)).FirstOrDefault();
                 if (shelf == null || sim.ActiveTelegraphs.Any() || Vec2.Distance(shelf.Position, sim.PlayerPosition) <= PlayerRules.FireBoltRange - 3f)
                     return input;
-                return new PlayerInput((shelf.Position - sim.PlayerPosition).Normalized(), input.Ability, input.Equipment);
+                return new PlayerInput((shelf.Position - sim.PlayerPosition).Normalized(), input.Ability, input.ArtifactSkill);
             }
             var noticed = sim.ActiveTelegraphs.Any(t => sim.Time - (t.HitTime - t.Tell) >= reactionTime && (missed == null || !missed.Contains(t)));
             var lore = sim.Guardian.LoreTargets.FirstOrDefault(t => sim.BlockReason(Ability.FireBolt, t.Id) == null);
-            return noticed && lore != null ? new PlayerInput(input.Move, Ability.FireBolt, input.Equipment, lore.Id) : input;
+            return noticed && lore != null ? new PlayerInput(input.Move, Ability.FireBolt, input.ArtifactSkill, lore.Id) : input;
         }
 
         /// <param name="reactionTime">Seconds after a telegraph appears before the bot notices it.</param>
@@ -108,8 +108,11 @@ namespace TheArtifacts.Core.Tests.Combat
                 var nextHit = threats.Where(t => t.Area.Contains(pos)).Min(t => t.HitTime) - sim.Time;
                 var cannotEscape = bestTime > nextHit;
                 var ability = cannotEscape && sim.BlockReason(Ability.Guard) == null ? Ability.Guard : Ability.None;
-                var equipment = cannotEscape && ability == Ability.None && sim.EquipmentBlockReason(EquipmentKey.S) == null
-                    ? EquipmentKey.S : EquipmentKey.None;
+                // Otherwise a ready artifact skill (the Robe's damage cut in the geared build).
+                var equipment = cannotEscape && ability == Ability.None
+                    ? Enumerable.Range(1, PlayerRules.SkillBarSize).Select(i => (SkillBarSlot)i)
+                        .FirstOrDefault(s => sim.ArtifactSkillBlockReason(s) == null)
+                    : SkillBarSlot.None;
                 return new PlayerInput(best, ability, equipment);
             }
 
@@ -148,7 +151,8 @@ namespace TheArtifacts.Core.Tests.Combat
             {
                 foreach (var t in s.ActiveTelegraphs)
                     if (seen.Add(t) && rng.NextDouble() < missChance) missed.Add(t);
-                return Decide(s, reactionTime, missed, knowsLore);
+                var input = Decide(s, reactionTime, missed, knowsLore);
+                return s.AutoAttacking ? input : input.WithToggleAutoAttack();
             });
             return sim;
         }
