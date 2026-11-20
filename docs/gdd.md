@@ -188,7 +188,8 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 - **Visual direction [DECIDED 2026-11-20]:**
   - **Equipment changes the character's look.** The player character is built from parts per slot, so every equipped artifact and general item is visible. [PROPOSED] Trinkets are too small to show and get no mesh; the other six slots (helm, armor, left hand, right hand, gloves, boots) do. Prototype need: a base look for each slot plus the six Columbia artifacts.
   - **Guardians are living statues**, finished in stone or bronze: Alma Mater a lich in a flowing robe (the hidden owl sits in its folds, Section 6.7), the Columbia Lion a lion, the Book Keeper a plain golem among bookshelves.
-  - Art style and asset sources: [OPEN].
+  - **Art style [DECIDED 2026-11-20]: realistic PBR** (Dark Souls-like), in URP. Stone and bronze statues suit it best. It is the costliest style for a modular, gear-showing character and its animations, so readability comes first: tells, telegraphs, and HP stay clear before any polish, and the graybox primitives remain the fallback until each model is in.
+  - **Asset sources [DECIDED 2026-11-20]: CC0 first, paid only for gaps.** CC0 files can be committed to this public repository (`Assets/_Project/Art`), for example PBR stone, bronze, and floor materials and HDRIs from Poly Haven or ambientCG. Realistic modular characters and creature models are rarely CC0, so those will likely be paid Asset Store packages kept in `Assets/ThirdParty/` (git-ignored, never committed); a fresh clone then lacks them and must still run on the graybox fallback. Every file's source and license is recorded in Section 12 before it is committed.
 
 ## 10. Content scope
 
@@ -222,7 +223,10 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 | *Dark Souls* | A boss telegraphs an attack and leaves a recovery opening | The readable tell and the opening after it | Stays real-time, but the fight is paced by basic attacks, skill cooldowns, and artifact effects in my own combat rules | Proprietary. Design reference only; no assets or code used. |
 
 - Cover illustration in the pitch deck: AI-generated concept art created for the pitch.
-- Prototype assets and code will be original or used under documented licenses, with terms recorded in this section before use.
+- Prototype assets and code will be original or used under documented licenses, with terms recorded in this section before use. Asset log (source, license, where it lives) [empty so far]:
+
+  | Asset | Source | License | Location |
+  |---|---|---|---|
 - **Columbia names and landmarks** (Alma Mater, the Columbia Lion, the bookstore, Columbia blue) are used for the class prototype only. A public release needs the university's permission or replacement content.
 - **Concepts considered before this one:**
   - *AI Mafia* — simpler to prototype; set aside because The Artifacts connects real-world discovery with RPG progression.
