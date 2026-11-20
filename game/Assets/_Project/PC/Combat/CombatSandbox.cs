@@ -226,7 +226,7 @@ namespace TheArtifacts.PC.Combat
             var mouse = Mouse.current;
             if (mouse == null || !mouse.leftButton.wasPressedThisFrame || ControlHeld) return;
             var screen = mouse.position.ReadValue();
-            var gui = new Vector2(screen.x, Screen.height - screen.y);
+            var gui = new Vector2(screen.x, Screen.height - screen.y) / _guiScale;
             if (_hudRects.Any(r => r.Contains(gui))) return;  // a click on the HUD, not the floor
 
             var ray = _camera.ScreenPointToRay(mouse.position.ReadValue());
@@ -490,6 +490,8 @@ namespace TheArtifacts.PC.Combat
         static string Name(string skillId) => PrototypeContent.Skill(skillId)?.Name ?? skillId;
 
         GUIStyle _label, _center, _big;
+        const float ReferenceWidth = 1280f, ReferenceHeight = 720f;
+        float _guiScale = 1f;
 
         void OnGUI()
         {
@@ -498,7 +500,10 @@ namespace TheArtifacts.PC.Combat
             _center ??= new GUIStyle(_label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
             _big ??= new GUIStyle(_center) { fontSize = 40 };
 
-            float w = Screen.width, h = Screen.height;
+            // Lay the HUD out at 1280×720 and scale it to the Game view, so it fits a small window.
+            _guiScale = Mathf.Min(Screen.width / ReferenceWidth, Screen.height / ReferenceHeight);
+            GUI.matrix = Matrix4x4.Scale(new Vector3(_guiScale, _guiScale, 1f));
+            float w = Screen.width / _guiScale, h = Screen.height / _guiScale;
 
             // Guardian HP and cast bar
             var top = new Rect(w * 0.5f - 250f, 20f, 500f, 22f);
