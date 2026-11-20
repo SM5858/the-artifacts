@@ -179,6 +179,8 @@ namespace TheArtifacts.PC.Editor
         {
             if (!assetPath.StartsWith(SandboxArtMenu.MaterialsRoot)) return;
             var importer = (TextureImporter)assetImporter;
+            // Always a flat 2D texture: a meta written without import settings once imported these as cubemaps.
+            importer.textureShape = TextureImporterShape.Texture2D;
             var file = Path.GetFileNameWithoutExtension(assetPath);
             if (file.EndsWith("_Normal")) importer.textureType = TextureImporterType.NormalMap;
             else if (file.EndsWith("_Roughness") || file.EndsWith("_Metallic") || file.EndsWith("_AO") || file.EndsWith("_MetallicSmoothness"))
