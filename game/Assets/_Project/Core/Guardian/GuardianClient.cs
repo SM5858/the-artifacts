@@ -144,19 +144,4 @@ namespace TheArtifacts.Core.Guardian
         /// <summary>A request abandoned at the timeout may still fail later; observe it so the error is not unobserved.</summary>
         static void Observe(Task task) => task.ContinueWith(t => { _ = t.Exception; }, TaskContinuationOptions.OnlyOnFaulted);
     }
-
-    /// <summary>
-    /// Failed attempts on each Guardian since the last win (GDD 6.4). Kept in memory for now; Cloud Save keeps it once
-    /// accounts exist.
-    /// </summary>
-    public sealed class AttemptRecord
-    {
-        readonly Dictionary<string, int> _failed = new Dictionary<string, int>();
-
-        public int FailedAttempts(string guardianId) => _failed.TryGetValue(guardianId, out var n) ? n : 0;
-
-        public void RecordLoss(string guardianId) => _failed[guardianId] = FailedAttempts(guardianId) + 1;
-
-        public void RecordWin(string guardianId) => _failed.Remove(guardianId);
-    }
 }

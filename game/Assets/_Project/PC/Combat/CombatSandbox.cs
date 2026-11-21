@@ -1,8 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
+using TheArtifacts.Core.Account;
 using TheArtifacts.Core.Combat;
 using TheArtifacts.Core.Guardian;
-using TheArtifacts.Shared;
+using TheArtifacts.PC.Game;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using PlayerInput = TheArtifacts.Core.Combat.PlayerInput;
@@ -25,6 +26,11 @@ namespace TheArtifacts.PC.Combat
     /// </summary>
     public sealed class CombatSandbox : MonoBehaviour
     {
+        [Header("Game")]
+        [Tooltip("On: the game loop (sign in, quest list, equipment; the account's build and unlocks). " +
+                 "Off: test fights with the build and Guardian below.")]
+        [SerializeField] bool accountLoop = true;
+
         [Header("Fight")]
         [SerializeField] TestBuild build = TestBuild.Starter;
         [SerializeField] int seed = 1;
@@ -57,8 +63,11 @@ namespace TheArtifacts.PC.Combat
         static readonly Color TelegraphHit = new Color(1f, 0.1f, 0.05f);
 
         CombatSim _sim;
-        GuardianClient _guardianClient;
-        readonly AttemptRecord _attempts = new AttemptRecord();
+        /// <summary>Test fights (account loop off) record into this throwaway profile, with every dungeon open.</summary>
+        PlayerProfile _testProfile;
+        PcFrontEnd _frontEnd;
+        /// <summary>The quest list or another menu is open; no fight is running.</summary>
+        bool _inMenu;
         /// <summary>The current attempt's setup and where it came from; null while the server is being asked.</summary>
         FightSetup _fight;
         /// <summary>Bumped on every restart so a late answer for an older attempt is ignored.</summary>
@@ -77,7 +86,6 @@ namespace TheArtifacts.PC.Combat
         SkillBarSlot _swapFrom;
         /// <summary>Screen areas of the HUD (GUI coordinates); clicks there do not aim at the floor.</summary>
         readonly List<Rect> _hudRects = new List<Rect>();
-        int _wins;
         string _reward;
         Vec2? _moveTarget;
         /// <summary>
@@ -108,13 +116,39 @@ namespace TheArtifacts.PC.Combat
         static readonly Color LoreTargeted = new Color(1f, 0.85f, 0.3f);
         static readonly Color LoreSpent = new Color(0.08f, 0.06f, 0.05f);
 
-        PlayerBuild CurrentBuild => build == TestBuild.Geared ? PrototypeContent.GearedBuild : PrototypeContent.StarterBuild;
+        PlayerProfile Profile => accountLoop ? GameSession.Profile : _testProfile;
+
+        PlayerBuild CurrentBuild => accountLoop ? Progress.Build(GameSession.Profile)
+            : build == TestBuild.Geared ? PrototypeContent.GearedBuild : PrototypeContent.StarterBuild;
 
         void Start()
         {
-            _guardianClient = new GuardianClient(GuardianBackends.Live);
+            _testProfile = new PlayerProfile();
+            foreach (var g in PrototypeContent.Guardians) Progress.CheckIn(_testProfile, g.Id, "sandbox", System.DateTime.UtcNow);
+            _frontEnd = new PcFrontEnd(StartQuest);
             BuildWorld();
+            if (accountLoop) _inMenu = true;
+            else Restart();
+        }
+
+        /// <summary>The player picked a quest in the list: fight that landmark's Guardian with the account's build.</summary>
+        void StartQuest(string id)
+        {
+            _inMenu = false;
+            if (id != guardianId)
+            {
+                guardianId = id;
+                _preferredBar = null;
+                ApplyGuardianLook();
+            }
             Restart();
+        }
+
+        void BackToQuests()
+        {
+            _attemptToken++;  // drop an answer still on its way for the attempt being left
+            _inMenu = true;
+            _frontEnd.ShowQuests();
         }
 
         async void Restart()
@@ -127,8 +161,8 @@ namespace TheArtifacts.PC.Combat
             if (guardianMode == GuardianMode.Custom)
                 fight = new FightSetup(new GuardianSetup(customTier, customSkills, customStrategy), SetupSource.Scripted, null, null, false, 0);
             else
-                fight = await _guardianClient.ConfigureAsync(new GuardianCall(guardianId, CurrentBuild.Artifacts.Select(a => a.Id),
-                    _attempts.FailedAttempts(guardianId), adaptive: guardianMode == GuardianMode.Adaptive));
+                fight = await GameSession.Guardian.ConfigureAsync(new GuardianCall(guardianId, CurrentBuild.Artifacts.Select(a => a.Id),
+                    Progress.FailedAttempts(Profile, guardianId), adaptive: guardianMode == GuardianMode.Adaptive));
             if (token != _attemptToken || this == null) return;  // restarted again, or the scene closed, while waiting
 
             _fight = fight;
@@ -161,24 +195,27 @@ namespace TheArtifacts.PC.Combat
         void Update()
         {
             var kb = Keyboard.current;
-            if (kb == null || _sim == null || _fight == null) return;
+            if (kb == null || _inMenu || _sim == null || _fight == null) return;
 
             if (_sim.Outcome != CombatOutcome.Ongoing)
             {
                 if (!_outcomeRecorded)
                 {
                     _outcomeRecorded = true;
-                    if (_sim.Outcome == CombatOutcome.Win) _attempts.RecordWin(guardianId);
-                    else _attempts.RecordLoss(guardianId);
+                    RecordOutcome();
                 }
-                if (_sim.Outcome == CombatOutcome.Win && _reward == null) RollReward();
                 if (kb.rKey.wasPressedThisFrame) Restart();
+                if (accountLoop && (kb.enterKey.wasPressedThisFrame || kb.escapeKey.wasPressedThisFrame))
+                {
+                    BackToQuests();
+                    return;
+                }
                 if (kb.mKey.wasPressedThisFrame)
                 {
                     guardianMode = (GuardianMode)(((int)guardianMode + 1) % 3);
                     Restart();
                 }
-                if (kb.bKey.wasPressedThisFrame)
+                if (!accountLoop && kb.bKey.wasPressedThisFrame)
                 {
                     build = build == TestBuild.Starter ? TestBuild.Geared : TestBuild.Starter;
                     Restart();
@@ -230,12 +267,20 @@ namespace TheArtifacts.PC.Combat
             return SkillBarSlot.None;
         }
 
-        /// <summary>Rolls this landmark's reward (Combat Spec 5.1); the first win this session counts as a first win.</summary>
-        void RollReward()
+        /// <summary>
+        /// A win rolls this landmark's reward onto the profile (Combat Spec 5.1; the first win on a Guardian is the
+        /// better roll); a loss counts toward easing. The account's profile is then saved.
+        /// </summary>
+        void RecordOutcome()
         {
-            var artifact = Rewards.Roll(PrototypeContent.LootPool(guardianId), firstWin: _wins == 0, new System.Random(seed + _wins));
-            _wins++;
-            _reward = $"{artifact.Name} ({artifact.Rarity})  -  {artifact.Description}";
+            var profile = Profile;
+            if (_sim.Outcome == CombatOutcome.Win)
+            {
+                var artifact = Progress.RecordWin(profile, guardianId, new System.Random(seed + Progress.Record(profile, guardianId).Wins));
+                _reward = $"{artifact.Name} ({artifact.Rarity})  -  {artifact.Description}";
+            }
+            else Progress.RecordLoss(profile, guardianId);
+            if (accountLoop) _ = GameSession.SaveAsync();
         }
 
         /// <summary>
@@ -342,11 +387,8 @@ namespace TheArtifacts.PC.Combat
             _playerMaterial = Lit(lit, PlayerColor);
             _player = Primitive(PrimitiveType.Capsule, "Player", _playerMaterial);
             // A textured Guardian (stone or bronze) shows its phase by glowing instead of changing color.
-            var guardianArt = art != null ? art.ForGuardian(guardianId) : null;
-            _guardianTextured = guardianArt != null;
-            _guardianMaterial = _guardianTextured ? new Material(guardianArt) : Lit(lit, GuardianIdle);
-            if (_guardianTextured) _guardianMaterial.EnableKeyword("_EMISSION");
-            _guardian = Primitive(PrimitiveType.Capsule, "Guardian", _guardianMaterial);
+            _guardian = Primitive(PrimitiveType.Capsule, "Guardian", null);
+            ApplyGuardianLook();
             _guardian.localScale = Vector3.one * 2f;
 
             // A nose so the Guardian's facing is readable.
@@ -366,6 +408,16 @@ namespace TheArtifacts.PC.Combat
             _moveMarker.localScale = new Vector3(0.5f, 0.01f, 0.5f);
 
             _telegraphTemplate = new Material(unlit != null ? unlit : lit);
+        }
+
+        /// <summary>The Guardian's material for <see cref="guardianId"/> (stone or bronze when the CC0 art is built).</summary>
+        void ApplyGuardianLook()
+        {
+            var guardianArt = art != null ? art.ForGuardian(guardianId) : null;
+            _guardianTextured = guardianArt != null;
+            _guardianMaterial = _guardianTextured ? new Material(guardianArt) : Lit(_lit, GuardianIdle);
+            if (_guardianTextured) _guardianMaterial.EnableKeyword("_EMISSION");
+            _guardian.GetComponent<Renderer>().sharedMaterial = _guardianMaterial;
         }
 
         /// <summary>One box per lore target of this fight's Guardian (the Book Keeper's bookshelves).</summary>
@@ -547,6 +599,11 @@ namespace TheArtifacts.PC.Combat
             GUI.matrix = Matrix4x4.Scale(new Vector3(_guiScale, _guiScale, 1f));
             float w = Screen.width / _guiScale, h = Screen.height / _guiScale;
 
+            if (_inMenu)
+            {
+                _frontEnd.Draw(w, h, _label);
+                return;
+            }
             if (_fight == null)
             {
                 Bar(new Rect(0f, h * 0.4f, w, 60f), 1f, new Color(0f, 0f, 0f, 0.7f));
@@ -611,7 +668,7 @@ namespace TheArtifacts.PC.Combat
 
             // Info and log
             GUI.Label(new Rect(16f, 16f, 800f, 130f),
-                $"{build} (gear {_sim.Build.GearScore})   {_sim.Time:0.0}s\n" +
+                $"{(accountLoop ? GameSession.Account?.Username : build.ToString())} (gear {_sim.Build.GearScore})   {_sim.Time:0.0}s\n" +
                 $"Guardian: {_sim.Setup}   [{SetupLine()}]\n" +
                 "Right-click (or Ctrl+click) move   Q Heavy  W Guard  E Lunge  R Overpower  T Lightning Bolt  F Fire Bolt  A auto-attack on/off\n" +
                 "Left-click a bookshelf or something on the Guardian to aim at it (Esc: back to the Guardian)" +
@@ -636,20 +693,22 @@ namespace TheArtifacts.PC.Combat
                 GUI.Label(new Rect(0f, h * 0.35f, w, 90f), _sim.Outcome == CombatOutcome.Win ? "VICTORY" : "DEFEAT", _big);
                 GUI.Label(new Rect(0f, h * 0.35f + 90f, w, 40f),
                     (_reward != null ? $"Reward: {_reward}\n" : "") +
-                    $"{_sim.Time:0.0}s    R retry    B switch build (now {build})    M Guardian mode (now {guardianMode})", _center);
+                    $"{_sim.Time:0.0}s    R retry    " +
+                    (accountLoop ? "Enter quest list" : $"B switch build (now {build})") + $"    M Guardian mode (now {guardianMode})" +
+                    (accountLoop && GameSession.SaveError != null ? $"\nNot saved: {GameSession.SaveError}" : ""), _center);
             }
         }
 
         /// <summary>Where this attempt's setup came from, for the info line.</summary>
         string SetupLine()
         {
-            var failed = _attempts.FailedAttempts(guardianId);
+            var failed = Progress.FailedAttempts(Profile, guardianId);
             var where = _fight.Source switch
             {
                 SetupSource.Server when _fight.FallbackReason == nameof(FallbackReason.None) => $"adaptive, server {_fight.LatencyMs} ms",
                 SetupSource.Server => $"server fell back: {_fight.FallbackReason}",
                 SetupSource.LocalFallback => $"default, server not used: {_fight.FallbackReason}" +
-                    (_guardianClient.SessionFlagged ? " (session flagged)" : ""),
+                    (GameSession.Guardian.SessionFlagged ? " (session flagged)" : ""),
                 _ => guardianMode == GuardianMode.Custom ? "custom" : "scripted default",
             };
             return $"{guardianMode}: {where}" + (_fight.Eased ? ", eased" : "") + $"   failed attempts {failed}";

@@ -163,19 +163,5 @@ namespace TheArtifacts.Core.Tests.Guardian
 
             Assert.That(fight.FallbackReason, Is.EqualTo(nameof(FallbackReason.Malformed)));
         }
-
-        [Test]
-        public void AttemptRecord_CountsLosses_UntilAWin()
-        {
-            var record = new AttemptRecord();
-            record.RecordLoss(Lion);
-            record.RecordLoss(Lion);
-            record.RecordLoss("book_keeper");
-
-            Assert.That(record.FailedAttempts(Lion), Is.EqualTo(2));
-            record.RecordWin(Lion);
-            Assert.That(record.FailedAttempts(Lion), Is.EqualTo(0));
-            Assert.That(record.FailedAttempts("book_keeper"), Is.EqualTo(1));
-        }
     }
 }

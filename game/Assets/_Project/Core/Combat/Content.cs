@@ -347,15 +347,22 @@ namespace TheArtifacts.Core.Combat
         {
             new GuardianProfile { Id = "alma_mater", Name = "Alma Mater", Type = CreatureType.Undead, Res = 400f,
                 Landmark = "Alma Mater statue", LootPool = new[] { "wreath_of_alma_mater", "staff_of_alma_mater" },
+                StoryCard = "The sculptor hid a small owl, the bird of wisdom, in the folds of Alma Mater's robe. Students say " +
+                    "the first of each class to find it will graduate at the top. The owl still peeks out now and then: " +
+                    "watch the robe.",
                 // Lore (GDD 6.7): a small owl hides in the folds of the statue's robe. When it peeks out, strike it.
                 WeakPoints = new[]
                 {
                     new WeakPoint { Id = "owl", Name = "Owl", FirstAppearance = 12f, Interval = 15f, Duration = 3f, DamageMultiplier = 2f },
                 } },
             new GuardianProfile { Id = "columbia_lion", Name = "Columbia Lion", Type = CreatureType.Beast,
-                Landmark = "Columbia Lion statue", LootPool = new[] { "columbia_lions_fang", "columbia_lions_pelt" } },
+                Landmark = "Columbia Lion statue", LootPool = new[] { "columbia_lions_fang", "columbia_lions_pelt" },
+                StoryCard = "The lion has stood for Columbia for more than a century. It keeps no secrets and plays no tricks: " +
+                    "read its moves, step out of its reach, and strike when it tires." },
             new GuardianProfile { Id = "book_keeper", Name = "Book Keeper", Type = CreatureType.Construct,
                 Landmark = "Columbia bookstore", LootPool = new[] { "columbia_blue_mortarboard", "columbia_blue_robe" },
+                StoryCard = "The keeper has guarded these shelves longer than anyone remembers, and it fears for its books " +
+                    "far more than for itself. Fire near the shelves would break its nerve.",
                 // Lore (GDD 6.7): the keeper fears for its books. Burning a shelf behind it makes it flee in fear.
                 LoreTargets = new[]
                 {

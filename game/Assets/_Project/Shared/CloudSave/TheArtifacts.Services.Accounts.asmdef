@@ -1,0 +1,28 @@
+{
+    "name": "TheArtifacts.Services.Accounts",
+    "rootNamespace": "TheArtifacts.Services",
+    "references": [
+        "TheArtifacts.Core",
+        "TheArtifacts.Shared",
+        "Unity.Services.Core",
+        "Unity.Services.Authentication",
+        "Unity.Services.CloudSave"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "THE_ARTIFACTS_CLOUD_SAVE"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.services.cloudsave",
+            "expression": "3.0.0",
+            "define": "THE_ARTIFACTS_CLOUD_SAVE"
+        }
+    ],
+    "noEngineReferences": false
+}

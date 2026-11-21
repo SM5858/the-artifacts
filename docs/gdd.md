@@ -28,6 +28,7 @@ Nothing in this document is implemented or verified yet. Implemented and verifie
 
 - **Genre:** location-based RPG with real-time boss combat built on skill cooldowns.
 - **Platform:** mobile for the visit check-in while out; PC for dungeon and combat later, at home or lodging. One account links the two.
+- **Account [DECIDED 2026-11-20]:** a username and password (Unity Authentication), the same on both devices; the profile (unlocks, visits, artifacts, equipment, per-Guardian results) is stored in Cloud Save. Offline accounts on one computer exist for development and playtests without the network.
 - **Engine / stack [DECIDED 2026-11-16]:** Unity 6.3 LTS (3D URP), one project for both the PC client and the mobile check-in, chosen for the release goal. See [Unity Setup](unity-setup.md). Backend **[DECIDED 2026-11-16]:** Unity Gaming Services (Authentication with account linking for mobile and PC, Cloud Save / Economy for unlocks and artifacts, Cloud Code in C# so server logic can reuse the engine-free Core).
 
 ## 4. Core loop
@@ -56,7 +57,9 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 - A verified visit adds that landmark's themed dungeon quest to the account. The unlock persists, so the player can fight hours or days later from anywhere.
 - Radius, cooldown between check-ins, and anti-spoofing level: **[OPEN]** Q2.
 - **First cut [DECIDED]:** if live GPS verification slips, visits are simulated (a button or code) while account persistence and the PC unlock are kept.
-
+- **The mobile check-in is its own small game [DECIDED 2026-11-20].** Much lighter than the PC game, with Pokémon GO-level graphics: the player walks a map, and near a landmark meets a dungeon entrance or an NPC that unlocks the dungeon. It writes the same account profile the PC reads. Until it exists, the PC quest list has a **Simulate visit (dev)** button that makes the same check-in.
+- **Story card [PROPOSED text, 2026-11-20]:** each unlock shows the landmark's story card, which also appears in the PC quest list. It tells the place's lore and carries the hint to its mechanic (Section 6.7), so a player who does not know the place can still learn it. The cards are in `Content.cs` (`StoryCard`).
+- Rules in code (`Core/Account/Progress.cs`, tested): a repeat visit is recorded but adds no second quest; every visit is kept with its time and source, and the PC logs the profile it loads, so a check-in that never reached the PC can be traced (Section 7); fights need an unlocked dungeon; a win stores the rolled artifact (repeat drops stack) and resets the failed attempts; a loss adds one; equipping takes owned artifacts only, one per slot (two trinkets).
 ### 6.2 Build
 
 - A build is the character's abilities plus equipped artifacts.
@@ -181,8 +184,8 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
 
 ## 9. Controls and feedback [PROPOSED]
 
-- **Mobile:** one check-in action; confirmation of the unlocked quest.
-- **PC:** quest list; in combat, real-time inputs for movement or evasion, basic attack, skills, and artifact effects. Input scheme **[DECIDED, changed 2026-11-20]**: tab-target; skills on Q W E R (physical) and T F (magic); A toggles auto-attack; artifact skills on a six-slot bar (1, 2, 3, 4, C, V) whose order the player sets; right-click to move out of telegraphs. See [Combat Spec](combat-spec.md), Section 3.2.
+- **Mobile:** a light map game (Section 6.1): walk to a landmark, meet its dungeon entrance or NPC, confirm the unlock, and read the story card.
+- **PC:** sign in, quest list (unlocked dungeons with their story cards; locked ones name the landmark to visit), equipment screen (owned artifacts, equip or unequip, the build's stats), and after a fight, back to the list; in combat, real-time inputs for movement or evasion, basic attack, skills, and artifact effects. Input scheme **[DECIDED, changed 2026-11-20]**: tab-target; skills on Q W E R (physical) and T F (magic); A toggles auto-attack; artifact skills on a six-slot bar (1, 2, 3, 4, C, V) whose order the player sets; right-click to move out of telegraphs. See [Combat Spec](combat-spec.md), Section 3.2.
 - **Feedback the player must be able to read:** quest status, the Guardian's tell for the coming move, HP changes, their own skill cooldowns, and the reward.
 - Presentation scope is the minimum needed for a fair test: readable tells come before visual polish.
 - **Visual direction [DECIDED 2026-11-20]:**

@@ -68,6 +68,11 @@ namespace TheArtifacts.Core.Combat
         public CreatureType Type;
         /// <summary>The real-world landmark whose visit unlocks this Guardian's dungeon.</summary>
         public string Landmark;
+        /// <summary>
+        /// The story card shown when the dungeon is unlocked and in the quest list (GDD 6.7 fairness): the place's
+        /// lore, and the hint that makes its mechanic learnable without knowing the place.
+        /// </summary>
+        public string StoryCard;
         /// <summary>Reduce physical / magic damage taken as value / (value + 100), like the player's (Combat Spec 2).</summary>
         public float Def, Res;
         /// <summary>Artifact ids a win here can give (GDD 6.5, Combat Spec 5.3).</summary>
