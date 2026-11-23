@@ -22,7 +22,7 @@ namespace TheArtifacts.PC.Editor
         // (texture set, tiling)
         static readonly (string Name, float Tiling)[] Sets =
         {
-            ("StoneFloor", 10f), ("OakWood", 1f), ("GolemStone", 1f), ("AgedBronze", 1f), ("DarkBronze", 1f),
+            ("StoneFloor", 10f), ("OakWood", 1f), ("GolemStone", 1f), ("AgedBronze", 1f), ("DarkBronze", 1f), ("Verdigris", 1f),
         };
 
         [MenuItem("The Artifacts/Build Sandbox Materials")]
@@ -40,7 +40,7 @@ namespace TheArtifacts.PC.Editor
             art.Bookshelf = MaterialAt("OakWood");
             art.Guardians = new[]
             {
-                new SandboxArt.GuardianMaterial { GuardianId = "alma_mater", Material = MaterialAt("AgedBronze"), Model = ModelAt("alma_mater") },
+                new SandboxArt.GuardianMaterial { GuardianId = "alma_mater", Material = MaterialAt("Verdigris"), Model = ModelAt("alma_mater") },
                 new SandboxArt.GuardianMaterial { GuardianId = "columbia_lion", Material = MaterialAt("DarkBronze"), Model = ModelAt("columbia_lion") },
                 new SandboxArt.GuardianMaterial { GuardianId = "book_keeper", Material = MaterialAt("GolemStone"), Model = ModelAt("book_keeper") },
             };

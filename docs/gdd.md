@@ -233,8 +233,9 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
   | StoneFloor (arena): *Monastery Stone Floor* by Amal Kumar, 1K maps | [Poly Haven](https://polyhaven.com/a/monastery_stone_floor) | CC0 | `Art/Materials/StoneFloor` |
   | OakWood (bookshelves): *Oak Wood Planks* by Dimitrios Savva, 1K maps | [Poly Haven](https://polyhaven.com/a/oak_wood_planks) | CC0 | `Art/Materials/OakWood` |
   | GolemStone (Book Keeper): *Rock 030*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Rock030) | CC0 | `Art/Materials/GolemStone` |
-  | AgedBronze (Alma Mater): *Metal 017*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Metal017) | CC0 | `Art/Materials/AgedBronze` |
+  | AgedBronze (Alma Mater until 2026-11-23; kept for later use): *Metal 017*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Metal017) | CC0 | `Art/Materials/AgedBronze` |
   | DarkBronze (Columbia Lion): *Metal 013*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Metal013) | CC0 | `Art/Materials/DarkBronze` |
+  | Verdigris (Alma Mater, from 2026-11-23): *Metal 058 C*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Metal058C) | CC0 | `Art/Materials/Verdigris` |
   | Guardian blockouts (lich, lion, golem; stand-ins until the paid models) | Original, built from primitives by `tools/blender/guardian_blockouts.py` in Blender 5.3 | Original (this project) | `Art/Models/Guardians` |
 - **Columbia names and landmarks** (Alma Mater, the Columbia Lion, the bookstore, Columbia blue) are used for the class prototype only. A public release needs the university's permission or replacement content.
 - **Concepts considered before this one:**
