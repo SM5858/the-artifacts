@@ -275,7 +275,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4379b750b38bb440c9a473bc2c07499c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: TheArtifacts.PC::TheArtifacts.PC.Combat.CombatSandbox
-  accountLoop: 1
+  accountLoop: 0
   build: 0
   seed: 1
   guardianId: columbia_lion

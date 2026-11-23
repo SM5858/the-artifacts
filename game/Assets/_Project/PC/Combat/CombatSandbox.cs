@@ -65,6 +65,11 @@ namespace TheArtifacts.PC.Combat
         static readonly Color HairTint = new Color(0.6f, 0.65f, 0.6f);
         static readonly Color BoneColor = new Color(0.78f, 0.74f, 0.64f);
         static readonly Color BronzeColor = new Color(0.72f, 0.56f, 0.3f);
+        // The Book Keeper's slots (concept: cream marble, leather books, page edges, pale blue ribbons).
+        static readonly Color MarbleColor = new Color(0.86f, 0.81f, 0.7f);
+        static readonly Color LeatherColor = new Color(0.45f, 0.28f, 0.16f);
+        static readonly Color PagesColor = new Color(0.92f, 0.86f, 0.72f);
+        static readonly Color RibbonColor = new Color(0.62f, 0.76f, 0.8f);
         static readonly Color TelegraphStart = new Color(0.55f, 0.25f, 0.05f);
         static readonly Color TelegraphHit = new Color(1f, 0.1f, 0.05f);
 
@@ -470,8 +475,8 @@ namespace TheArtifacts.PC.Combat
 
         Material SlotMaterial(string slot, Dictionary<string, Material> bySlot)
         {
-            var kind = slot.StartsWith("Robe") ? "Robe" : slot.StartsWith("Bone") ? "Bone"
-                : slot.StartsWith("Metal") ? "Metal" : slot.StartsWith("Hair") ? "Hair" : "Main";
+            var kinds = new[] { "Robe", "Bone", "Metal", "Hair", "Marble", "Leather", "Pages", "Ribbon" };
+            var kind = kinds.FirstOrDefault(slot.StartsWith) ?? "Main";
             if (bySlot.TryGetValue(kind, out var existing)) return existing;
             Material m;
             switch (kind)
@@ -489,6 +494,19 @@ namespace TheArtifacts.PC.Combat
                     m = Lit(_lit, BronzeColor);
                     m.SetFloat("_Metallic", 0.85f);
                     m.SetFloat("_Smoothness", 0.55f);
+                    break;
+                case "Marble":
+                    // The stone's relief (normal map) in marble's colour: the stone texture itself is too dark.
+                    m = new Material(_guardianMaterial);
+                    if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", null);
+                    m.SetColor("_BaseColor", MarbleColor);
+                    m.SetFloat("_Smoothness", 0.45f);
+                    break;
+                case "Leather":
+                case "Pages":
+                case "Ribbon":
+                    m = Lit(_lit, kind == "Leather" ? LeatherColor : kind == "Pages" ? PagesColor : RibbonColor);
+                    m.SetFloat("_Smoothness", kind == "Leather" ? 0.35f : 0.15f);
                     break;
                 default:
                     m = _guardianMaterial;

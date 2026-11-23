@@ -8,7 +8,8 @@ when EXPORT_DIR is set, writes one FBX per Guardian for Unity:
                        (the weak point) and "Eyes" (glow)
     columbia_lion.fbx  bronze lion guardian: metaball muscle and a sculpted mane of flowing locks, a laurel collar
                        with a temple medallion, fangs, long claws; child "Eyes" (glow)
-    book_keeper.fbx    golem of hewn, chipped stone blocks with a shelf of stone books in its chest; child "Eyes"
+    book_keeper.fbx    marble golem: a closed book for a chest, Ionic-column legs, temple pauldrons, a belt of books;
+                       child "Eyes"
 
 Conventions: metres; origin at the feet; the model faces -Y (Blender's front view), which is +Z (forward) in Unity
 with the export settings below. One mesh per Guardian plus its moving parts, UVs cube-projected at TEXTURE_METRES per
@@ -242,6 +243,10 @@ SLOT_COLOURS = {
     "Bone": (0.80, 0.76, 0.66, 1.0),
     "Metal": (0.62, 0.50, 0.28, 1.0),
     "Hair": (0.30, 0.34, 0.31, 1.0),
+    "Marble": (0.86, 0.81, 0.70, 1.0),
+    "Leather": (0.45, 0.28, 0.16, 1.0),
+    "Pages": (0.92, 0.86, 0.72, 1.0),
+    "Ribbon": (0.62, 0.76, 0.80, 1.0),
 }
 
 
@@ -826,92 +831,256 @@ def stone(col, name, loc, half, rot_deg=(0, 0, 0), rng=None, chips=2, bevel=0.05
     return obj
 
 
+def tri_prism(col, name, loc, half_w, height, depth):
+    """A triangular prism standing on its base (a pediment): base 2*half_w wide, apex height up, depth along Y."""
+    bm = bmesh.new()
+    vs = []
+    for y in (-depth, depth):
+        vs.append([bm.verts.new((-half_w, y, 0)), bm.verts.new((half_w, y, 0)), bm.verts.new((0, y, height))])
+    bm.faces.new(vs[0][::-1])
+    bm.faces.new(vs[1])
+    for i in range(3):
+        j = (i + 1) % 3
+        bm.faces.new((vs[0][i], vs[0][j], vs[1][j], vs[1][i]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bmesh.ops.translate(bm, vec=Vector(loc), verts=bm.verts)
+    return _mesh_object(name, bm, col)
+
+
+def temple(col, out, m, slot="Marble"):
+    """A small temple facade relief (steps, four columns, architrave, pediment), 0.3 m wide, facing -Y; placed by m."""
+    parts = [box(col, "step", (0, 0, -0.1), (0.15, 0.02, 0.018), bevel=0.0),
+             box(col, "architrave", (0, 0, 0.075), (0.15, 0.02, 0.018), bevel=0.0),
+             tri_prism(col, "pediment", (0, 0, 0.093), 0.16, 0.07, 0.02)]
+    for cx in (-0.105, -0.035, 0.035, 0.105):
+        parts.append(limb(col, "column", (cx, 0, -0.082), (cx, 0, 0.057), 0.016, 0.016, segments=8))
+    for o in parts:
+        out.append(paint(_turned(o, m), slot))
+
+
+def laurel(col, out, m, radius, a0, a1, count, size=1.0, slot="Marble"):
+    """A laurel branch relief along an arc (angles in radians, 0 at the top, clockwise seen from the front) in the
+    XZ plane facing -Y, leaves alternating out and in; placed by m."""
+    count *= 2  # leaves in pairs along the stem
+    prev = None
+    for k in range(count):
+        a = a0 + (a1 - a0) * k / max(1, count - 1)
+        pos = Vector((radius * math.sin(a), 0, radius * math.cos(a)))
+        if prev is not None:
+            out.append(paint(_turned(limb(col, "laurel_stem", prev, pos, 0.007 * size, 0.007 * size, segments=6), m), slot))
+        prev = pos
+        # Each leaf points along the branch, angled out to one side, set a little off the stem.
+        tangent = Vector((math.cos(a), 0, -math.sin(a))) * (1 if a1 > a0 else -1)
+        normal = Vector((math.sin(a), 0, math.cos(a))) * (1 if k % 2 else -1)
+        centre = pos + (tangent * 0.6 + normal * 0.55).normalized() * 0.03 * size
+        leaf = ico(col, "laurel_leaf", (0, 0, 0), (0.042 * size, 0.008 * size, 0.016 * size), subdivisions=1)
+        d = (tangent * 0.6 + normal * 0.55)
+        turn = math.atan2(-d.z, d.x)
+        out.append(paint(_turned(leaf, m @ Matrix.Translation(centre) @ Matrix.Rotation(turn, 4, "Y")), slot))
+
+
+def stone_leaf(col, out, top, out_dir, length, width, slot="Marble"):
+    """A stone leaf hanging from top, tipped outward (out_dir), for the leaf skirts and arm tassets."""
+    leaf = ico(col, "stone_leaf", (0, 0, 0), (width, 0.03, length / 2), subdivisions=2)
+    out_dir = Vector(out_dir).normalized()
+    yaw = math.atan2(out_dir.x, -out_dir.y)
+    m = Matrix.Translation(Vector(top) + out_dir * 0.03 - Vector((0, 0, length / 2))) @ Matrix.Rotation(yaw, 4, "Z") \
+        @ Matrix.Rotation(math.radians(-14), 4, "X")
+    out.append(paint(_turned(leaf, m), slot))
+
+
 def golem(col):
     """
-    Book Keeper: a plain golem of hewn, chipped stone blocks, a masonry chest framing a shelf of stone books, a heavy
-    brow over glowing eye slits, fists with blocky fingers, and toed feet. Head, both arms, and both legs are separate
-    parts; "Eyes" glows.
+    Book Keeper (concept: "Ancient marble book-keeper golem" sheet, 2026-11-23): a broad marble golem whose chest is a
+    great closed book (laurel reliefs, a central band, a round keyhole lock; page edges on the side), a small stern
+    face under a laurel crest with an open book rising behind the head, temple-emblem pauldrons over stone-leaf
+    tassets, fluted bracers with laurel bands, big jointed hands, a belt of small leather books with a temple buckle
+    and ribbon bookmarks over a stone-leaf skirt, and legs like Ionic columns on toed feet. Material slots: Marble,
+    Leather, Pages, Ribbon. Head, both arms, and both legs are separate parts; "Eyes" glows.
     """
     rng = random.Random(11)
     p = []
     groups = {"Head": [], "ArmL": [], "ArmR": [], "LegL": [], "LegR": []}
 
-    def block(name, loc, half, group=None, chips=2, tilt=3.0):
-        rot = (rng.uniform(-tilt, tilt), rng.uniform(-tilt, tilt), rng.uniform(-tilt, tilt))
-        obj = stone(col, name, loc, half, rot, rng, chips)
-        (groups[group] if group else p).append(obj)
+    def add(out, obj, slot="Marble"):
+        out.append(paint(obj, slot))
         return obj
 
-    # Chest: courses of masonry round the shelf, a capstone over the shoulders, the pelvis and a belly stone.
-    for x, w in ((-0.78, 0.2), (0.78, 0.2)):
-        for z in (2.2, 2.62, 3.04, 3.42):
-            block("course", (x, 0, z), (w, 0.58, 0.2), chips=1, tilt=2)
-    block("lintel", (0, 0, 3.52), (0.6, 0.58, 0.14), chips=1, tilt=1.5)
-    block("sill", (0, 0, 2.12), (0.6, 0.58, 0.12), chips=1, tilt=1.5)
-    block("back", (0, 0.3, 2.8), (0.6, 0.28, 0.6), chips=0, tilt=1)
-    block("capstone", (0, 0.02, 3.72), (0.9, 0.62, 0.12), chips=2, tilt=2)
-    block("belly", (0, 0, 1.92), (0.62, 0.5, 0.14), chips=2)
-    block("pelvis", (0, 0, 1.68), (0.72, 0.48, 0.18))
+    front = Matrix.Rotation(0, 4, "X")  # reliefs are built facing -Y
 
-    # The shelf in the chest: back panel, sides, three boards, and rows of stone books, some leaning, some stacked.
-    p.append(box(col, "shelf_back", (0, -0.1, 2.82), (0.58, 0.04, 0.6), bevel=0.01))
-    for z in (2.25, 2.67, 3.09):
-        p.append(box(col, "shelf_board", (0, -0.35, z), (0.58, 0.25, 0.025), bevel=0.008))
-        x = -0.54
-        while x < 0.5:
-            kind = rng.random()
-            if kind < 0.12 and x < 0.3:  # a short stack lying flat
-                for k in range(rng.randint(2, 3)):
-                    p.append(box(col, "book_flat", (x + 0.1, -0.38, z + 0.04 + k * 0.05), (0.1, 0.16, 0.022),
-                                 rot_deg=(0, 0, rng.uniform(-6, 6)), bevel=0.004))
-                x += 0.22
-                continue
-            w, h = rng.uniform(0.03, 0.055), rng.uniform(0.13, 0.18)
-            lean = rng.uniform(-8, 8) if kind < 0.75 else rng.choice((-1, 1)) * rng.uniform(14, 22)
-            bx = x + w
-            p.append(box(col, "book", (bx, -0.38, z + 0.025 + h), (w, 0.15, h), rot_deg=(0, lean, 0), bevel=0.005))
-            for bz in (0.6, -0.6):  # bands on the spine
-                p.append(box(col, "book_band", (bx, -0.535, z + 0.025 + h + bz * h), (w * 1.02, 0.006, 0.008),
-                             rot_deg=(0, lean, 0), bevel=0.0))
-            x += 2 * w + 0.012 + (0.04 if abs(lean) > 12 else 0)
+    # ---- Chest: a great closed book.
+    cz, cy = 2.8, -0.12
+    add(p, box(col, "pages", (0.03, cy, cz), (0.7, 0.33, 0.6), bevel=0.01), "Pages")
+    for z in [cz - 0.56 + 0.04 * k for k in range(29)]:  # page edges on the side
+        add(p, box(col, "page_edge", (0.735, cy, z), (0.006, 0.31, 0.006), bevel=0.0), "Pages")
+    for y in (cy - 0.37, cy + 0.37):
+        add(p, box(col, "cover", (0, y, cz), (0.78, 0.045, 0.67), bevel=0.02))
+    add(p, box(col, "spine", (-0.76, cy, cz), (0.06, 0.4, 0.67), bevel=0.03))
+    for z in (cz - 0.45, cz, cz + 0.45):
+        add(p, box(col, "spine_band", (-0.82, cy, z), (0.015, 0.38, 0.03), bevel=0.0))
+    fy = cy - 0.42  # the front face of the cover
+    for (x, z, hx, hz) in ((0, cz + 0.6, 0.72, 0.025), (0, cz - 0.6, 0.72, 0.025), (0.7, cz, 0.025, 0.6),
+                           (-0.7, cz, 0.025, 0.6)):
+        add(p, box(col, "frame", (x, fy, z), (hx, 0.02, hz), bevel=0.005))
+    add(p, box(col, "band", (0, fy - 0.01, cz), (0.13, 0.03, 0.6), bevel=0.01))
+    for z in (cz + 0.42, cz + 0.22, cz - 0.22, cz - 0.42):
+        add(p, sphere(col, "boss", (0, fy - 0.05, z), (0.04, 0.02, 0.04), segments=12, rings=6))
+    for x in (-0.4, 0.4):
+        laurel(col, p, Matrix.Translation((x, fy - 0.03, cz - 0.03)), 0.24, 2.7, 0.45, 10, size=1.8)
+        laurel(col, p, Matrix.Translation((x, fy - 0.03, cz - 0.03)), 0.24, -2.7, -0.45, 10, size=1.8)
+    for x in (-0.6, 0.6):
+        for z in (cz - 0.5, cz + 0.5):
+            add(p, sphere(col, "corner", (x, fy - 0.02, z), (0.05, 0.02, 0.05), segments=12, rings=6))
+    add(p, box(col, "lock_plate", (0, fy - 0.04, cz), (0.24, 0.025, 0.08), bevel=0.01))
+    lock = limb(col, "lock", (0, fy - 0.03, cz), (0, fy - 0.1, cz), 0.13, 0.13, segments=28)
+    carve(lock, [limb(col, "keyhole", (0, fy - 0.2, cz + 0.025), (0, fy, cz + 0.025), 0.03, 0.03, segments=12),
+                 box(col, "keyhole_slot", (0, fy - 0.1, cz - 0.03), (0.015, 0.1, 0.05), bevel=0.0)])
+    add(p, lock)
+    add(p, torus(col, "lock_rim", (0, fy - 0.1, cz), 0.12, 0.015, tilt_deg=90))
+    add(p, box(col, "chest_core", (0, 0.05, cz), (0.6, 0.3, 0.55), bevel=0.05))
 
-    # Head: a block with a heavy brow over eye slits, a jaw stone, a crack across the crown.
-    head = block("head", (0, -0.1, 3.97), (0.38, 0.35, 0.3), group="Head", chips=2)
-    carve(head, [box(col, "eye_slot", (x, -0.42, 3.97), (0.085, 0.08, 0.025), rot_deg=(0, 0, 0), bevel=0.0)
-                 for x in (0.13, -0.13)])
-    block("brow", (0, -0.4, 4.06), (0.32, 0.07, 0.06), group="Head", chips=1, tilt=2)
-    block("jaw", (0, -0.25, 3.68), (0.26, 0.22, 0.08), group="Head", chips=1)
+    # ---- The open book behind the head, its pages fanned up like a collar.
+    for side in (1, -1):
+        m = Matrix.Translation((side * 0.04, 0.12, 3.42)) @ Matrix.Rotation(math.radians(side * -38), 4, "Y") \
+            @ Matrix.Rotation(math.radians(-18), 4, "X")
+        add(p, _turned(box(col, "open_pages", (side * 0.32, 0, 0.22), (0.3, 0.06, 0.22), bevel=0.01), m), "Pages")
+        add(p, _turned(box(col, "open_cover", (side * 0.34, 0.07, 0.22), (0.34, 0.02, 0.25), bevel=0.01), m))
+        for k in range(6):
+            add(p, _turned(box(col, "open_page_line", (side * 0.32, -0.062, 0.05 + 0.065 * k), (0.28, 0.004, 0.004),
+                               bevel=0.0), m), "Pages")
 
+    # ---- Waist: a core, a belt of small leather books with a temple buckle and ribbons, a skirt of stone leaves.
+    add(p, box(col, "waist", (0, -0.05, 2.0), (0.68, 0.38, 0.22), bevel=0.05))
+    add(p, box(col, "pelvis", (0, -0.02, 1.65), (0.62, 0.38, 0.2), bevel=0.05))
+    add(p, box(col, "belt", (0, -0.45, 1.86), (0.74, 0.03, 0.03), bevel=0.0))
+    add(p, box(col, "belt_top", (0, -0.45, 2.16), (0.74, 0.03, 0.025), bevel=0.0))
+    x = -0.7
+    while x < 0.68:
+        if abs(x) < 0.17:
+            x = 0.17
+            continue
+        w, h = rng.uniform(0.045, 0.06), rng.uniform(0.11, 0.135)
+        bx = x + w
+        add(p, box(col, "belt_book", (bx, -0.47, 1.9 + h), (w, 0.06, h), bevel=0.006), "Leather")
+        for bz in (0.65, -0.65):
+            add(p, box(col, "belt_book_band", (bx, -0.532, 1.9 + h + bz * h), (w * 1.02, 0.004, 0.008), bevel=0.0),
+                "Pages")
+        if rng.random() < 0.22:
+            add(p, box(col, "ribbon", (bx, -0.5, 1.78), (0.025, 0.004, 0.13), rot_deg=(0, rng.uniform(-6, 6), 0),
+                       bevel=0.0), "Ribbon")
+        x += 2 * w + 0.008
+    temple(col, p, Matrix.Translation((0, -0.53, 2.0)) @ Matrix.Diagonal((1.0, 1.0, 1.2, 1.0)))
+    add(p, box(col, "buckle_back", (0, -0.5, 2.0), (0.17, 0.02, 0.17), bevel=0.01))
+    for k in range(26):
+        a = 2 * math.pi * k / 26
+        if abs(math.sin(a / 2)) < 0.18:
+            continue  # the front under the buckle stays clear
+        for row, (z, r) in enumerate(((1.8, 1.0), (1.62, 1.06))):
+            pos = Vector((0.74 * r * math.sin(a), -0.45 * r * math.cos(a), z))
+            stone_leaf(col, p, pos, (math.sin(a), -math.cos(a), 0), 0.32 - 0.05 * row, 0.1)
+
+    # ---- Head: a small stern face under a laurel crest.
+    head = groups["Head"]
+    add(head, blob(col, "golem_head", [
+        ((0, -0.15, 3.72), (0.2, 0.22, 0.24), (0, 0, 0)),          # cranium
+        ((0, -0.27, 3.64), (0.16, 0.13, 0.2), (0, 0, 0)),          # face
+        ((0, -0.37, 3.75), (0.15, 0.05, 0.035), (0, 0, 0)),        # stern brow
+        ((0, -0.41, 3.64), (0.035, 0.06, 0.075), (15, 0, 0)),      # nose
+        ((0, -0.31, 3.5), (0.13, 0.12, 0.07), (0, 0, 0)),          # jaw
+        ((0.12, -0.3, 3.62), (0.06, 0.08, 0.07), (0, 0, 0)),       # cheekbones
+        ((-0.12, -0.3, 3.62), (0.06, 0.08, 0.07), (0, 0, 0)),
+    ], resolution=0.022))
+    for k in range(9):  # the crest: laurel leaves fanned up and back from the forehead
+        a = (k - 4) * 0.22
+        m = Matrix.Translation((0.0, -0.22, 3.9)) @ Matrix.Rotation(a, 4, "Y") @ Matrix.Rotation(math.radians(-25), 4, "X")
+        add(head, _turned(ico(col, "crest_leaf", (0, 0, 0.13), (0.035, 0.015, 0.12), subdivisions=2), m))
+
+    # ---- Shoulders: temple-emblem pauldrons over the shoulder masses.
+    for side in (1, -1):
+        add(p, box(col, "shoulder", (side * 0.82, -0.05, 3.2), (0.32, 0.38, 0.3), bevel=0.06))
+        tilt = Matrix.Rotation(math.radians(-side * 12), 4, "Y")
+        m = Matrix.Translation((side * 1.08, -0.06, 3.42)) @ tilt
+        add(p, _turned(box(col, "pauldron", (0, 0, 0), (0.42, 0.46, 0.17), bevel=0.04), m))
+        add(p, _turned(box(col, "pauldron_lower", (side * 0.06, 0, -0.26), (0.4, 0.43, 0.09), bevel=0.03), m))
+        add(p, _turned(box(col, "pauldron_rim", (0, -0.47, 0), (0.38, 0.015, 0.13), bevel=0.0), m))
+        temple(col, p, m @ Matrix.Translation((0, -0.49, 0.0)) @ Matrix.Diagonal((0.85, 1.0, 0.85, 1.0)))
+        laurel(col, p, m @ Matrix.Translation((0, -0.48, -0.26)), 0.2, -1.3, 1.3, 9, size=0.8)
+
+    # ---- Arms: stone-leaf tassets over the upper arm, a fluted bracer with laurel bands, a big jointed hand.
     for side, sd in ((1, "L"), (-1, "R")):
-        arm, leg = "Arm" + sd, "Leg" + sd
-        # Shoulder boulder with a layered pauldron stone.
-        block("shoulder", (side * 1.2, 0, 3.3), (0.42, 0.45, 0.38))
-        block("pauldron", (side * 1.26, 0, 3.72), (0.38, 0.42, 0.1), chips=2, tilt=6)
-        block("upper_arm", (side * 1.32, 0, 2.5), (0.3, 0.3, 0.5), group=arm)
-        block("elbow", (side * 1.35, -0.05, 1.98), (0.25, 0.25, 0.12), group=arm, chips=1)
-        block("forearm", (side * 1.38, -0.12, 1.55), (0.37, 0.37, 0.38), group=arm)
-        block("wrist", (side * 1.4, -0.14, 1.12), (0.3, 0.3, 0.07), group=arm, chips=0)
-        block("fist", (side * 1.4, -0.16, 0.85), (0.4, 0.4, 0.26), group=arm)
-        for k in range(4):  # knuckles across the front, the thumb on the inside
-            block("finger", (side * 1.4 + (k - 1.5) * 0.19, -0.6, 0.78), (0.085, 0.09, 0.16), group=arm, chips=1,
-                  tilt=5)
-        block("thumb", (side * 1.02, -0.4, 0.9), (0.09, 0.12, 0.09), group=arm, chips=1, tilt=8)
-        block("thigh", (side * 0.48, 0, 1.15), (0.36, 0.36, 0.38), group=leg)
-        block("knee", (side * 0.49, -0.3, 0.8), (0.24, 0.12, 0.14), group=leg, chips=1)
-        block("shin", (side * 0.5, 0, 0.5), (0.33, 0.33, 0.28), group=leg)
-        block("foot", (side * 0.5, -0.12, 0.12), (0.42, 0.55, 0.13), group=leg)
-        for k in range(3):
-            block("toe", (side * 0.5 + (k - 1) * 0.27, -0.74, 0.09), (0.11, 0.1, 0.09), group=leg, chips=1, tilt=6)
+        arm = groups["Arm" + sd]
+        ax = side * 1.15
+        add(arm, limb(col, "upper_arm", (ax, -0.02, 3.15), (ax * 1.03, -0.06, 2.4), 0.26, 0.24, segments=16))
+        for row, z in enumerate((3.08, 2.88, 2.68)):
+            for k in range(9):
+                a = 2 * math.pi * k / 9
+                pos = Vector((ax + 0.27 * math.sin(a), -0.04 + 0.27 * math.cos(a), z))
+                stone_leaf(col, arm, pos, (math.sin(a), math.cos(a), 0), 0.3, 0.09)
+        add(arm, sphere(col, "elbow", (ax * 1.04, -0.08, 2.36), (0.27, 0.27, 0.25), segments=20, rings=10))
+        top, bot = Vector((ax * 1.06, -0.1, 2.3)), Vector((ax * 1.08, -0.14, 1.48))
+        add(arm, limb(col, "bracer", top, bot, 0.36, 0.38, segments=24))
+        for k in range(16):  # flutes
+            a = 2 * math.pi * k / 16
+            off = Vector((math.cos(a), math.sin(a), 0)) * 0.37
+            add(arm, limb(col, "flute", top + off + Vector((0, 0, -0.12)), bot + off * 1.03 + Vector((0, 0, 0.12)),
+                          0.025, 0.025, segments=6))
+        for z, r in ((2.22, 0.4), (2.1, 0.4), (1.62, 0.42), (1.5, 0.42)):
+            add(arm, torus(col, "bracer_ring", (ax * 1.07, -0.12, z), r, 0.035))
+        laurel(col, arm, Matrix.Translation((ax * 1.07, -0.53, 1.86)), 0.17, -2.3, 2.3, 10, size=1.4)
+        # The hand hangs with the palm toward the body; fingers curl in.
+        hx, hy, hz = ax * 1.08, -0.16, 1.2
+        add(arm, box(col, "palm", (hx, hy, hz), (0.24, 0.33, 0.28), bevel=0.06))
+        add(arm, box(col, "knuckle_guard", (hx + side * 0.02, hy, hz - 0.24), (0.25, 0.34, 0.06), bevel=0.02))
+        for k in range(4):
+            fy = hy - 0.25 + 0.165 * k
+            joints = [Vector((hx, fy, hz - 0.26)), Vector((hx - side * 0.03, fy, hz - 0.5)),
+                      Vector((hx - side * 0.13, fy, hz - 0.68)), Vector((hx - side * 0.26, fy, hz - 0.76))]
+            for a, b in zip(joints, joints[1:]):
+                add(arm, limb(col, "finger", a, b, 0.085, 0.076, segments=8))
+                add(arm, sphere(col, "finger_joint", b, (0.088,) * 3, segments=10, rings=5))
+        thumb = [Vector((hx - side * 0.18, hy - 0.26, hz - 0.05)), Vector((hx - side * 0.3, hy - 0.38, hz - 0.22)),
+                 Vector((hx - side * 0.36, hy - 0.38, hz - 0.42))]
+        for a, b in zip(thumb, thumb[1:]):
+            add(arm, limb(col, "thumb", a, b, 0.09, 0.08, segments=8))
+            add(arm, sphere(col, "thumb_joint", b, (0.09,) * 3, segments=10, rings=5))
+
+    # ---- Legs: Ionic columns, volutes at the knees, fluted shafts with a laurel band, on big toed feet.
+    for side, sd in ((1, "L"), (-1, "R")):
+        leg = groups["Leg" + sd]
+        lx = side * 0.55
+        add(leg, limb(col, "thigh", (lx, -0.02, 1.75), (lx, -0.02, 1.28), 0.3, 0.3, segments=16))
+        add(leg, box(col, "abacus", (lx, -0.04, 1.25), (0.44, 0.4, 0.06), bevel=0.015))
+        add(leg, torus(col, "echinus", (lx, -0.04, 1.16), 0.34, 0.06))
+        for vx in (0.4, -0.4):  # the volutes, coiled on the front and back
+            add(leg, limb(col, "volute", (lx + vx, -0.42, 1.14), (lx + vx, 0.34, 1.14), 0.1, 0.1, segments=16))
+            for vy in (-0.43, 0.35):
+                add(leg, torus(col, "volute_coil", (lx + vx, vy, 1.14), 0.075, 0.018, tilt_deg=90))
+                add(leg, torus(col, "volute_coil", (lx + vx, vy, 1.14), 0.04, 0.014, tilt_deg=90))
+        add(leg, limb(col, "shaft", (lx, -0.04, 1.12), (lx, -0.04, 0.42), 0.3, 0.33, segments=24))
+        for k in range(18):
+            a = 2 * math.pi * k / 18
+            off = Vector((math.cos(a), math.sin(a), 0))
+            add(leg, limb(col, "flute", Vector((lx, -0.04, 1.08)) + off * 0.3, Vector((lx, -0.04, 0.46)) + off * 0.33,
+                          0.022, 0.022, segments=6))
+        add(leg, torus(col, "laurel_band", (lx, -0.04, 0.66), 0.345, 0.03))
+        laurel(col, leg, Matrix.Translation((lx, -0.4, 0.66)), 0.5, -0.5, 0.5, 7, size=0.8)
+        add(leg, torus(col, "base_torus", (lx, -0.04, 0.38), 0.38, 0.06))
+        add(leg, box(col, "plinth", (lx, -0.06, 0.3), (0.44, 0.44, 0.05), bevel=0.015))
+        add(leg, box(col, "foot", (lx, -0.14, 0.13), (0.44, 0.52, 0.13), bevel=0.05))
+        for k in range(4):
+            tx = lx + (k - 1.5) * 0.2
+            add(leg, box(col, "toe", (tx, -0.72, 0.1), (0.085, 0.13, 0.1), bevel=0.035))
+            add(leg, box(col, "toenail", (tx, -0.84, 0.13), (0.06, 0.02, 0.05), bevel=0.015))
 
     obj = finish(p, "book_keeper", smooth_deg=30)
-    pivots = {"Head": (0, -0.12, 3.6), "ArmL": (1.25, 0, 3.05), "ArmR": (-1.25, 0, 3.05),
-              "LegL": (0.48, 0, 1.55), "LegR": (-0.48, 0, 1.55)}
+    pivots = {"Head": (0, -0.15, 3.5), "ArmL": (1.15, 0, 3.15), "ArmR": (-1.15, 0, 3.15),
+              "LegL": (0.55, 0, 1.7), "LegR": (-0.55, 0, 1.7)}
     head_obj = None
     for name, parts in groups.items():
         made = part(parts, name, pivots[name], obj, smooth_deg=30)
         head_obj = made if name == "Head" else head_obj
-    part([box(col, "eye", (x, -0.36, 3.97), (0.07, 0.02, 0.016), bevel=0.0) for x in (0.13, -0.13)], "Eyes",
-         (0, -0.12, 3.6), head_obj)
+    part([sphere(col, "eye", (x, -0.355, 3.71), (0.035, 0.012, 0.016)) for x in (0.07, -0.07)], "Eyes",
+         (0, -0.15, 3.5), head_obj)
     return obj
 
 
