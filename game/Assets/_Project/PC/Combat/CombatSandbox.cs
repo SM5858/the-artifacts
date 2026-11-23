@@ -59,6 +59,7 @@ namespace TheArtifacts.PC.Combat
         static readonly Color GuardianTell = new Color(1f, 0.55f, 0.1f);
         static readonly Color GuardianRecovery = new Color(0.3f, 0.9f, 0.35f);
         static readonly Color GuardianFury = new Color(0.75f, 0.15f, 0.6f);
+        static readonly Color EyeColor = new Color(0.35f, 1f, 0.9f);
         static readonly Color TelegraphStart = new Color(0.55f, 0.25f, 0.05f);
         static readonly Color TelegraphHit = new Color(1f, 0.1f, 0.05f);
 
@@ -441,10 +442,20 @@ namespace TheArtifacts.PC.Combat
             foreach (var r in _guardianModel.GetComponentsInChildren<Renderer>(true))
             {
                 var isOwl = r.name == "Owl";
-                r.sharedMaterials = Enumerable.Repeat(isOwl ? _weakPointMaterial : _guardianMaterial, r.sharedMaterials.Length).ToArray();
+                var material = isOwl ? _weakPointMaterial : r.name == "Eyes" ? EyeGlow() : _guardianMaterial;
+                r.sharedMaterials = Enumerable.Repeat(material, r.sharedMaterials.Length).ToArray();
                 if (isOwl) _weakPoint = r.transform;
             }
             if (_weakPoint != _owlSphere) _weakPoint.gameObject.SetActive(false);
+        }
+
+        /// <summary>The lich's glowing eyes (concept: verdigris lich scholar): unlit, so they read in any light.</summary>
+        Material EyeGlow()
+        {
+            var unlit = Shader.Find("Universal Render Pipeline/Unlit");
+            var mat = new Material(unlit != null ? unlit : _lit);
+            mat.SetColor("_BaseColor", EyeColor);
+            return mat;
         }
 
         /// <summary>One box per lore target of this fight's Guardian (the Book Keeper's bookshelves).</summary>

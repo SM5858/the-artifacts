@@ -4,7 +4,8 @@ Blockout models for the three prototype Guardians (GDD 9, visual direction): sta
 Run inside Blender (Text Editor → Run Script, or through MCP for Blender). It rebuilds the "Guardians" collection and,
 when EXPORT_DIR is set, writes one FBX per Guardian for Unity:
 
-    alma_mater.fbx     lich in a flowing robe, staff and book; the hidden owl is a child object named "Owl"
+    alma_mater.fbx     skeletal scholar in a torn robe and mantle, crowned sceptre, book on the belt; children "Owl"
+                       (the weak point) and "Eyes" (glow)
     columbia_lion.fbx  lion
     book_keeper.fbx    plain stone golem with a bookshelf in its chest
 
@@ -103,7 +104,7 @@ def cone(col, name, loc, r_bottom, r_top, height, segments=24):
     return _mesh_object(name, bm, col)
 
 
-def torus(col, name, loc, major, minor, tilt_deg=0.0):
+def torus(col, name, loc, major, minor, tilt_deg=0.0, squash_y=1.0):
     bm = bmesh.new()
     seg_major, seg_minor = 32, 10
     verts = []
@@ -120,9 +121,61 @@ def torus(col, name, loc, major, minor, tilt_deg=0.0):
             a, b = verts[i][j], verts[(i + 1) % seg_major][j]
             c, d = verts[(i + 1) % seg_major][(j + 1) % seg_minor], verts[i][(j + 1) % seg_minor]
             bm.faces.new((a, b, c, d))
+    bmesh.ops.scale(bm, vec=Vector((1.0, squash_y, 1.0)), verts=bm.verts)
     bmesh.ops.rotate(bm, matrix=Euler((math.radians(tilt_deg), 0, 0)).to_matrix(), verts=bm.verts)
     bmesh.ops.translate(bm, vec=Vector(loc), verts=bm.verts)
     return _mesh_object(name, bm, col)
+
+
+def drape(col, name, z_top, z_bottom, r_top, r_bottom, gap_top_deg, gap_bottom_deg, seed,
+          rows=18, segments=72, folds=9, fold_depth=0.05, hem_jag=0.35, thickness=0.03, torn=0.25, shoulder=None):
+    """
+    Cloth hanging around the body: an elliptical shell open at the front (-Y), wider at the hem, rippled into folds,
+    with a ragged, torn hem. r_top and r_bottom are (x, y) radii; the front gap is in degrees and may change with
+    height. Torn holes: that share of the lowest faces is removed. shoulder=(z, (rx, ry)) bends the profile there, so
+    cloth can fall from the neck over the shoulders and then hang.
+    """
+    rng = random.Random(seed)
+    hem = [rng.uniform(0.0, hem_jag) * (1.0 if i % 2 else 0.45) for i in range(segments + 1)]
+    bm = bmesh.new()
+    grid = []
+    for r in range(rows + 1):
+        t = r / rows  # 0 at the top, 1 at the hem
+        z = z_top + (z_bottom - z_top) * t
+        if shoulder and z >= shoulder[0]:
+            u = (z_top - z) / (z_top - shoulder[0])
+            u = math.sin(u * math.pi / 2)  # rounds over the shoulder
+            rx = r_top[0] + (shoulder[1][0] - r_top[0]) * u
+            ry = r_top[1] + (shoulder[1][1] - r_top[1]) * u
+        else:
+            z0, (bx, by) = (shoulder[0], shoulder[1]) if shoulder else (z_top, r_top)
+            u = ((z0 - z) / (z0 - z_bottom)) ** 1.4
+            rx = bx + (r_bottom[0] - bx) * u
+            ry = by + (r_bottom[1] - by) * u
+        gap = math.radians(gap_top_deg + (gap_bottom_deg - gap_top_deg) * t)
+        row = []
+        for i in range(segments + 1):
+            a = gap / 2 + (2 * math.pi - gap) * i / segments  # angle from the front (-Y)
+            ripple = 1.0 + math.sin(a * folds + seed) * fold_depth * (0.3 + t)
+            zz = z + (hem[i] if r == rows else 0.0) + (hem[i] * 0.4 * t ** 3 if r == rows - 1 else 0.0)
+            row.append(bm.verts.new((rx * ripple * math.sin(a), -ry * ripple * math.cos(a), zz)))
+        grid.append(row)
+    for r in range(rows):
+        for i in range(segments):
+            if r >= rows - 2 and rng.random() < torn:
+                continue
+            bm.faces.new((grid[r][i], grid[r][i + 1], grid[r + 1][i + 1], grid[r + 1][i]))
+    if gap_top_deg == 0 and gap_bottom_deg == 0:
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)  # close the seam at the front
+    bm.normal_update()
+    obj = _mesh_object(name, bm, col)
+    mod = obj.modifiers.new("thickness", "SOLIDIFY")
+    mod.thickness = thickness
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    return obj
 
 
 def roughen(obj, amount, seed):
@@ -132,7 +185,7 @@ def roughen(obj, amount, seed):
         v.co += v.normal * rng.uniform(-amount, amount)
 
 
-def finish(parts, name, scale=1.0):
+def finish(parts, name, scale=1.0, smooth_deg=35):
     """Join the parts into one mesh, scale it, smooth it by angle, and cube-project UVs."""
     bpy.ops.object.select_all(action="DESELECT")
     for p in parts:
@@ -144,7 +197,7 @@ def finish(parts, name, scale=1.0):
     obj.scale = (scale, scale, scale)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
     try:
-        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(35))
+        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(smooth_deg))
     except (AttributeError, RuntimeError):
         bpy.ops.object.shade_smooth()
     cube_uvs(obj)
@@ -164,48 +217,101 @@ def cube_uvs(obj):
 # ---------------------------------------------------------------- Guardians
 
 def lich(col):
-    """Alma Mater: a lich in a flowing robe, a staff in its right hand and a book in its left."""
+    """
+    Alma Mater as a lich (concept: "Verdigris Lich Scholar"): a tall skeletal scholar in a layered, torn robe and
+    mantle, a laurel wreath with a small finial, a crowned sceptre in the right hand, a book hanging from the belt,
+    and the owl perched on the sash. The eyes are their own object ("Eyes") so Unity can make them glow.
+    """
     p = []
-    robe = cone(col, "robe", (0, 0, 0), 1.25, 0.5, 2.7, segments=48)
-    # Folds: ripple the lower robe in and out around its circumference.
-    for v in robe.data.vertices:
-        drop = max(0.0, 1.0 - v.co.z / 2.7)
-        angle = math.atan2(v.co.y, v.co.x)
-        v.co.x += math.cos(angle) * math.sin(angle * 9) * 0.09 * drop
-        v.co.y += math.sin(angle) * math.sin(angle * 9) * 0.09 * drop
-    p.append(robe)
-    p.append(sphere(col, "torso", (0, 0.02, 2.95), (0.6, 0.42, 0.72)))
-    p.append(sphere(col, "mantle", (0, 0.02, 3.35), (0.88, 0.55, 0.32)))
-    p.append(sphere(col, "hood", (0, 0.12, 3.92), (0.5, 0.5, 0.56)))
-    # The skull juts out of the hood, so the silhouette reads as a lich, not a monk.
-    p.append(sphere(col, "skull", (0, -0.3, 3.8), (0.24, 0.22, 0.28)))
-    p.append(sphere(col, "eye_l", (0.09, -0.5, 3.86), (0.06, 0.03, 0.05)))
-    p.append(sphere(col, "eye_r", (-0.09, -0.5, 3.86), (0.06, 0.03, 0.05)))
-    p.append(box(col, "jaw", (0, -0.42, 3.6), (0.14, 0.1, 0.06), bevel=0.03))
-    p.append(torus(col, "wreath", (0, 0.04, 4.22), 0.36, 0.055, tilt_deg=-8))
+    # Inner gown to the floor, and the bodice above it.
+    p.append(drape(col, "gown", 3.0, 0.02, (0.34, 0.26), (0.72, 0.52), 0, 0, seed=1,
+                   folds=11, fold_depth=0.06, hem_jag=0.08, torn=0.1, thickness=0.04))
+    p.append(drape(col, "gown_overlay", 2.9, 0.55, (0.38, 0.3), (0.74, 0.55), 70, 40, seed=2,
+                   folds=7, fold_depth=0.07, hem_jag=0.3, torn=0.3))
+    p.append(sphere(col, "bodice", (0, 0.0, 3.22), (0.33, 0.24, 0.42)))
+    p.append(sphere(col, "ribs", (0, -0.12, 3.5), (0.2, 0.12, 0.14)))
 
-    # Right arm (-X when facing -Y) holds the staff upright.
-    p.append(limb(col, "arm_r", (-0.72, 0.0, 3.3), (-0.98, -0.42, 2.55), 0.26, 0.2))
-    p.append(sphere(col, "hand_r", (-1.0, -0.5, 2.5), (0.15, 0.15, 0.16)))
-    p.append(limb(col, "staff", (-1.0, -0.5, 0.0), (-1.0, -0.5, 4.55), 0.06, 0.06, segments=10))
-    p.append(ico(col, "lamp", (-1.0, -0.5, 4.72), (0.2, 0.2, 0.24)))
-    p.append(torus(col, "lamp_ring", (-1.0, -0.5, 4.58), 0.18, 0.035))
+    # Mantle over both shoulders, open at the front, hanging almost to the floor with a ragged hem;
+    # a short cape over the shoulders and arms.
+    p.append(drape(col, "mantle", 3.74, 0.25, (0.2, 0.16), (0.95, 0.72), 120, 95, seed=3,
+                   folds=8, fold_depth=0.08, hem_jag=0.45, torn=0.3, shoulder=(3.5, (0.5, 0.34))))
+    p.append(drape(col, "cape", 3.78, 2.55, (0.21, 0.17), (0.8, 0.6), 75, 85, seed=4,
+                   folds=10, fold_depth=0.07, hem_jag=0.3, torn=0.35, shoulder=(3.48, (0.55, 0.38))))
+    for x in (0.3, -0.3):
+        p.append(limb(col, "brooch", (x, -0.26, 3.55), (x, -0.31, 3.55), 0.065, 0.06, segments=16))
 
-    # Left arm cradles the open book.
-    p.append(limb(col, "arm_l", (0.72, 0.0, 3.3), (0.55, -0.5, 2.62), 0.26, 0.2))
-    p.append(sphere(col, "hand_l", (0.5, -0.58, 2.58), (0.15, 0.15, 0.15)))
-    p.append(box(col, "book_l", (0.32, -0.7, 2.6), (0.2, 0.15, 0.03), rot_deg=(-25, 8, 12), bevel=0.01))
-    p.append(box(col, "book_r", (0.66, -0.7, 2.62), (0.2, 0.15, 0.03), rot_deg=(-25, -8, -12), bevel=0.01))
-    body = finish(p, "alma_mater")
+    # Sash at the waist, the belt below it, a tassel at the front.
+    p.append(torus(col, "sash", (0, 0.0, 3.0), 0.36, 0.06, tilt_deg=-6, squash_y=0.75))
+    p.append(torus(col, "belt", (0, 0.0, 2.86), 0.38, 0.035, tilt_deg=4, squash_y=0.75))
+    p.append(limb(col, "tassel_cord", (0.08, -0.29, 2.84), (0.09, -0.33, 2.45), 0.015, 0.015, segments=6))
+    p.append(cone(col, "tassel", (0.09, -0.33, 2.28), 0.05, 0.015, 0.18, segments=10))
 
-    # The owl peeks out of a fold low on the robe's front-left (GDD 6.7). Separate so Unity can show and hide it.
+    # Book hanging from the belt on the right hip (-X), on two straps.
+    p.append(limb(col, "strap_a", (-0.22, -0.27, 2.86), (-0.28, -0.36, 2.62), 0.015, 0.015, segments=6))
+    p.append(limb(col, "strap_b", (-0.38, -0.2, 2.86), (-0.44, -0.33, 2.62), 0.015, 0.015, segments=6))
+    p.append(box(col, "book", (-0.36, -0.37, 2.4), (0.16, 0.06, 0.21), rot_deg=(0, 0, 8), bevel=0.015))
+    p.append(box(col, "book_clasp", (-0.36, -0.44, 2.4), (0.05, 0.015, 0.05), rot_deg=(0, 0, 8), bevel=0.0))
+
+    # Neck, skull, hair gathered in a bun, laurel wreath, and the small finial on top.
+    p.append(limb(col, "neck", (0, 0.0, 3.6), (0, -0.02, 3.85), 0.06, 0.055, segments=10))
+    p.append(sphere(col, "skull", (0, -0.03, 4.0), (0.17, 0.19, 0.21)))
+    p.append(box(col, "jaw", (0, -0.13, 3.83), (0.1, 0.08, 0.045), bevel=0.025))
+    p.append(sphere(col, "hair", (0, 0.04, 4.06), (0.18, 0.17, 0.17)))
+    p.append(sphere(col, "bun", (0, 0.2, 4.1), (0.11, 0.09, 0.1)))
+    p.append(torus(col, "wreath", (0, 0.01, 4.12), 0.17, 0.022, tilt_deg=-12))
+    for k in range(14):
+        a = 2 * math.pi * k / 14
+        if abs(math.sin(a / 2)) < 0.25:
+            continue  # the leaves meet at the front
+        x, y = 0.18 * math.sin(a), -0.18 * math.cos(a) * 0.98
+        p.append(ico(col, "leaf", (x, y + 0.01, 4.13 + 0.04 * math.cos(a)), (0.045, 0.02, 0.022), subdivisions=1))
+    p.append(limb(col, "finial_stem", (0, -0.02, 4.2), (0, -0.02, 4.38), 0.03, 0.022, segments=8))
+    p.append(sphere(col, "finial_knob", (0, -0.02, 4.34), (0.05, 0.05, 0.045)))
+    p.append(cone(col, "finial_tip", (0, -0.02, 4.38), 0.03, 0.0, 0.08, segments=8))
+
+    # Right arm (-X) raised, the bony hand gripping the sceptre; a wide sleeve hangs from it.
+    p.append(limb(col, "upper_arm_r", (-0.4, 0.0, 3.5), (-0.5, -0.02, 3.0), 0.07, 0.055, segments=10))
+    p.append(limb(col, "forearm_r", (-0.5, -0.02, 3.0), (-0.66, -0.2, 3.3), 0.05, 0.04, segments=10))
+    p.append(limb(col, "sleeve_r", (-0.42, 0.0, 3.45), (-0.56, -0.04, 2.6), 0.13, 0.26, segments=16))
+    p.append(sphere(col, "hand_r", (-0.7, -0.22, 3.32), (0.06, 0.05, 0.08)))
+    # Crowned sceptre, floor to above the head.
+    p.append(limb(col, "sceptre", (-0.72, -0.22, 0.02), (-0.72, -0.22, 4.4), 0.035, 0.035, segments=10))
+    for z in (0.15, 1.6, 3.05, 3.6, 4.3):
+        p.append(torus(col, "sceptre_band", (-0.72, -0.22, z), 0.045, 0.014))
+    p.append(cone(col, "crown_base", (-0.72, -0.22, 4.4), 0.05, 0.11, 0.1, segments=16))
+    p.append(torus(col, "crown_rim", (-0.72, -0.22, 4.5), 0.1, 0.018))
+    for k in range(4):
+        a = math.pi / 2 * k
+        p.append(limb(col, "crown_arch", (-0.72 + 0.1 * math.cos(a), -0.22 + 0.1 * math.sin(a), 4.5),
+                      (-0.72, -0.22, 4.66), 0.012, 0.012, segments=6))
+    p.append(sphere(col, "crown_orb", (-0.72, -0.22, 4.68), (0.035, 0.035, 0.035)))
+    p.append(box(col, "crown_cross_v", (-0.72, -0.22, 4.77), (0.01, 0.01, 0.06), bevel=0.0))
+    p.append(box(col, "crown_cross_h", (-0.72, -0.22, 4.79), (0.035, 0.01, 0.01), bevel=0.0))
+
+    # Left arm (+X) hangs at the side, skeletal hand open; its sleeve falls from the shoulder.
+    p.append(limb(col, "upper_arm_l", (0.4, 0.0, 3.5), (0.47, 0.0, 2.95), 0.07, 0.055, segments=10))
+    p.append(limb(col, "forearm_l", (0.47, 0.0, 2.95), (0.5, -0.06, 2.45), 0.05, 0.035, segments=10))
+    p.append(limb(col, "sleeve_l", (0.42, 0.0, 3.45), (0.52, 0.0, 2.75), 0.13, 0.25, segments=16))
+    p.append(sphere(col, "hand_l", (0.51, -0.07, 2.35), (0.05, 0.04, 0.09)))
+
+    # Sandalled feet under the gown.
+    for x in (0.12, -0.12):
+        p.append(box(col, "foot", (x, -0.48, 0.04), (0.06, 0.13, 0.04), bevel=0.02))
+    body = finish(p, "alma_mater", scale=1.05, smooth_deg=60)
+
+    eyes = finish([sphere(col, "eye_l", (0.062, -0.19, 4.02), (0.04, 0.022, 0.034)),
+                   sphere(col, "eye_r", (-0.062, -0.19, 4.02), (0.04, 0.022, 0.034))], "Eyes", scale=1.05)
+    eyes.parent = body
+
+    # The owl perches on the sash at the left of the chest (GDD 6.7). Separate so Unity can show it only while it is
+    # out; while hidden, it is tucked into the robe.
     owl = [
-        sphere(col, "owl_body", (0.46, -0.72, 1.66), (0.15, 0.13, 0.2)),
-        sphere(col, "owl_head", (0.46, -0.74, 1.9), (0.12, 0.11, 0.1)),
-        cone(col, "owl_ear_l", (0.53, -0.74, 1.96), 0.035, 0.0, 0.08, segments=8),
-        cone(col, "owl_ear_r", (0.39, -0.74, 1.96), 0.035, 0.0, 0.08, segments=8),
+        sphere(col, "owl_body", (0.22, -0.33, 3.16), (0.08, 0.07, 0.11)),
+        sphere(col, "owl_head", (0.22, -0.34, 3.29), (0.065, 0.06, 0.055)),
+        cone(col, "owl_ear_l", (0.26, -0.34, 3.32), 0.02, 0.0, 0.05, segments=6),
+        cone(col, "owl_ear_r", (0.18, -0.34, 3.32), 0.02, 0.0, 0.05, segments=6),
     ]
-    owl_obj = finish(owl, "Owl")
+    owl_obj = finish(owl, "Owl", scale=1.05)
     owl_obj.parent = body
     return body
 
@@ -311,7 +417,7 @@ def build(export_dir=EXPORT_DIR):
     models = [lich(col), lion(col), golem(col)]
     # Side by side for viewing; the export puts each back at the origin.
     for i, obj in enumerate(models):
-        obj.location.x = (i - 1) * 5.0
+        obj.location.x = (i - 1) * 7.0
     if export_dir:
         os.makedirs(export_dir, exist_ok=True)
         for obj in models:
