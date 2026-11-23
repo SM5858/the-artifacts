@@ -6,11 +6,11 @@ when EXPORT_DIR is set, writes one FBX per Guardian for Unity:
 
     alma_mater.fbx     skeletal scholar in a torn robe and mantle, crowned sceptre, book on the belt; children "Owl"
                        (the weak point) and "Eyes" (glow)
-    columbia_lion.fbx  lion
-    book_keeper.fbx    plain stone golem with a bookshelf in its chest
+    columbia_lion.fbx  bronze lion statue: metaball muscle, a mane of swept locks, fangs; child "Eyes" (glow)
+    book_keeper.fbx    golem of hewn, chipped stone blocks with a shelf of stone books in its chest; child "Eyes"
 
 Conventions: metres; origin at the feet; the model faces -Y (Blender's front view), which is +Z (forward) in Unity
-with the export settings below. One mesh per Guardian (plus the owl), UVs cube-projected at TEXTURE_METRES per
+with the export settings below. One mesh per Guardian plus its moving parts, UVs cube-projected at TEXTURE_METRES per
 tile so the CC0 stone and bronze materials tile evenly. Materials are left to Unity.
 """
 
@@ -597,87 +597,246 @@ def lich(col):
     return body
 
 
+def blob(col, name, elements, resolution=0.06):
+    """
+    An organic mass from metaball ellipsoids that melt into each other (muscle, fur masses), converted to a mesh.
+    elements: (centre, half_extents, rot_deg). Each part uses its own name, so separate parts do not merge.
+    """
+    mb = bpy.data.metaballs.new(name)
+    mb.resolution = resolution
+    mb.render_resolution = resolution
+    mb.threshold = 0.6
+    obj = _link(bpy.data.objects.new(name, mb), col)
+    for centre, half, rot in elements:
+        el = mb.elements.new(type="ELLIPSOID")
+        el.co = centre
+        el.radius = 1.0
+        # With stiffness 2 and threshold 0.6 a lone element's surface sits at about 0.67 of its size.
+        el.size_x, el.size_y, el.size_z = (h * 1.5 for h in half)
+        el.rotation = Euler([math.radians(a) for a in rot]).to_quaternion()
+    bpy.context.view_layer.update()
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.convert(target="MESH")
+    mesh_obj = bpy.context.view_layer.objects.active
+    mesh_obj.name = name
+    bpy.data.metaballs.remove(mb)
+    return mesh_obj
+
+
 def lion(col):
-    """Columbia Lion: a lion with a heavy mane. Head, the four legs, and the tail move."""
+    """
+    Columbia Lion as a living bronze statue: a muscular lion (shoulders, ribcage, haunches melt together) with a deep
+    mane of curling tufts, a heavy brow, whisker pads, bared fangs, glowing eyes, toed paws with claws, and a tufted
+    tail. Head, the four legs, and the tail are separate parts; "Eyes" glows.
+    """
+    rng = random.Random(17)
     p, head, tail = [], [], []
     legs = {"LegFL": [], "LegFR": [], "LegBL": [], "LegBR": []}
-    p.append(sphere(col, "barrel", (0, 0.3, 1.75), (0.82, 1.6, 0.78)))
-    p.append(sphere(col, "chest", (0, -0.9, 1.9), (0.92, 0.85, 0.95)))
-    p.append(sphere(col, "haunch", (0, 1.4, 1.75), (0.78, 0.8, 0.82)))
-    p.append(limb(col, "neck", (0, -1.2, 2.2), (0, -1.75, 2.65), 0.62, 0.52))
-    mane = ico(col, "mane", (0, -1.72, 2.68), (1.12, 0.85, 1.15), subdivisions=3)
-    roughen(mane, 0.12, seed=7)
-    head.append(mane)
-    head.append(sphere(col, "head", (0, -2.12, 2.75), (0.52, 0.58, 0.52)))
-    head.append(box(col, "muzzle", (0, -2.62, 2.58), (0.3, 0.32, 0.22), bevel=0.1))
-    head.append(sphere(col, "nose", (0, -2.92, 2.7), (0.12, 0.08, 0.08)))
-    head.append(box(col, "jaw", (0, -2.55, 2.32), (0.26, 0.28, 0.1), bevel=0.06))
-    head.append(cone(col, "ear_l", (0.36, -1.98, 3.15), 0.13, 0.04, 0.2, segments=10))
-    head.append(cone(col, "ear_r", (-0.36, -1.98, 3.15), 0.13, 0.04, 0.2, segments=10))
-    for x, side in ((0.48, "L"), (-0.48, "R")):
-        fore, hind = legs["LegF" + side], legs["LegB" + side]
-        fore.append(limb(col, "foreleg", (x, -1.0, 1.7), (x, -1.1, 0.2), 0.38, 0.26))
-        fore.append(sphere(col, "forepaw", (x, -1.22, 0.15), (0.3, 0.38, 0.17)))
-        hind.append(limb(col, "thigh", (x, 1.45, 1.75), (x, 1.75, 0.95), 0.46, 0.3))
-        hind.append(limb(col, "hindleg", (x, 1.75, 0.95), (x, 1.55, 0.2), 0.3, 0.24))
-        hind.append(sphere(col, "hindpaw", (x, 1.45, 0.15), (0.28, 0.36, 0.16)))
-    tail.append(limb(col, "tail", (0, 2.15, 1.95), (0, 3.1, 1.0), 0.11, 0.07, segments=10))
-    tuft = ico(col, "tuft", (0, 3.2, 0.9), (0.2, 0.2, 0.25))
-    roughen(tuft, 0.04, seed=3)
-    tail.append(tuft)
+
+    p.append(blob(col, "lion_body", [
+        ((0, -0.85, 1.95), (0.78, 0.75, 0.82), (0, 0, 0)),     # chest
+        ((0, 0.2, 1.88), (0.66, 1.1, 0.66), (0, 0, 0)),        # ribcage, tucking toward the waist
+        ((0, 0.75, 1.92), (0.55, 0.5, 0.55), (0, 0, 0)),       # waist
+        ((0, 1.35, 1.82), (0.66, 0.65, 0.72), (0, 0, 0)),      # haunch
+        ((0.5, -0.85, 2.15), (0.3, 0.45, 0.45), (0, 0, 0)),    # shoulder blades
+        ((-0.5, -0.85, 2.15), (0.3, 0.45, 0.45), (0, 0, 0)),
+        ((0, -1.45, 2.4), (0.5, 0.55, 0.5), (-30, 0, 0)),      # neck
+        ((0, 0.0, 1.3), (0.5, 0.9, 0.3), (0, 0, 0)),           # belly
+    ]))
+
+    # Legs: muscle masses down to the paw, each its own part.
+    for x, side in ((0.5, "L"), (-0.5, "R")):
+        sgn = 1 if side == "L" else -1
+        fore = blob(col, "lion_fore" + side, [
+            ((x, -0.98, 1.4), (0.34, 0.38, 0.52), (8, 0, 0)),      # upper foreleg
+            ((x, -1.06, 0.8), (0.25, 0.27, 0.42), (4, 0, 0)),      # forearm
+            ((x, -1.1, 0.35), (0.2, 0.21, 0.18), (0, 0, 0)),       # wrist
+            ((x, -1.22, 0.13), (0.26, 0.32, 0.14), (0, 0, 0)),     # paw
+        ], resolution=0.045)
+        hind = blob(col, "lion_hind" + side, [
+            ((x, 1.48, 1.45), (0.38, 0.6, 0.6), (-15, 0, 0)),      # thigh
+            ((x, 1.76, 0.9), (0.24, 0.3, 0.38), (25, 0, 0)),       # gaskin to the hock
+            ((x, 1.62, 0.45), (0.18, 0.19, 0.3), (-10, 0, 0)),     # cannon
+            ((x, 1.5, 0.13), (0.25, 0.32, 0.14), (0, 0, 0)),       # paw
+        ], resolution=0.045)
+        legs["LegF" + side].append(fore)
+        legs["LegB" + side].append(hind)
+        for out, (py, pz) in ((legs["LegF" + side], (-1.22, 0.13)), (legs["LegB" + side], (1.5, 0.13))):
+            for k in range(4):  # toes and claws along the front of the paw
+                tx = x + (k - 1.5) * 0.1
+                out.append(sphere(col, "toe", (tx, py - 0.26, pz), (0.06, 0.08, 0.07), segments=12, rings=6))
+                out.append(limb(col, "claw", (tx, py - 0.32, pz + 0.02), (tx, py - 0.4, pz - 0.06), 0.022, 0.003,
+                                segments=6))
+
+    # Head: skull, muzzle, whisker pads, brow, jaw; the nose, fangs, and ears on top.
+    head.append(blob(col, "lion_head", [
+        ((0, -2.1, 2.78), (0.45, 0.5, 0.42), (0, 0, 0)),
+        ((0, -2.55, 2.6), (0.27, 0.33, 0.21), (0, 0, 0)),       # muzzle
+        ((0, -2.42, 2.8), (0.17, 0.36, 0.12), (12, 0, 0)),      # bridge of the nose
+        ((0.15, -2.66, 2.55), (0.14, 0.15, 0.13), (0, 0, 0)),   # whisker pads
+        ((-0.15, -2.66, 2.55), (0.14, 0.15, 0.13), (0, 0, 0)),
+        ((0, -2.47, 2.36), (0.2, 0.28, 0.09), (0, 0, 0)),       # lower jaw
+        ((0.19, -2.36, 2.95), (0.15, 0.12, 0.08), (0, 0, 15)),  # brow
+        ((-0.19, -2.36, 2.95), (0.15, 0.12, 0.08), (0, 0, -15)),
+    ], resolution=0.035))
+    head.append(sphere(col, "nose", (0, -2.86, 2.72), (0.12, 0.07, 0.08), segments=16, rings=8))
+    for x in (0.11, -0.11):
+        head.append(limb(col, "fang", (x, -2.78, 2.47), (x * 0.9, -2.8, 2.33), 0.028, 0.004, segments=8))
+        head.append(limb(col, "fang", (x * 0.8, -2.62, 2.33), (x * 0.75, -2.64, 2.43), 0.022, 0.003, segments=8))
+    for x in (0.34, -0.34):
+        head.append(cone(col, "ear", (x, -1.98, 3.12), 0.12, 0.03, 0.18, segments=10))
+    # The mane: a mass round the head and neck, covered in curling tufts that sweep out and back.
+    head.append(blob(col, "lion_mane", [
+        ((0, -1.62, 2.68), (0.72, 0.42, 0.78), (0, 0, 0)),       # round the face, behind it
+        ((0, -1.25, 2.35), (0.66, 0.5, 0.7), (-20, 0, 0)),       # down the neck to the shoulders
+        ((0, -1.6, 1.8), (0.45, 0.38, 0.45), (0, 0, 0)),          # the chest ruff
+    ], resolution=0.07))
+    for k in range(190):
+        u = rng.uniform(0, 2 * math.pi)   # round the neck, viewed from the front
+        v = rng.uniform(0.0, 1.0)         # how far back along the neck
+        r = 0.62 + 0.1 * v + rng.uniform(-0.05, 0.05)
+        base = Vector((math.sin(u) * r, -1.9 + v * 0.8, 2.62 - 0.25 * v + math.cos(u) * r * 1.05))
+        if math.cos(u) < -0.55 and v < 0.3:
+            continue  # leave the throat under the jaw clear
+        out = Vector((math.sin(u), 0.0, math.cos(u))).normalized()
+        # A lock of hair: thick at the root, swept back, curling down at the end.
+        mid = base + out * rng.uniform(0.14, 0.24) + Vector((0, rng.uniform(0.12, 0.25), 0.02))
+        tip = mid + out * rng.uniform(0.05, 0.12) + Vector((0, rng.uniform(0.1, 0.2), -rng.uniform(0.08, 0.16)))
+        width = rng.uniform(0.13, 0.19)
+        head.append(limb(col, "lock", base, mid, width, width * 0.75, segments=8))
+        head.append(sphere(col, "lock_bend", mid, (width * 0.75,) * 3, segments=8, rings=5))
+        head.append(limb(col, "lock", mid, tip, width * 0.75, 0.035, segments=8))
+
+    # Tail: a curving chain ending in a tuft.
+    pts = [(0, 2.05, 1.95), (0, 2.5, 1.7), (0.08, 2.85, 1.3), (0.12, 3.05, 0.95)]
+    _chain(col, tail, pts, 0.11, 0.075)
+    for k in range(9):
+        a = 2 * math.pi * k / 9
+        d = Vector((math.cos(a) * 0.12, 0.08 + math.sin(a) * 0.05, -0.25))
+        tail.append(limb(col, "tail_tuft", (0.12, 3.05, 0.95), Vector((0.12, 3.05, 0.95)) + d * 1.3, 0.11, 0.025, segments=6))
+
     s = 0.9
-    body = finish(p, "columbia_lion", scale=s)
-    part(head, "Head", (0, -1.45, 2.45), body, scale=s)
+    body = finish(p, "columbia_lion", scale=s, smooth_deg=70)
+    head_obj = part(head, "Head", (0, -1.45, 2.45), body, scale=s, smooth_deg=70)
     for name, parts in legs.items():
-        x = 0.48 if name.endswith("L") else -0.48
-        part(parts, name, (x, -1.0, 1.7) if "F" in name else (x, 1.5, 1.75), body, scale=s)
-    part(tail, "Tail", (0, 2.15, 1.95), body, scale=s)
+        x = 0.5 if name.endswith("L") else -0.5
+        part(parts, name, (x, -1.0, 1.7) if "F" in name else (x, 1.5, 1.75), body, scale=s, smooth_deg=70)
+    part(tail, "Tail", (0, 2.05, 1.95), body, scale=s, smooth_deg=70)
+    part([sphere(col, "eye", (x, -2.5, 2.86), (0.05, 0.03, 0.035)) for x in (0.17, -0.17)], "Eyes",
+         (0, -1.45, 2.45), head_obj, scale=s)
     return body
+
+
+def stone(col, name, loc, half, rot_deg=(0, 0, 0), rng=None, chips=2, bevel=0.05):
+    """A hewn stone block: bevelled, its faces gently uneven, with chipped corners."""
+    rng = rng or random.Random(0)
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=2.0)
+    bmesh.ops.scale(bm, vec=Vector(half), verts=bm.verts)
+    bmesh.ops.bevel(bm, geom=bm.edges[:], offset=bevel, segments=2, affect="EDGES")
+    bmesh.ops.subdivide_edges(bm, edges=[e for e in bm.edges if e.calc_length() > 0.25], cuts=2, use_grid_fill=True)
+    for v in bm.verts:
+        v.co += Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-1, 1))) * 0.012
+    obj = _mesh_object(name, bm, col)
+    cutters = []
+    for _ in range(chips):
+        corner = Vector([h * rng.choice((-1, 1)) for h in half])
+        size = min(half) * rng.uniform(0.35, 0.6)
+        cutters.append(box(col, "chip", corner, (size, size, size),
+                           rot_deg=(rng.uniform(20, 70), rng.uniform(20, 70), rng.uniform(0, 90)), bevel=0.0))
+    carve(obj, cutters)
+    obj.data.transform(Matrix.Translation(loc) @ Euler([math.radians(a) for a in rot_deg]).to_matrix().to_4x4())
+    return obj
 
 
 def golem(col):
     """
-    Book Keeper: a plain stone golem of stacked blocks, with a shelf of stone books in its chest. Head, both arms, and
-    both legs move.
+    Book Keeper: a plain golem of hewn, chipped stone blocks, a masonry chest framing a shelf of stone books, a heavy
+    brow over glowing eye slits, fists with blocky fingers, and toed feet. Head, both arms, and both legs are separate
+    parts; "Eyes" glows.
     """
     rng = random.Random(11)
     p = []
     groups = {"Head": [], "ArmL": [], "ArmR": [], "LegL": [], "LegR": []}
 
-    def block(name, loc, half, bevel=0.06, group=None):
-        rot = (rng.uniform(-3, 3), rng.uniform(-3, 3), rng.uniform(-4, 4))
-        (groups[group] if group else p).append(box(col, name, loc, half, rot_deg=rot, bevel=bevel))
+    def block(name, loc, half, group=None, chips=2, tilt=3.0):
+        rot = (rng.uniform(-tilt, tilt), rng.uniform(-tilt, tilt), rng.uniform(-tilt, tilt))
+        obj = stone(col, name, loc, half, rot, rng, chips)
+        (groups[group] if group else p).append(obj)
+        return obj
 
-    block("torso", (0, 0, 2.8), (0.95, 0.6, 0.8))
-    block("pelvis", (0, 0, 1.72), (0.7, 0.48, 0.3))
-    block("head", (0, -0.12, 3.88), (0.34, 0.32, 0.28), group="Head")
-    groups["Head"].append(box(col, "brow", (0, -0.42, 3.98), (0.3, 0.06, 0.06), bevel=0.02))
-    for side, s in ((1, "L"), (-1, "R")):
-        block("shoulder", (side * 1.22, 0, 3.3), (0.42, 0.45, 0.38))
-        block("upper_arm", (side * 1.32, 0, 2.5), (0.3, 0.3, 0.5), group="Arm" + s)
-        block("forearm", (side * 1.38, -0.12, 1.62), (0.37, 0.37, 0.45), group="Arm" + s)
-        block("fist", (side * 1.4, -0.16, 0.96), (0.42, 0.42, 0.36), group="Arm" + s)
-        block("thigh", (side * 0.48, 0, 1.15), (0.36, 0.36, 0.38), group="Leg" + s)
-        block("shin", (side * 0.5, 0, 0.52), (0.33, 0.33, 0.3), group="Leg" + s)
-        block("foot", (side * 0.5, -0.12, 0.12), (0.42, 0.55, 0.13), group="Leg" + s)
+    # Chest: courses of masonry round the shelf, a capstone over the shoulders, the pelvis and a belly stone.
+    for x, w in ((-0.78, 0.2), (0.78, 0.2)):
+        for z in (2.2, 2.62, 3.04, 3.42):
+            block("course", (x, 0, z), (w, 0.58, 0.2), chips=1, tilt=2)
+    block("lintel", (0, 0, 3.52), (0.6, 0.58, 0.14), chips=1, tilt=1.5)
+    block("sill", (0, 0, 2.12), (0.6, 0.58, 0.12), chips=1, tilt=1.5)
+    block("back", (0, 0.3, 2.8), (0.6, 0.28, 0.6), chips=0, tilt=1)
+    block("capstone", (0, 0.02, 3.72), (0.9, 0.62, 0.12), chips=2, tilt=2)
+    block("belly", (0, 0, 1.92), (0.62, 0.5, 0.14), chips=2)
+    block("pelvis", (0, 0, 1.68), (0.72, 0.48, 0.18))
 
-    # The shelf: a frame on the chest with two rows of stone books.
-    p.append(box(col, "shelf_frame", (0, -0.62, 2.8), (0.62, 0.06, 0.55), bevel=0.02))
-    for row_z in (2.52, 2.98):
-        p.append(box(col, "shelf_board", (0, -0.72, row_z - 0.17), (0.56, 0.08, 0.025), bevel=0.0))
-        x = -0.5
-        while x < 0.45:
-            w = rng.uniform(0.035, 0.06)
-            h = rng.uniform(0.11, 0.16)
-            lean = rng.uniform(-6, 6)
-            p.append(box(col, "book", (x + w, -0.74, row_z - 0.145 + h), (w, 0.07, h), rot_deg=(0, lean, 0), bevel=0.0))
-            x += 2 * w + 0.01
-    obj = finish(p, "book_keeper")
-    roughen(obj, 0.01, seed=5)
+    # The shelf in the chest: back panel, sides, three boards, and rows of stone books, some leaning, some stacked.
+    p.append(box(col, "shelf_back", (0, -0.1, 2.82), (0.58, 0.04, 0.6), bevel=0.01))
+    for z in (2.25, 2.67, 3.09):
+        p.append(box(col, "shelf_board", (0, -0.35, z), (0.58, 0.25, 0.025), bevel=0.008))
+        x = -0.54
+        while x < 0.5:
+            kind = rng.random()
+            if kind < 0.12 and x < 0.3:  # a short stack lying flat
+                for k in range(rng.randint(2, 3)):
+                    p.append(box(col, "book_flat", (x + 0.1, -0.38, z + 0.04 + k * 0.05), (0.1, 0.16, 0.022),
+                                 rot_deg=(0, 0, rng.uniform(-6, 6)), bevel=0.004))
+                x += 0.22
+                continue
+            w, h = rng.uniform(0.03, 0.055), rng.uniform(0.13, 0.18)
+            lean = rng.uniform(-8, 8) if kind < 0.75 else rng.choice((-1, 1)) * rng.uniform(14, 22)
+            bx = x + w
+            p.append(box(col, "book", (bx, -0.38, z + 0.025 + h), (w, 0.15, h), rot_deg=(0, lean, 0), bevel=0.005))
+            for bz in (0.6, -0.6):  # bands on the spine
+                p.append(box(col, "book_band", (bx, -0.535, z + 0.025 + h + bz * h), (w * 1.02, 0.006, 0.008),
+                             rot_deg=(0, lean, 0), bevel=0.0))
+            x += 2 * w + 0.012 + (0.04 if abs(lean) > 12 else 0)
+
+    # Head: a block with a heavy brow over eye slits, a jaw stone, a crack across the crown.
+    head = block("head", (0, -0.1, 3.97), (0.38, 0.35, 0.3), group="Head", chips=2)
+    carve(head, [box(col, "eye_slot", (x, -0.42, 3.97), (0.085, 0.08, 0.025), rot_deg=(0, 0, 0), bevel=0.0)
+                 for x in (0.13, -0.13)])
+    block("brow", (0, -0.4, 4.06), (0.32, 0.07, 0.06), group="Head", chips=1, tilt=2)
+    block("jaw", (0, -0.25, 3.68), (0.26, 0.22, 0.08), group="Head", chips=1)
+
+    for side, sd in ((1, "L"), (-1, "R")):
+        arm, leg = "Arm" + sd, "Leg" + sd
+        # Shoulder boulder with a layered pauldron stone.
+        block("shoulder", (side * 1.2, 0, 3.3), (0.42, 0.45, 0.38))
+        block("pauldron", (side * 1.26, 0, 3.72), (0.38, 0.42, 0.1), chips=2, tilt=6)
+        block("upper_arm", (side * 1.32, 0, 2.5), (0.3, 0.3, 0.5), group=arm)
+        block("elbow", (side * 1.35, -0.05, 1.98), (0.25, 0.25, 0.12), group=arm, chips=1)
+        block("forearm", (side * 1.38, -0.12, 1.55), (0.37, 0.37, 0.38), group=arm)
+        block("wrist", (side * 1.4, -0.14, 1.12), (0.3, 0.3, 0.07), group=arm, chips=0)
+        block("fist", (side * 1.4, -0.16, 0.85), (0.4, 0.4, 0.26), group=arm)
+        for k in range(4):  # knuckles across the front, the thumb on the inside
+            block("finger", (side * 1.4 + (k - 1.5) * 0.19, -0.6, 0.78), (0.085, 0.09, 0.16), group=arm, chips=1,
+                  tilt=5)
+        block("thumb", (side * 1.02, -0.4, 0.9), (0.09, 0.12, 0.09), group=arm, chips=1, tilt=8)
+        block("thigh", (side * 0.48, 0, 1.15), (0.36, 0.36, 0.38), group=leg)
+        block("knee", (side * 0.49, -0.3, 0.8), (0.24, 0.12, 0.14), group=leg, chips=1)
+        block("shin", (side * 0.5, 0, 0.5), (0.33, 0.33, 0.28), group=leg)
+        block("foot", (side * 0.5, -0.12, 0.12), (0.42, 0.55, 0.13), group=leg)
+        for k in range(3):
+            block("toe", (side * 0.5 + (k - 1) * 0.27, -0.74, 0.09), (0.11, 0.1, 0.09), group=leg, chips=1, tilt=6)
+
+    obj = finish(p, "book_keeper", smooth_deg=30)
     pivots = {"Head": (0, -0.12, 3.6), "ArmL": (1.25, 0, 3.05), "ArmR": (-1.25, 0, 3.05),
               "LegL": (0.48, 0, 1.55), "LegR": (-0.48, 0, 1.55)}
+    head_obj = None
     for name, parts in groups.items():
-        part(parts, name, pivots[name], obj)
+        made = part(parts, name, pivots[name], obj, smooth_deg=30)
+        head_obj = made if name == "Head" else head_obj
+    part([box(col, "eye", (x, -0.36, 3.97), (0.07, 0.02, 0.016), bevel=0.0) for x in (0.13, -0.13)], "Eyes",
+         (0, -0.12, 3.6), head_obj)
     return obj
 
 
