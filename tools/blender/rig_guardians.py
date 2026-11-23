@@ -36,6 +36,20 @@ def _mirror(bones):
     return out
 
 
+def _chain(prefix, parent, points, count, region):
+    """Splits a polyline into `count` equal bones named prefix1..prefixN."""
+    pts = np.array(points, dtype=float)
+    seg = np.linalg.norm(np.diff(pts, axis=0), axis=1)
+    cum = np.concatenate([[0.0], np.cumsum(seg)])
+    def at(dist):
+        i = min(np.searchsorted(cum, dist, side="right") - 1, len(seg) - 1)
+        t = (dist - cum[i]) / seg[i]
+        return tuple(float(v) for v in pts[i] + t * (pts[i + 1] - pts[i]))
+    ends = [at(cum[-1] * k / count) for k in range(count + 1)]
+    return [(f"{prefix}{k + 1}", parent if k == 0 else f"{prefix}{k}", ends[k], ends[k + 1], dict(region))
+            for k in range(count)]
+
+
 # (bone, parent, head, tail, region). Region keys: side (+1 left / -1 right, with |x| beyond "min_x" measured from
 # "cx"), zmin/zmax, ymin/ymax, radius (distance from the bone): the vertices the bone may move.
 RIGS = {
@@ -43,22 +57,27 @@ RIGS = {
     "alma_mater": {
         "sharpness": 4.0,
         "bones": [
-            ("Hips", None, (0.08, -0.05, 2.0), (0.08, -0.05, 2.6), {}),
-            ("Spine", "Hips", (0.08, -0.05, 2.6), (0.08, -0.08, 3.05), {}),
-            ("Chest", "Spine", (0.08, -0.08, 3.05), (0.1, -0.08, 3.35), {}),
+            ("Hips", None, (0.08, -0.05, 2.0), (0.08, -0.05, 2.45), {}),
+            ("Spine", "Hips", (0.08, -0.05, 2.45), (0.08, -0.06, 2.75), {}),
+            ("Spine2", "Spine", (0.08, -0.06, 2.75), (0.08, -0.08, 3.05), {}),
+            ("Chest", "Spine2", (0.08, -0.08, 3.05), (0.1, -0.08, 3.35), {}),
             ("Neck", "Chest", (0.1, -0.08, 3.35), (0.11, -0.06, 3.5), {"zmin": 3.1}),
             ("Head", "Neck", (0.11, -0.06, 3.5), (0.11, -0.06, 4.05), {"zmin": 3.3}),
-            # No legs to walk on: the robe below the hips is a two-bone pendulum that trails as she floats.
-            ("Robe1", "Hips", (0.07, -0.08, 2.0), (0.07, -0.15, 1.0), {"zmax": 2.2}),
-            ("Robe2", "Robe1", (0.07, -0.15, 1.0), (0.07, -0.2, 0.0), {"zmax": 1.3}),
+            # Collarbones carry the shoulders; each moves only the mantle near it.
+            ("Shoulder_R", "Chest", (0.04, -0.06, 3.25), (-0.22, -0.05, 3.15), {"side": -1, "cx": 0.07, "min_x": 0.05, "zmin": 2.8, "radius": 0.25}),
+            ("Shoulder_L", "Chest", (0.12, -0.06, 3.25), (0.45, -0.05, 3.15), {"side": 1, "cx": 0.07, "min_x": 0.1, "zmin": 2.8, "radius": 0.25}),
             # The arms are not mirror images: the right is raised on the sceptre, the left hangs. Each moves only
             # the cloth close to it (radius), so the mantle does not lift like a board.
-            ("UpperArm_R", "Chest", (-0.22, -0.05, 3.15), (-0.5, -0.4, 2.72), {"side": -1, "cx": 0.07, "min_x": 0.2, "zmin": 2.4, "radius": 0.3}),
+            ("UpperArm_R", "Shoulder_R", (-0.22, -0.05, 3.15), (-0.5, -0.4, 2.72), {"side": -1, "cx": 0.07, "min_x": 0.2, "zmin": 2.4, "radius": 0.3}),
             ("LowerArm_R", "UpperArm_R", (-0.5, -0.4, 2.72), (-0.66, -0.69, 3.0), {"side": -1, "cx": 0.07, "min_x": 0.4, "zmin": 2.5, "radius": 0.2}),
             ("Hand_R", "LowerArm_R", (-0.66, -0.69, 3.0), (-0.68, -0.72, 3.15), {"side": -1, "cx": 0.07, "min_x": 0.5, "zmin": 2.8, "radius": 0.2}),
-            ("UpperArm_L", "Chest", (0.45, -0.05, 3.15), (0.65, -0.15, 2.4), {"side": 1, "cx": 0.07, "min_x": 0.25, "zmin": 2.2, "radius": 0.25}),
+            ("UpperArm_L", "Shoulder_L", (0.45, -0.05, 3.15), (0.65, -0.15, 2.4), {"side": 1, "cx": 0.07, "min_x": 0.25, "zmin": 2.2, "radius": 0.25}),
             ("LowerArm_L", "UpperArm_L", (0.65, -0.15, 2.4), (0.76, -0.4, 1.98), {"side": 1, "cx": 0.07, "min_x": 0.45, "zmin": 1.6, "zmax": 2.7, "radius": 0.17}),
             ("Hand_L", "LowerArm_L", (0.76, -0.4, 1.98), (0.78, -0.45, 1.72), {"side": 1, "cx": 0.07, "min_x": 0.55, "zmin": 1.5, "zmax": 2.1, "radius": 0.17}),
+        ] + [
+            # No legs to walk on: the robe below the hips is a three-bone pendulum that trails as she floats.
+            (name, parent, head, tail, {"zmax": head[2] + 0.2})
+            for name, parent, head, tail, _ in _chain("Robe", "Hips", [(0.07, -0.08, 2.0), (0.07, -0.2, 0.0)], 3, {})
         ],
         # The sceptre (a vertical rod at x, y, radius) goes wholly with the right hand; its foot, fused to the hem,
         # stays with the robe.
@@ -68,27 +87,31 @@ RIGS = {
     "columbia_lion": {
         "sharpness": 5.0,
         "bones": [
-            ("Hips", None, (0.0, 1.7, 2.1), (0.0, 0.9, 2.0), {}),
-            ("Spine", "Hips", (0.0, 0.9, 2.0), (0.0, -0.1, 1.95), {}),
-            ("Chest", "Spine", (0.0, -0.1, 1.95), (0.0, -0.9, 1.95), {}),
-            ("Neck", "Chest", (0.0, -0.9, 1.95), (0.0, -1.7, 2.45), {}),
-            ("Head", "Neck", (0.0, -1.75, 2.55), (0.0, -2.5, 2.55), {"ymax": -1.2}),
+            ("Hips", None, (0.0, 1.7, 2.1), (0.0, 1.2, 2.05), {}),
+            ("Spine", "Hips", (0.0, 1.2, 2.05), (0.0, 0.55, 2.0), {}),
+            ("Spine2", "Spine", (0.0, 0.55, 2.0), (0.0, -0.1, 1.95), {}),
+            ("Chest", "Spine2", (0.0, -0.1, 1.95), (0.0, -0.9, 1.95), {}),
+            ("Neck", "Chest", (0.0, -0.9, 1.95), (0.0, -1.3, 2.2), {}),
+            ("Neck2", "Neck", (0.0, -1.3, 2.2), (0.0, -1.7, 2.45), {}),
+            ("Head", "Neck2", (0.0, -1.75, 2.55), (0.0, -2.5, 2.55), {"ymax": -1.2}),
             ("Jaw", "Head", (0.0, -1.95, 2.4), (0.0, -2.4, 2.25), {"ymax": -1.9, "zmax": 2.47, "zmin": 1.9}),
-            ("Tail1", "Hips", (0.0, 1.75, 2.15), (0.0, 2.2, 1.8), {"ymin": 1.6, "zmin": 1.3}),
-            ("Tail2", "Tail1", (0.0, 2.2, 1.8), (0.0, 2.55, 1.35), {"ymin": 2.0, "zmin": 0.9}),
-            ("Tail3", "Tail2", (0.0, 2.55, 1.35), (0.0, 2.8, 0.85), {"ymin": 2.4}),
-            ("Tail4", "Tail3", (0.0, 2.8, 0.85), (0.0, 2.95, 0.25), {"ymin": 2.5}),
-        ] + _mirror([
-            ("FrontUpper_R", "Chest", (-0.45, -0.8, 1.85), (-0.47, -0.88, 1.05), {"side": -1, "min_x": 0.12, "zmax": 1.9, "ymax": -0.2}),
+        ] + _chain("Tail", "Hips", [(0.0, 1.75, 2.15), (0.0, 2.2, 1.8), (0.0, 2.55, 1.35), (0.0, 2.8, 0.85), (0.0, 2.95, 0.25)],
+                   6, {"ymin": 1.6}) + _mirror([
+            # Shoulder blades slide over the chest, so the front legs swing from high on the body.
+            ("Scapula_R", "Chest", (-0.25, -0.45, 2.25), (-0.45, -0.8, 1.85), {"side": -1, "min_x": 0.12, "zmin": 1.4, "ymax": -0.2, "radius": 0.5}),
+            ("FrontUpper_R", "Scapula_R", (-0.45, -0.8, 1.85), (-0.47, -0.88, 1.05), {"side": -1, "min_x": 0.12, "zmax": 1.9, "ymax": -0.2}),
             ("FrontLower_R", "FrontUpper_R", (-0.47, -0.88, 1.05), (-0.5, -1.0, 0.35), {"side": -1, "min_x": 0.12, "zmax": 1.3, "ymax": -0.3}),
-            ("FrontPaw_R", "FrontLower_R", (-0.5, -1.0, 0.35), (-0.5, -1.45, 0.05), {"side": -1, "min_x": 0.12, "zmax": 0.5, "ymax": -0.4}),
+            ("FrontPaw_R", "FrontLower_R", (-0.5, -1.0, 0.35), (-0.5, -1.12, 0.1), {"side": -1, "min_x": 0.12, "zmax": 0.5, "ymax": -0.4}),
+            ("FrontToe_R", "FrontPaw_R", (-0.5, -1.12, 0.1), (-0.5, -1.45, 0.05), {"side": -1, "min_x": 0.12, "zmax": 0.25, "ymax": -0.9}),
         ]) + [
             ("RearUpper_L", "Hips", (0.45, 1.25, 1.95), (0.48, 0.9, 1.15), {"side": 1, "min_x": 0.12, "zmax": 2.0, "ymin": 0.4, "ymax": 2.5}),
             ("RearLower_L", "RearUpper_L", (0.48, 0.9, 1.15), (0.5, 1.35, 0.55), {"side": 1, "min_x": 0.12, "zmax": 1.3, "ymin": 0.4, "ymax": 2.5}),
-            ("RearFoot_L", "RearLower_L", (0.5, 1.35, 0.55), (0.5, 0.7, 0.05), {"side": 1, "min_x": 0.12, "zmax": 0.6, "ymin": 0.4, "ymax": 2.5}),
+            ("RearFoot_L", "RearLower_L", (0.5, 1.35, 0.55), (0.5, 1.12, 0.12), {"side": 1, "min_x": 0.12, "zmax": 0.6, "ymin": 0.4, "ymax": 2.5}),
+            ("RearToe_L", "RearFoot_L", (0.5, 1.12, 0.12), (0.5, 0.7, 0.05), {"side": 1, "min_x": 0.12, "zmax": 0.25, "ymin": 0.4, "ymax": 1.2}),
             ("RearUpper_R", "Hips", (-0.45, 1.3, 1.95), (-0.48, 1.55, 1.15), {"side": -1, "min_x": 0.12, "zmax": 2.0, "ymin": 0.6, "ymax": 2.5}),
             ("RearLower_R", "RearUpper_R", (-0.48, 1.55, 1.15), (-0.5, 2.15, 0.6), {"side": -1, "min_x": 0.12, "zmax": 1.3, "ymin": 0.6, "ymax": 2.5}),
-            ("RearFoot_R", "RearLower_R", (-0.5, 2.15, 0.6), (-0.5, 1.8, 0.05), {"side": -1, "min_x": 0.12, "zmax": 0.65, "ymin": 0.6, "ymax": 2.5}),
+            ("RearFoot_R", "RearLower_R", (-0.5, 2.15, 0.6), (-0.5, 2.02, 0.12), {"side": -1, "min_x": 0.12, "zmax": 0.65, "ymin": 0.6, "ymax": 2.5}),
+            ("RearToe_R", "RearFoot_R", (-0.5, 2.02, 0.12), (-0.5, 1.75, 0.05), {"side": -1, "min_x": 0.12, "zmax": 0.25, "ymin": 0.6, "ymax": 2.1}),
         ],
     },
     # The golem: a stone machine. Sharp weights keep each plate on one bone.
@@ -97,15 +120,19 @@ RIGS = {
         "bones": [
             ("Hips", None, (0.0, 0.1, 1.45), (0.0, 0.1, 1.95), {}),
             ("Spine", "Hips", (0.0, 0.1, 1.95), (0.0, 0.1, 2.6), {}),
-            ("Chest", "Spine", (0.0, 0.1, 2.6), (0.0, 0.1, 3.55), {}),
-            ("Head", "Chest", (0.0, -0.1, 3.6), (0.0, -0.1, 4.2), {"zmin": 3.5, "ymax": 0.4}),
+            ("Chest", "Spine", (0.0, 0.1, 2.6), (0.0, 0.1, 3.5), {}),
+            ("Neck", "Chest", (0.0, -0.05, 3.5), (0.0, -0.1, 3.7), {"zmin": 3.35, "ymax": 0.4}),
+            ("Head", "Neck", (0.0, -0.1, 3.7), (0.0, -0.1, 4.2), {"zmin": 3.55, "ymax": 0.4}),
         ] + _mirror([
-            ("UpperArm_R", "Chest", (-1.05, 0.1, 3.3), (-1.67, 0.0, 2.39), {"side": -1, "min_x": 0.9}),
+            ("Shoulder_R", "Chest", (-0.45, 0.1, 3.35), (-1.05, 0.1, 3.3), {"side": -1, "min_x": 0.6, "zmin": 2.8}),
+            ("UpperArm_R", "Shoulder_R", (-1.05, 0.1, 3.3), (-1.67, 0.0, 2.39), {"side": -1, "min_x": 0.9}),
             ("LowerArm_R", "UpperArm_R", (-1.67, 0.0, 2.39), (-1.78, -0.39, 1.75), {"side": -1, "min_x": 1.2, "zmax": 2.7}),
-            ("Hand_R", "LowerArm_R", (-1.78, -0.39, 1.75), (-1.7, -0.56, 1.2), {"side": -1, "min_x": 1.2, "zmax": 1.9}),
+            ("Hand_R", "LowerArm_R", (-1.78, -0.39, 1.75), (-1.75, -0.46, 1.5), {"side": -1, "min_x": 1.2, "zmax": 1.9}),
+            ("Fingers_R", "Hand_R", (-1.75, -0.46, 1.5), (-1.7, -0.56, 1.2), {"side": -1, "min_x": 1.2, "zmax": 1.6}),
             ("UpperLeg_R", "Hips", (-0.44, 0.1, 1.56), (-0.72, -0.1, 1.05), {"side": -1, "min_x": 0.1, "zmax": 1.6}),
             ("LowerLeg_R", "UpperLeg_R", (-0.72, -0.1, 1.05), (-0.8, -0.17, 0.38), {"side": -1, "min_x": 0.1, "zmax": 1.25}),
-            ("Foot_R", "LowerLeg_R", (-0.8, -0.17, 0.38), (-0.83, -0.75, 0.1), {"side": -1, "min_x": 0.1, "zmax": 0.45}),
+            ("Foot_R", "LowerLeg_R", (-0.8, -0.17, 0.38), (-0.82, -0.4, 0.18), {"side": -1, "min_x": 0.1, "zmax": 0.45}),
+            ("Toe_R", "Foot_R", (-0.82, -0.4, 0.18), (-0.83, -0.75, 0.1), {"side": -1, "min_x": 0.1, "zmax": 0.3, "ymax": -0.3}),
         ]),
     },
 }
