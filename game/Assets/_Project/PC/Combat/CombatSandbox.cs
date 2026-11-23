@@ -107,7 +107,10 @@ namespace TheArtifacts.PC.Combat
             new Dictionary<Telegraph, (GameObject, Material)>();
         readonly Dictionary<string, (GameObject go, Material mat)> _loreViews = new Dictionary<string, (GameObject, Material)>();
         Shader _lit;
+        /// <summary>The weak point shown while exposed: the model's "Owl" child, or the capsule's sphere.</summary>
         Transform _weakPoint;
+        Transform _nose, _owlSphere;
+        GameObject _guardianModel;
         Material _weakPointMaterial;
         /// <summary>Textured materials show state through emission or a tint instead of a flat color.</summary>
         bool _guardianTextured, _loreTextured;
@@ -388,21 +391,21 @@ namespace TheArtifacts.PC.Combat
             _player = Primitive(PrimitiveType.Capsule, "Player", _playerMaterial);
             // A textured Guardian (stone or bronze) shows its phase by glowing instead of changing color.
             _guardian = Primitive(PrimitiveType.Capsule, "Guardian", null);
-            ApplyGuardianLook();
             _guardian.localScale = Vector3.one * 2f;
 
-            // A nose so the Guardian's facing is readable.
-            var nose = Primitive(PrimitiveType.Cube, "Facing", Lit(lit, Color.black));
-            nose.SetParent(_guardian, false);
-            nose.localPosition = new Vector3(0f, 0.3f, 0.5f);
-            nose.localScale = new Vector3(0.3f, 0.2f, 0.4f);
+            // A nose so the capsule's facing is readable.
+            _nose = Primitive(PrimitiveType.Cube, "Facing", Lit(lit, Color.black));
+            _nose.SetParent(_guardian, false);
+            _nose.localPosition = new Vector3(0f, 0.3f, 0.5f);
+            _nose.localScale = new Vector3(0.3f, 0.2f, 0.4f);
 
-            // Alma Mater's owl: a small sphere on the Guardian's back, shown only while it is out.
+            // Alma Mater's owl on the capsule: a small sphere, shown only while it is out. A model brings its own.
             _weakPointMaterial = Lit(lit, LoreIdle);
-            _weakPoint = Primitive(PrimitiveType.Sphere, "Owl", _weakPointMaterial);
-            _weakPoint.SetParent(_guardian, false);
-            _weakPoint.localPosition = new Vector3(0.35f, 0.1f, -0.45f);
-            _weakPoint.localScale = Vector3.one * 0.3f;
+            _owlSphere = Primitive(PrimitiveType.Sphere, "Owl", _weakPointMaterial);
+            _owlSphere.SetParent(_guardian, false);
+            _owlSphere.localPosition = new Vector3(0.35f, 0.1f, -0.45f);
+            _owlSphere.localScale = Vector3.one * 0.3f;
+            ApplyGuardianLook();
 
             _moveMarker = Primitive(PrimitiveType.Cylinder, "Move Target", Lit(lit, PlayerColor));
             _moveMarker.localScale = new Vector3(0.5f, 0.01f, 0.5f);
@@ -410,7 +413,10 @@ namespace TheArtifacts.PC.Combat
             _telegraphTemplate = new Material(unlit != null ? unlit : lit);
         }
 
-        /// <summary>The Guardian's material for <see cref="guardianId"/> (stone or bronze when the CC0 art is built).</summary>
+        /// <summary>
+        /// The Guardian's look for <see cref="guardianId"/>: its blockout model if one is built, otherwise the capsule,
+        /// in stone or bronze when the CC0 art is built.
+        /// </summary>
         void ApplyGuardianLook()
         {
             var guardianArt = art != null ? art.ForGuardian(guardianId) : null;
@@ -418,6 +424,27 @@ namespace TheArtifacts.PC.Combat
             _guardianMaterial = _guardianTextured ? new Material(guardianArt) : Lit(_lit, GuardianIdle);
             if (_guardianTextured) _guardianMaterial.EnableKeyword("_EMISSION");
             _guardian.GetComponent<Renderer>().sharedMaterial = _guardianMaterial;
+
+            if (_guardianModel != null) Destroy(_guardianModel);
+            var model = art != null ? art.ModelFor(guardianId) : null;
+            _guardianModel = model != null ? Instantiate(model, _guardian, false) : null;
+            _guardian.GetComponent<Renderer>().enabled = _guardianModel == null;
+            _nose.gameObject.SetActive(_guardianModel == null);
+            _owlSphere.gameObject.SetActive(false);
+            _weakPoint = _owlSphere;
+            if (_guardianModel == null) return;
+
+            // The capsule is scaled ×2 around its centre; undo that so the model stands at its own size on the floor.
+            _guardianModel.transform.localScale = Vector3.one / _guardian.localScale.y;
+            _guardianModel.transform.localPosition = new Vector3(0f, -1f, 0f);
+            _guardianModel.transform.localRotation = Quaternion.identity;
+            foreach (var r in _guardianModel.GetComponentsInChildren<Renderer>(true))
+            {
+                var isOwl = r.name == "Owl";
+                r.sharedMaterials = Enumerable.Repeat(isOwl ? _weakPointMaterial : _guardianMaterial, r.sharedMaterials.Length).ToArray();
+                if (isOwl) _weakPoint = r.transform;
+            }
+            if (_weakPoint != _owlSphere) _weakPoint.gameObject.SetActive(false);
         }
 
         /// <summary>One box per lore target of this fight's Guardian (the Book Keeper's bookshelves).</summary>

@@ -235,6 +235,7 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
   | GolemStone (Book Keeper): *Rock 030*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Rock030) | CC0 | `Art/Materials/GolemStone` |
   | AgedBronze (Alma Mater): *Metal 017*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Metal017) | CC0 | `Art/Materials/AgedBronze` |
   | DarkBronze (Columbia Lion): *Metal 013*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Metal013) | CC0 | `Art/Materials/DarkBronze` |
+  | Guardian blockouts (lich, lion, golem; stand-ins until the paid models) | Original, built from primitives by `tools/blender/guardian_blockouts.py` in Blender 5.3 | Original (this project) | `Art/Models/Guardians` |
 - **Columbia names and landmarks** (Alma Mater, the Columbia Lion, the bookstore, Columbia blue) are used for the class prototype only. A public release needs the university's permission or replacement content.
 - **Concepts considered before this one:**
   - *AI Mafia* — simpler to prototype; set aside because The Artifacts connects real-world discovery with RPG progression.

@@ -16,6 +16,8 @@ namespace TheArtifacts.PC.Editor
     {
         public const string MaterialsRoot = "Assets/_Project/Art/Materials";
         public const string ArtAssetPath = "Assets/_Project/Art/SandboxArt.asset";
+        /// <summary>Guardian blockouts exported by tools/blender/guardian_blockouts.py, one FBX per Guardian id.</summary>
+        public const string GuardianModelsRoot = "Assets/_Project/Art/Models/Guardians";
 
         // (texture set, tiling)
         static readonly (string Name, float Tiling)[] Sets =
@@ -38,9 +40,9 @@ namespace TheArtifacts.PC.Editor
             art.Bookshelf = MaterialAt("OakWood");
             art.Guardians = new[]
             {
-                new SandboxArt.GuardianMaterial { GuardianId = "alma_mater", Material = MaterialAt("AgedBronze") },
-                new SandboxArt.GuardianMaterial { GuardianId = "columbia_lion", Material = MaterialAt("DarkBronze") },
-                new SandboxArt.GuardianMaterial { GuardianId = "book_keeper", Material = MaterialAt("GolemStone") },
+                new SandboxArt.GuardianMaterial { GuardianId = "alma_mater", Material = MaterialAt("AgedBronze"), Model = ModelAt("alma_mater") },
+                new SandboxArt.GuardianMaterial { GuardianId = "columbia_lion", Material = MaterialAt("DarkBronze"), Model = ModelAt("columbia_lion") },
+                new SandboxArt.GuardianMaterial { GuardianId = "book_keeper", Material = MaterialAt("GolemStone"), Model = ModelAt("book_keeper") },
             };
             EditorUtility.SetDirty(art);
             AssetDatabase.SaveAssets();
@@ -66,6 +68,9 @@ namespace TheArtifacts.PC.Editor
         static string Map(string name, string map) =>
             Directory.GetFiles(Path.Combine(MaterialsRoot, name), $"{name}_{map}.*")
                 .Where(p => !p.EndsWith(".meta")).Select(p => p.Replace('\\', '/')).FirstOrDefault();
+
+        static GameObject ModelAt(string guardianId) =>
+            AssetDatabase.LoadAssetAtPath<GameObject>($"{GuardianModelsRoot}/{guardianId}.fbx");
 
         static Material MaterialAt(string name) =>
             AssetDatabase.LoadAssetAtPath<Material>($"{MaterialsRoot}/{name}/{name}.mat");
@@ -175,6 +180,20 @@ namespace TheArtifacts.PC.Editor
     /// <summary>Import settings for the texture sets: normal maps as normal maps, data maps in linear space.</summary>
     public sealed class ArtTextureImporter : AssetPostprocessor
     {
+        /// <summary>Guardian blockouts: metres as exported, no materials (the sandbox assigns them), nothing animated.</summary>
+        void OnPreprocessModel()
+        {
+            if (!assetPath.StartsWith(SandboxArtMenu.GuardianModelsRoot)) return;
+            var importer = (ModelImporter)assetImporter;
+            importer.useFileScale = true;
+            importer.globalScale = 1f;
+            importer.materialImportMode = ModelImporterMaterialImportMode.None;
+            importer.importAnimation = false;
+            importer.importCameras = false;
+            importer.importLights = false;
+            importer.animationType = ModelImporterAnimationType.None;
+        }
+
         void OnPreprocessTexture()
         {
             if (!assetPath.StartsWith(SandboxArtMenu.MaterialsRoot)) return;
