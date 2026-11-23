@@ -182,7 +182,7 @@ namespace TheArtifacts.PC.Editor
     /// <summary>Import settings for the texture sets: normal maps as normal maps, data maps in linear space.</summary>
     public sealed class ArtTextureImporter : AssetPostprocessor
     {
-        /// <summary>Guardian blockouts: metres as exported, no materials (the sandbox assigns them), nothing animated.</summary>
+        /// <summary>Guardian models: metres as exported, skinned to their bones (GuardianMotion turns them), no clips.</summary>
         void OnPreprocessModel()
         {
             if (!assetPath.StartsWith(SandboxArtMenu.GuardianModelsRoot)) return;
@@ -194,7 +194,11 @@ namespace TheArtifacts.PC.Editor
             importer.importAnimation = false;
             importer.importCameras = false;
             importer.importLights = false;
-            importer.animationType = ModelImporterAnimationType.None;
+            // A generic rig keeps the skeleton (tools/blender/rig_guardians.py); the Animator has no controller, so
+            // nothing overrides GuardianMotion. Axis conversion is baked so the bones are not under a -90° root turn.
+            importer.animationType = ModelImporterAnimationType.Generic;
+            importer.bakeAxisConversion = true;
+            importer.optimizeGameObjects = false;
         }
 
         void OnPreprocessTexture()

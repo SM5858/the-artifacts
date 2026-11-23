@@ -5,45 +5,35 @@ using UnityEngine;
 namespace TheArtifacts.PC.Combat
 {
     /// <summary>
-    /// Procedural motion for a Guardian blockout until rigged models arrive. The model has no skeleton; its moving
-    /// parts (Head, ArmL, ArmR, LegFL, LegFR, LegBL, LegBR, LegL, LegR, Tail; see tools/blender/guardian_blockouts.py)
-    /// turn at their joints, and the whole body bobs, leans, and lunges. Every pose follows the fight, so the motion
-    /// also reads as a tell: it winds up during a skill's tell, strikes when the skill lands, slumps during the
-    /// opening, and trembles under Fear.
-    /// Part motion is off for now (2026-11-23: the Guardians move as one piece); <see cref="AnimateParts"/> turns it back on.
+    /// Procedural animation for the rigged Guardian models (bones from tools/blender/rig_guardians.py), driven by the
+    /// fight: every pose is also a tell. It winds up during a skill's tell, strikes when the skill lands, slumps in the
+    /// opening, trembles under Fear, flinches when hit, and falls when beaten.
+    /// <list type="bullet">
+    /// <item>Alma Mater hovers above the floor like a ghost: she moves like a person from the waist up (breathing,
+    /// looking about, raising the sceptre and casting with her left hand), and her robe trails as she glides.</item>
+    /// <item>The Columbia Lion moves like a big cat: a four-beat walk (a gallop when it charges), a supple spine, a low
+    /// stalking head, a swaying tail, a crouch before it pounces, and a roar.</item>
+    /// <item>The Book Keeper moves like a heavy humanoid machine: stiff, slightly late, stomping steps, a head that
+    /// turns in steps and holds, and both fists raised before it slams.</item>
+    /// </list>
+    /// Bones are turned about the Guardian's own axes (pitch about its right, positive tips forward; yaw about up;
+    /// roll about forward), so bone orientation in the FBX does not matter. Missing bones are skipped.
     /// </summary>
     public sealed class GuardianMotion
     {
-        /// <summary>How one Guardian moves (degrees and metres).</summary>
-        sealed class Style
-        {
-            public float Breath = 0.03f, WalkBob = 0.06f, Stride = 2.2f, LegSwing = 22f, ArmSwing = 8f;
-            public float WindupLean = -10f, WindupDrop = 0.1f, StrikeLean = 16f, StrikeReach = 0.5f;
-            public float ArmRaiseR = -40f, ArmRaiseL = -40f, ArmSlam = 30f, HeadWindup = -12f;
-            public bool Trot;  // four legs: diagonal pairs move together
-        }
-
-        static Style StyleFor(string guardianId) => guardianId switch
-        {
-            // The lich glides: no legs; it lifts the sceptre and its casting hand.
-            "alma_mater" => new Style { WalkBob = 0.03f, ArmRaiseR = -35f, ArmRaiseL = -70f, ArmSlam = 22f, WindupDrop = -0.1f },
-            // The lion trots, crouches before it springs, and lashes its tail.
-            "columbia_lion" => new Style { LegSwing = 26f, Trot = true, WindupLean = 6f, WindupDrop = 0.25f, StrikeLean = 10f, StrikeReach = 0.9f, HeadWindup = -18f },
-            // The golem stomps and raises both fists over its head before it slams.
-            "book_keeper" => new Style { WalkBob = 0.1f, Stride = 1.6f, LegSwing = 18f, ArmSwing = 14f, ArmRaiseR = -120f, ArmRaiseL = -120f, ArmSlam = 45f },
-            _ => new Style(),
-        };
-
-        /// <summary>Turn the head, arms, legs, and tail at their joints; off: the whole model moves as one piece.</summary>
-        public static bool AnimateParts = false;
+        enum Body { Lich, Lion, Golem, Other }
 
         readonly Transform _root, _frame;
         readonly Vector3 _rootPosition;
         readonly Quaternion _rootRotation;
-        readonly Dictionary<string, (Transform T, Quaternion RestRotation)> _parts = new Dictionary<string, (Transform, Quaternion)>();
-        readonly Style _style;
+        readonly Dictionary<string, (Transform T, Quaternion RestRotation)> _bones = new Dictionary<string, (Transform, Quaternion)>();
+        readonly Body _body;
+        /// <summary>How fast bones follow their target pose (1/s): the golem is slow, the lion quick.</summary>
+        readonly float _follow;
+        /// <summary>Radians of gait cycle per metre travelled.</summary>
+        readonly float _stride;
 
-        float _time, _walkPhase, _moving, _windup, _slump, _tremble, _strike, _flinch, _death;
+        float _time, _walkPhase, _speed, _moving, _windup, _slump, _tremble, _strike, _flinch, _death, _dt;
         Vec2? _lastPosition;
 
         /// <param name="model">The model's root, a child of <paramref name="frame"/>.</param>
@@ -54,13 +44,15 @@ namespace TheArtifacts.PC.Combat
             _frame = frame;
             _rootPosition = model.localPosition;
             _rootRotation = model.localRotation;
-            _style = StyleFor(guardianId);
-            foreach (var t in model.GetComponentsInChildren<Transform>(true))
+            (_body, _follow, _stride) = guardianId switch
             {
-                // Blender adds ".001" to names it has already used in another model.
-                var name = t.name.Split('.')[0];
-                if (t != model && !_parts.ContainsKey(name)) _parts[name] = (t, t.localRotation);
-            }
+                "alma_mater" => (Body.Lich, 9f, 1.2f),
+                "columbia_lion" => (Body.Lion, 18f, 1.5f),
+                "book_keeper" => (Body.Golem, 5f, 1.7f),
+                _ => (Body.Other, 10f, 2f),
+            };
+            foreach (var t in model.GetComponentsInChildren<Transform>(true))
+                if (t != model && !_bones.ContainsKey(t.name)) _bones[t.name] = (t, t.localRotation);
         }
 
         /// <summary>A skill landed or an auto-attack swung: lunge and slam (weight 0–1).</summary>
@@ -71,22 +63,24 @@ namespace TheArtifacts.PC.Combat
 
         public void Reset()
         {
-            _time = _walkPhase = _moving = _windup = _slump = _tremble = _strike = _flinch = _death = 0f;
+            _time = _walkPhase = _speed = _moving = _windup = _slump = _tremble = _strike = _flinch = _death = 0f;
             _lastPosition = null;
+            foreach (var b in _bones.Values) b.T.localRotation = b.RestRotation;
         }
 
         public void Update(CombatSim sim, float dt)
         {
             if (dt <= 0f) return;
+            _dt = dt;
             _time += dt;
-            var s = _style;
 
             // Speed from the simulation, so a charge or a chase both move the legs.
             var speed = _lastPosition is Vec2 last ? Vec2.Distance(last, sim.GuardianPosition) / dt : 0f;
             _lastPosition = sim.GuardianPosition;
+            _speed = Damp(_speed, speed, 6f, dt);
             var ongoing = sim.Outcome == CombatOutcome.Ongoing;
-            _moving = Damp(_moving, ongoing && speed > 0.3f ? 1f : 0f, 8f, dt);
-            _walkPhase += dt * Mathf.Min(speed, 12f) * s.Stride;
+            _moving = Damp(_moving, ongoing && speed > 0.3f ? 1f : 0f, 6f, dt);
+            _walkPhase += dt * Mathf.Min(speed, 14f) * _stride;
 
             var windup = 0f;
             if (ongoing && sim.Phase == GuardianPhase.Tell && sim.CurrentSkill != null && sim.ActiveTelegraphs.Count > 0)
@@ -98,57 +92,189 @@ namespace TheArtifacts.PC.Combat
             _windup = Damp(_windup, windup, 12f, dt);
             _slump = Damp(_slump, ongoing && sim.Phase == GuardianPhase.Recovery ? 1f : 0f, 6f, dt);
             _tremble = Damp(_tremble, ongoing && sim.Phase == GuardianPhase.Incapacitated ? 1f : 0f, 8f, dt);
-            _strike = Mathf.Max(0f, _strike - dt / 0.4f);
+            _strike = Mathf.Max(0f, _strike - dt / 0.45f);
             _flinch = Mathf.Max(0f, _flinch - dt / 0.25f);
             _death = sim.Outcome == CombatOutcome.Win ? Mathf.Min(1f, _death + dt / 1.6f) : 0f;
 
-            var fury = sim.IsFuryActive ? 1.8f : 1f;
-            var breath = Mathf.Sin(_time * Mathf.PI * 2f * 0.35f * fury);
-            var step = Mathf.Sin(_walkPhase);
-            var strike = Mathf.Sin(_strike * Mathf.PI * 0.5f);  // snaps out, eases back
-            var shake = _tremble * (Mathf.PerlinNoise(_time * 18f, 0.3f) - 0.5f) * 8f;
-            var death = Smooth(_death);
+            var p = new Pose
+            {
+                Fury = sim.IsFuryActive ? 1.8f : 1f,
+                Strike = Mathf.Sin(_strike * Mathf.PI * 0.5f), // snaps out, eases back
+                Shake = _tremble * (Mathf.PerlinNoise(_time * 18f, 0.3f) - 0.5f) * 8f,
+                Death = Smooth(_death),
+            };
+            p.Breath = Mathf.Sin(_time * Mathf.PI * 2f * 0.3f * p.Fury);
 
-            // Whole body: bob, lean into the walk, wind up, lunge, slump, flinch, and sink when beaten.
-            var rise = breath * s.Breath + Mathf.Abs(step) * s.WalkBob * _moving - _windup * s.WindupDrop - death * 0.9f;
-            var lean = 5f * _moving + s.WindupLean * _windup + s.StrikeLean * strike + 8f * _slump - 5f * _flinch
-                       - 8f * _tremble + 28f * death;
-            var roll = step * 3f * _moving + shake + 12f * death;
-            var metres = 1f / Mathf.Max(0.01f, _frame.localScale.y);  // the model sits under the scaled capsule
-            _root.localPosition = _rootPosition + new Vector3(0f, rise, s.StrikeReach * strike) * metres;
-            _root.localRotation = Quaternion.AngleAxis(lean, Vector3.right) * Quaternion.AngleAxis(roll, Vector3.forward) * _rootRotation;
-
-            // Head: looks up as it winds up, nods into the strike, droops in the opening, shakes in fear.
-            Turn("Head", s.HeadWindup * _windup + 14f * strike + 12f * _slump + breath * 2f + 10f * death, shake * 1.5f);
-
-            // Arms: raised in the windup, slammed down on the strike, swinging against the legs while walking;
-            // under Fear the golem shields its face.
-            var swing = step * s.ArmSwing * _moving;
-            var cower = _tremble * -60f;
-            Turn("ArmR", s.ArmRaiseR * _windup + s.ArmSlam * strike + swing + cower + 6f * _slump);
-            Turn("ArmL", s.ArmRaiseL * _windup + s.ArmSlam * strike - swing + cower + 6f * _slump);
-
-            // Legs: two-legged walkers alternate; the lion trots in diagonal pairs.
-            var legs = s.LegSwing * _moving;
-            Turn("LegL", step * legs);
-            Turn("LegR", -step * legs);
-            Turn("LegFL", step * legs);
-            Turn("LegBR", (s.Trot ? step : -step) * legs);
-            Turn("LegFR", -step * legs);
-            Turn("LegBL", (s.Trot ? -step : step) * legs);
-
-            // The lion's tail swishes, and lashes while it winds up.
-            Turn("Tail", -15f * _windup + 10f * death, Mathf.Sin(_time * 2.1f) * 14f + Mathf.Sin(_time * 9f) * 22f * _windup);
+            switch (_body)
+            {
+                case Body.Lich: Lich(p); break;
+                case Body.Lion: Lion(p); break;
+                case Body.Golem: Golem(p); break;
+                default: Root(p, Mathf.Abs(Mathf.Sin(_walkPhase)) * 0.06f * _moving, 0f, 0f); break;
+            }
         }
 
-        /// <summary>Turns a part at its joint: pitch about the Guardian's right axis (positive tips forward), yaw about up.</summary>
-        void Turn(string part, float pitch, float yaw = 0f)
+        struct Pose
         {
-            if (!AnimateParts || !_parts.TryGetValue(part, out var p)) return;
-            var parent = p.T.parent;
+            public float Fury, Strike, Shake, Death, Breath;
+        }
+
+        /// <summary>
+        /// The ghost scholar: hovers, glides with her robe trailing, raises the sceptre and casts with her left hand.
+        /// </summary>
+        void Lich(Pose p)
+        {
+            float w = _windup, s = p.Strike, sl = _slump, tr = _tremble, d = p.Death, m = _moving, t = _time;
+            var hover = 0.45f + 0.07f * Mathf.Sin(t * 1.4f) - 0.12f * sl - 0.45f * d + 0.12f * w;
+            Root(p, hover, 7f * m - 6f * w + 10f * s + 8f * sl, 2f * Mathf.Sin(t * 0.7f));
+
+            var look = (Mathf.PerlinNoise(t * 0.25f, 1.7f) - 0.5f) * 40f * (1f - w);
+            Turn("Hips", 3f * m + 5f * sl, 5f * Mathf.Sin(t * 0.45f), 2f * Mathf.Sin(t * 0.6f));
+            Turn("Spine", p.Breath * 1.5f - 6f * w + 10f * s + 8f * sl - 8f * _flinch + 10f * d, 8f * w);
+            Turn("Chest", p.Breath * 2f - 5f * w + 6f * s + 6f * sl, 6f * w, p.Shake);
+            Turn("Neck", 4f * sl - 3f * w + 3f * s, look * 0.4f);
+            Turn("Head", -8f * w + 8f * s + 12f * sl + 20f * d, look * 0.6f + p.Shake * 1.5f, 6f * Mathf.Sin(t * 0.35f));
+
+            // The sceptre arm lifts it in the tell and drives it down when the spell lands.
+            var drift = Mathf.Sin(t * 0.8f);
+            Turn("UpperArm_R", -22f * w + 18f * s + 3f * drift + 6f * sl - 25f * tr);
+            Turn("LowerArm_R", -15f * w + 8f * s - 20f * tr);
+            Turn("Hand_R", 4f * drift * (1f - w));
+            // The casting hand: reaches out, palm forward, during the tell; thrusts when it lands; shields under Fear.
+            Turn("UpperArm_L", -45f * w * (1f - s) - 60f * s + 4f * drift + 8f * Mathf.Sin(_walkPhase) * m - 45f * tr + 5f * sl);
+            Turn("LowerArm_L", -30f * w - 15f * s - 4f * drift - 50f * tr);
+            Turn("Hand_L", -25f * w + 6f * Mathf.Sin(t * 9f) * w);
+
+            // The robe swings like cloth: it trails when she glides or lunges, and sways while she hovers.
+            Turn("Robe1", 10f * m + 8f * s - 4f * w + 3f * Mathf.Sin(t * 1.1f), 0f, 3f * Mathf.Sin(t * 0.9f + 1f));
+            Turn("Robe2", 8f * m + 6f * s + 4f * Mathf.Sin(t * 1.1f - 0.8f), 0f, 3f * Mathf.Sin(t * 0.9f));
+        }
+
+        /// <summary>
+        /// The big cat: a four-beat walk (hind, fore, hind, fore), a gallop when it charges, a low stalking head, a
+        /// tail that sways and lashes, a crouch before the pounce, a roar.
+        /// </summary>
+        void Lion(Pose p)
+        {
+            float w = _windup, s = p.Strike, sl = _slump, tr = _tremble, d = p.Death, m = _moving, t = _time;
+            var a = _walkPhase;
+            var gallop = Mathf.Clamp01((_speed - 5f) / 3f);
+            var bob = Mathf.Abs(Mathf.Sin(a * 2f)) * 0.05f * m + gallop * Mathf.Sin(a) * 0.12f * m;
+            Root(p, bob - 0.35f * w + 0.2f * s - 0.2f * sl - 0.15f * tr, 4f * w + 6f * s + 4f * sl + gallop * 5f * Mathf.Sin(a) * m, 0f);
+
+            // Leg phase offsets: walk = hind L, fore L, hind R, fore R; gallop = hinds together, then fores.
+            float Offset(float walk, float run) => Mathf.Lerp(walk, run, gallop) * Mathf.PI * 2f;
+            var reach = Mathf.Lerp(22f, 38f, gallop) * m;
+            void Leg(string upper, string lower, string paw, float offset, bool fore)
+            {
+                var phase = a + offset;
+                var lift = Mathf.Max(0f, Mathf.Cos(phase)) * m;
+                var swing = -reach * Mathf.Sin(phase);
+                if (fore)
+                {
+                    Turn(upper, swing + 12f * w - 55f * s + 10f * sl + 25f * d + 10f * tr);
+                    Turn(lower, 45f * lift - 12f * w - 15f * s + 30f * d);
+                    Turn(paw, 35f * lift + 10f * w - 25f * s);
+                }
+                else
+                {
+                    Turn(upper, swing - 18f * w + 25f * s - 20f * sl - 30f * d - 10f * tr);
+                    Turn(lower, -30f * lift - 20f * w + 20f * s - 25f * sl - 30f * d);
+                    Turn(paw, 35f * lift + 30f * w - 10f * s + 20f * sl + 30f * d);
+                }
+            }
+            Leg("RearUpper_L", "RearLower_L", "RearFoot_L", Offset(0f, 0f), false);
+            Leg("FrontUpper_L", "FrontLower_L", "FrontPaw_L", Offset(0.25f, 0.5f), true);
+            Leg("RearUpper_R", "RearLower_R", "RearFoot_R", Offset(0.5f, 0.1f), false);
+            Leg("FrontUpper_R", "FrontLower_R", "FrontPaw_R", Offset(0.75f, 0.6f), true);
+
+            // A supple spine: it bends side to side with the walk and flexes with the gallop.
+            var sway = Mathf.Sin(a) * m;
+            Turn("Hips", 3f * gallop * Mathf.Cos(a) * m, 4f * sway, 2f * sway);
+            Turn("Spine", p.Breath * 1.5f + 6f * gallop * Mathf.Sin(a) * m - 4f * w, -3f * sway);
+            Turn("Chest", p.Breath * 1.5f + 6f * w - 8f * s, -3f * sway, p.Shake);
+
+            // The head: low and level while it stalks, scanning when it stands; it roars in the tell and bites.
+            var look = (Mathf.PerlinNoise(t * 0.3f, 4.2f) - 0.5f) * 50f * (1f - m) * (1f - w);
+            var roar = Mathf.Max(s, Mathf.Clamp01((w - 0.5f) * 2f));
+            Turn("Neck", 12f * m + 14f * w - 18f * s + 22f * sl + 20f * tr + 25f * d, look * 0.5f + 3f * sway);
+            Turn("Head", -8f * m - 10f * w - 12f * roar + 8f * sl + p.Breath * 2f, look * 0.5f + p.Shake * 1.5f);
+            Turn("Jaw", 3f + 2f * Mathf.Sin(t * 0.7f) + 30f * roar + 12f * d);
+
+            // The tail: a slow S-curve sway, lashing during the tell, tucked under Fear.
+            var lash = 1f + 2.5f * w * p.Fury;
+            for (var i = 1; i <= 4; i++)
+            {
+                var yaw = (5f + 5f * i) * lash * Mathf.Sin(t * (1.4f + 5f * w) - i * 0.75f);
+                var pitch = i == 1 ? 15f * w - 35f * tr - 20f * d : 4f * Mathf.Sin(t * 1.1f - i) - 8f * tr;
+                Turn($"Tail{i}", pitch, yaw);
+            }
+        }
+
+        /// <summary>
+        /// The stone machine: stiff, a little late (bones follow slowly), stomping steps with a weight shift, a head
+        /// that turns in steps and holds, both fists raised overhead before the slam.
+        /// </summary>
+        void Golem(Pose p)
+        {
+            float w = _windup, s = p.Strike, sl = _slump, tr = _tremble, d = p.Death, m = _moving, t = _time;
+            var a = _walkPhase;
+            var step = Mathf.Sin(a) * m;
+            var stomp = Mathf.Pow(1f - Mathf.Abs(Mathf.Cos(a)), 4f) * m; // a jolt as each foot lands
+            Root(p, 0.08f * Mathf.Abs(Mathf.Sin(a)) * m - 0.05f * stomp - 0.12f * w - 0.2f * s - 0.15f * sl - 1.0f * d,
+                3f * m - 8f * w + 14f * s + 10f * sl + 30f * d, 3f * step);
+
+            // Legs: alternate, knees fold only while a foot is in the air; they kneel when it falls.
+            void Leg(string upper, string lower, string foot, float phase)
+            {
+                var lift = Mathf.Max(0f, Mathf.Cos(phase)) * m;
+                Turn(upper, -22f * Mathf.Sin(phase) * m - 10f * w - 70f * d);
+                Turn(lower, 40f * lift + 15f * w + 10f * s + 100f * d);
+                Turn(foot, -15f * lift - 5f * w - 30f * d);
+            }
+            Leg("UpperLeg_L", "LowerLeg_L", "Foot_L", a);
+            Leg("UpperLeg_R", "LowerLeg_R", "Foot_R", a + Mathf.PI);
+
+            Turn("Hips", 0f, 6f * step, 3f * step);
+            Turn("Spine", p.Breath * 1f - 4f * w + 10f * s + 8f * sl, -5f * step + 10f * w);
+            Turn("Chest", -10f * w + 22f * s + 15f * sl - 10f * _flinch + 25f * d, 0f, p.Shake);
+
+            // The head scans in steps and holds, like a machine; it looks up at its fists in the tell.
+            var scan = Mathf.Round((Mathf.PerlinNoise(t * 0.2f, 9.1f) - 0.5f) * 4f) * 12f * (1f - w);
+            Turn("Head", -12f * w + 10f * s + 15f * sl + 15f * d, scan + p.Shake * 1.5f);
+
+            // Arms: stiff swing against the legs with a set elbow; overhead in the tell; the slam; a guard under Fear.
+            void Arm(string upper, string lower, string hand, float swing)
+            {
+                Turn(upper, swing * 14f - 140f * w * (1f - s) + 25f * s - 75f * tr + 6f * sl + 10f * d);
+                Turn(lower, -15f - 35f * w - 10f * s - 90f * tr + 10f * sl);
+                Turn(hand, -10f * w + 15f * s);
+            }
+            Arm("UpperArm_L", "LowerArm_L", "Hand_L", step);
+            Arm("UpperArm_R", "LowerArm_R", "Hand_R", -step);
+        }
+
+        /// <summary>The whole body: rises (metres), leans (degrees, forward positive), rolls, lunges on a strike.</summary>
+        void Root(Pose p, float rise, float lean, float roll)
+        {
+            var reach = _body == Body.Lion ? 0.9f : 0.5f;
+            var metres = 1f / Mathf.Max(0.01f, _frame.localScale.y); // the model sits under the scaled capsule
+            _root.localPosition = _rootPosition + new Vector3(0f, rise, reach * p.Strike - 0.2f * _flinch) * metres;
+            var bodyLean = (_body == Body.Lion ? 0f : 0.4f) * lean + 28f * p.Death * (_body == Body.Golem ? 0.3f : 1f) - 5f * _flinch;
+            _root.localRotation = Quaternion.AngleAxis(bodyLean, Vector3.right)
+                                  * Quaternion.AngleAxis(roll + p.Shake + 10f * p.Death, Vector3.forward) * _rootRotation;
+        }
+
+        /// <summary>Eases a bone toward a pose: pitch about the Guardian's right (positive tips forward), yaw about up, roll about forward.</summary>
+        void Turn(string bone, float pitch, float yaw = 0f, float roll = 0f)
+        {
+            if (!_bones.TryGetValue(bone, out var b)) return;
+            var parent = b.T.parent;
             var right = parent.InverseTransformDirection(_frame.right);
             var up = parent.InverseTransformDirection(_frame.up);
-            p.T.localRotation = Quaternion.AngleAxis(pitch, right) * Quaternion.AngleAxis(yaw, up) * p.RestRotation;
+            var forward = parent.InverseTransformDirection(_frame.forward);
+            var target = Quaternion.AngleAxis(pitch, right) * Quaternion.AngleAxis(yaw, up) * Quaternion.AngleAxis(roll, forward) * b.RestRotation;
+            b.T.localRotation = Quaternion.Slerp(b.T.localRotation, target, 1f - Mathf.Exp(-_follow * _dt));
         }
 
         static float Damp(float current, float target, float rate, float dt) =>

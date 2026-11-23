@@ -456,6 +456,8 @@ namespace TheArtifacts.PC.Combat
             _guardianModel.transform.localScale = Vector3.one / _guardian.localScale.y;
             _guardianModel.transform.localPosition = new Vector3(0f, -1f, 0f);
             _guardianModel.transform.localRotation = Quaternion.identity;
+            // Skinned models bend away from their rest bounds (a lunge, a raised sceptre): never cull them early.
+            foreach (var skin in _guardianModel.GetComponentsInChildren<SkinnedMeshRenderer>(true)) skin.updateWhenOffscreen = true;
             _guardianSlots.Clear();
             var bySlot = new Dictionary<string, Material>();
             foreach (var r in _guardianModel.GetComponentsInChildren<Renderer>(true))
