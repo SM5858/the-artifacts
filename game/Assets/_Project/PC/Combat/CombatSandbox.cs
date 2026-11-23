@@ -455,7 +455,8 @@ namespace TheArtifacts.PC.Combat
             // The capsule is scaled ×2 around its centre; undo that so the model stands at its own size on the floor.
             _guardianModel.transform.localScale = Vector3.one / _guardian.localScale.y;
             _guardianModel.transform.localPosition = new Vector3(0f, -1f, 0f);
-            _guardianModel.transform.localRotation = Quaternion.identity;
+            // The FBX models face -Z in Unity (Blender's -Y front comes through backwards); the Guardian faces +Z.
+            _guardianModel.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             // Skinned models bend away from their rest bounds (a lunge, a raised sceptre): never cull them early.
             foreach (var skin in _guardianModel.GetComponentsInChildren<SkinnedMeshRenderer>(true)) skin.updateWhenOffscreen = true;
             _guardianSlots.Clear();

@@ -5,8 +5,8 @@ texture set. Run inside Blender with the generated object in the scene:
     prepare("GEN_columbia_lion", "columbia_lion", height=3.3, front_y=-2.5, facing="+Y")
 
 It keeps the raw model (art_source/generated/<id>_raw.glb, not in git: too large), decimates a copy to the
-triangle budget, turns it to face -Y (Blender front; +Z forward in Unity), scales it to the Guardian's height with
-its feet on the floor and its nose at front_y, writes the texture set Art/Materials/<SetName>/ (BaseColor, Normal,
+triangle budget, turns it to face -Y (Blender front), scales it to the Guardian's height with
+its feet on the floor and its nose at front_y (Unity imports it facing -Z; CombatSandbox turns it to the Guardian's +Z), writes the texture set Art/Materials/<SetName>/ (BaseColor, Normal,
 and Roughness / Metallic / AO split from the ORM map) for SandboxArtMenu, and exports Art/Models/Guardians/<id>.fbx.
 guardian_blockouts.py skips the ids listed in GENERATED so a rebuild does not overwrite these.
 """

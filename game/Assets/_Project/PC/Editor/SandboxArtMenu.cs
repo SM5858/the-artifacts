@@ -40,6 +40,7 @@ namespace TheArtifacts.PC.Editor
             }
             art.Arena = MaterialAt("StoneFloor");
             art.Bookshelf = MaterialAt("OakWood");
+            foreach (var id in new[] { "alma_mater", "columbia_lion", "book_keeper" }) EnsureSkinnedImport(id);
             art.Guardians = new[]
             {
                 new SandboxArt.GuardianMaterial { GuardianId = "alma_mater", Material = MaterialAt("AlmaMater"), Model = ModelAt("alma_mater") },
@@ -70,6 +71,21 @@ namespace TheArtifacts.PC.Editor
         static string Map(string name, string map) =>
             Directory.GetFiles(Path.Combine(MaterialsRoot, name), $"{name}_{map}.*")
                 .Where(p => !p.EndsWith(".meta")).Select(p => p.Replace('\\', '/')).FirstOrDefault();
+
+        /// <summary>
+        /// Writes the rigged-model import settings into the FBX's .meta and reimports it if they differ. An older .meta
+        /// with no rig (animationType None) imports the model as a plain mesh, and its bones then move nothing.
+        /// </summary>
+        static void EnsureSkinnedImport(string guardianId)
+        {
+            var path = $"{GuardianModelsRoot}/{guardianId}.fbx";
+            if (!(AssetImporter.GetAtPath(path) is ModelImporter importer)) return;
+            if (importer.animationType == ModelImporterAnimationType.Generic && importer.bakeAxisConversion &&
+                !importer.optimizeGameObjects && !importer.importAnimation) return;
+            ArtTextureImporter.ApplyGuardianModelSettings(importer);
+            importer.SaveAndReimport();
+            Debug.Log($"{path}: import settings set to a generic rig (skinned) and reimported.");
+        }
 
         static GameObject ModelAt(string guardianId) =>
             AssetDatabase.LoadAssetAtPath<GameObject>($"{GuardianModelsRoot}/{guardianId}.fbx");
@@ -186,7 +202,11 @@ namespace TheArtifacts.PC.Editor
         void OnPreprocessModel()
         {
             if (!assetPath.StartsWith(SandboxArtMenu.GuardianModelsRoot)) return;
-            var importer = (ModelImporter)assetImporter;
+            ApplyGuardianModelSettings((ModelImporter)assetImporter);
+        }
+
+        public static void ApplyGuardianModelSettings(ModelImporter importer)
+        {
             importer.useFileScale = true;
             importer.globalScale = 1f;
             // Keep the Blender material slot names (Robe, Mantle, Bone, Metal, Hair): CombatSandbox colours by them.
