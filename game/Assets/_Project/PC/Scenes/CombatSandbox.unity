@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &482754972
+--- !u!1 &85129729
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,68 +127,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 482754974}
-  - component: {fileID: 482754973}
-  m_Layer: 0
-  m_Name: CombatSandbox
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &482754973
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 482754972}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4379b750b38bb440c9a473bc2c07499c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: TheArtifacts.PC::TheArtifacts.PC.Combat.CombatSandbox
-  accountLoop: 1
-  build: 0
-  seed: 1
-  guardianId: columbia_lion
-  guardianMode: 2
-  customTier: T2
-  customSkills:
-  - cleave
-  - slam
-  - charge
-  - embers
-  customStrategy: aggressive
-  art: {fileID: 11400000, guid: a92d1bad850d140a68f066dc943a27e2, type: 2}
-  cameraDistance: 8
-  cameraHeight: 5
---- !u!4 &482754974
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 482754972}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1619488150
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1619488153}
-  - component: {fileID: 1619488152}
-  - component: {fileID: 1619488151}
+  - component: {fileID: 85129732}
+  - component: {fileID: 85129731}
+  - component: {fileID: 85129730}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -196,13 +137,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1619488151
+--- !u!114 &85129730
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1619488150}
+  m_GameObject: {fileID: 85129729}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
@@ -225,13 +166,13 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
---- !u!108 &1619488152
+--- !u!108 &85129731
 Light:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1619488150}
+  m_GameObject: {fileID: 85129729}
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 1
@@ -290,13 +231,13 @@ Light:
   m_LightUnit: 1
   m_LuxAtDistance: 1
   m_EnableSpotReflector: 1
---- !u!4 &1619488153
+--- !u!4 &85129732
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1619488150}
+  m_GameObject: {fileID: 85129729}
   serializedVersion: 2
   m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
   m_LocalPosition: {x: 0, y: 3, z: 0}
@@ -305,7 +246,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
---- !u!1 &1978457027
+--- !u!1 &418163537
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -313,9 +254,68 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1978457030}
-  - component: {fileID: 1978457029}
-  - component: {fileID: 1978457028}
+  - component: {fileID: 418163539}
+  - component: {fileID: 418163538}
+  m_Layer: 0
+  m_Name: CombatSandbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &418163538
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 418163537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4379b750b38bb440c9a473bc2c07499c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: TheArtifacts.PC::TheArtifacts.PC.Combat.CombatSandbox
+  accountLoop: 1
+  build: 0
+  seed: 1
+  guardianId: columbia_lion
+  guardianMode: 2
+  customTier: T2
+  customSkills:
+  - cleave
+  - slam
+  - charge
+  - embers
+  customStrategy: aggressive
+  art: {fileID: 11400000, guid: a92d1bad850d140a68f066dc943a27e2, type: 2}
+  cameraDistance: 8
+  cameraHeight: 5
+--- !u!4 &418163539
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 418163537}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1341883794
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1341883797}
+  - component: {fileID: 1341883796}
+  - component: {fileID: 1341883795}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -323,21 +323,21 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &1978457028
+--- !u!81 &1341883795
 AudioListener:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1978457027}
+  m_GameObject: {fileID: 1341883794}
   m_Enabled: 1
---- !u!20 &1978457029
+--- !u!20 &1341883796
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1978457027}
+  m_GameObject: {fileID: 1341883794}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
@@ -382,13 +382,13 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!4 &1978457030
+--- !u!4 &1341883797
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1978457027}
+  m_GameObject: {fileID: 1341883794}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 1, z: -10}
@@ -401,6 +401,6 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1978457030}
-  - {fileID: 1619488153}
-  - {fileID: 482754974}
+  - {fileID: 1341883797}
+  - {fileID: 85129732}
+  - {fileID: 418163539}

@@ -10,6 +10,7 @@ namespace TheArtifacts.PC.Combat
     /// turn at their joints, and the whole body bobs, leans, and lunges. Every pose follows the fight, so the motion
     /// also reads as a tell: it winds up during a skill's tell, strikes when the skill lands, slumps during the
     /// opening, and trembles under Fear.
+    /// Part motion is off for now (2026-11-23: the Guardians move as one piece); <see cref="AnimateParts"/> turns it back on.
     /// </summary>
     public sealed class GuardianMotion
     {
@@ -32,6 +33,9 @@ namespace TheArtifacts.PC.Combat
             "book_keeper" => new Style { WalkBob = 0.1f, Stride = 1.6f, LegSwing = 18f, ArmSwing = 14f, ArmRaiseR = -120f, ArmRaiseL = -120f, ArmSlam = 45f },
             _ => new Style(),
         };
+
+        /// <summary>Turn the head, arms, legs, and tail at their joints; off: the whole model moves as one piece.</summary>
+        public static bool AnimateParts = false;
 
         readonly Transform _root, _frame;
         readonly Vector3 _rootPosition;
@@ -140,7 +144,7 @@ namespace TheArtifacts.PC.Combat
         /// <summary>Turns a part at its joint: pitch about the Guardian's right axis (positive tips forward), yaw about up.</summary>
         void Turn(string part, float pitch, float yaw = 0f)
         {
-            if (!_parts.TryGetValue(part, out var p)) return;
+            if (!AnimateParts || !_parts.TryGetValue(part, out var p)) return;
             var parent = p.T.parent;
             var right = parent.InverseTransformDirection(_frame.right);
             var up = parent.InverseTransformDirection(_frame.up);

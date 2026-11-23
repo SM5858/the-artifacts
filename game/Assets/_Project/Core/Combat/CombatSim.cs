@@ -220,7 +220,8 @@ namespace TheArtifacts.Core.Combat
             _skillBar = build.DefaultSkillBar.ToArray();
         }
 
-        public float DistanceToGuardian => Vec2.Distance(PlayerPosition, GuardianPosition);
+        /// <summary>From the player to the Guardian's body (its centre less <see cref="GuardianProfile.BodyRadius"/>).</summary>
+        public float DistanceToGuardian => Math.Max(0f, Vec2.Distance(PlayerPosition, GuardianPosition) - Guardian.BodyRadius);
         public bool InMeleeRange => DistanceToGuardian <= PlayerRules.MeleeRange;
         /// <summary>A skill's tell at this fight's tier: base × tier multiplier, never below the skill's fair minimum.</summary>
         public float TellFor(GuardianSkillDef skill) => Math.Max(skill.MinTell, skill.Tell * Tier.TellMultiplier);
@@ -367,7 +368,16 @@ namespace TheArtifacts.Core.Combat
         {
             if (move.LengthSquared < 1e-8f) return;
             var dir = move.LengthSquared > 1f ? move.Normalized() : move;
-            PlayerPosition = ClampToArena(PlayerPosition + dir * (Build.RunSpeed * dt));
+            PlayerPosition = KeepOutOfBody(ClampToArena(PlayerPosition + dir * (Build.RunSpeed * dt)));
+        }
+
+        /// <summary>The player slides around the Guardian's body instead of walking into it.</summary>
+        Vec2 KeepOutOfBody(Vec2 p)
+        {
+            var r = Guardian.BodyRadius;
+            var away = p - GuardianPosition;
+            if (r <= 0f || away.LengthSquared >= r * r) return p;
+            return away.LengthSquared > 1e-8f ? GuardianPosition + away.Normalized() * r : GuardianPosition - GuardianFacing * r;
         }
 
         static bool IsSpell(Ability ability) => ability == Ability.LightningBolt || ability == Ability.FireBolt;
@@ -427,7 +437,7 @@ namespace TheArtifacts.Core.Combat
                 case Ability.Lunge:
                 {
                     var toGuardian = GuardianPosition - PlayerPosition;
-                    var travel = Math.Max(0f, Math.Min(PlayerRules.LungeDistance, toGuardian.Length - 2f));
+                    var travel = Math.Max(0f, Math.Min(PlayerRules.LungeDistance, DistanceToGuardian - 2f));
                     PlayerPosition = ClampToArena(PlayerPosition + toGuardian.Normalized() * travel);
                     if (InMeleeRange) DamageGuardian(PlayerRules.LungeCoefficient * Build.Strength, "lunge", DamageType.Physical, canCrit: true);
                     _cooldowns[ability] = Cooldown(ability, PlayerRules.LungeCooldown);
@@ -670,8 +680,8 @@ namespace TheArtifacts.Core.Combat
         {
             var toPlayer = PlayerPosition - GuardianPosition;
             if (toPlayer.LengthSquared > 1e-8f) GuardianFacing = toPlayer.Normalized();
-            if (toPlayer.Length <= GuardianRules.ChaseStopDistance) return;
-            var target = PlayerPosition - GuardianFacing * GuardianRules.ChaseStopDistance;
+            if (DistanceToGuardian <= GuardianRules.ChaseStopDistance) return;
+            var target = PlayerPosition - GuardianFacing * (GuardianRules.ChaseStopDistance + Guardian.BodyRadius);
             GuardianPosition = Vec2.MoveTowards(GuardianPosition, target, GuardianRules.MoveSpeed * dt);
         }
 
@@ -691,19 +701,21 @@ namespace TheArtifacts.Core.Combat
             Emit(CombatEventType.TellStarted, skill.Id, TellFor(skill));
 
             _pulsesLeft = 0;
+            // Areas centred on the Guardian reach the same distance past its body, whatever its size (Combat Spec 4.8).
+            var body = Guardian.BodyRadius;
             switch (skill.Shape)
             {
                 case AreaShape.Cone:
-                    Place(skill, new ConeArea(GuardianPosition, GuardianFacing, skill.AngleDegrees, skill.Range), Time);
+                    Place(skill, new ConeArea(GuardianPosition, GuardianFacing, skill.AngleDegrees, skill.Range + body), Time);
                     break;
                 case AreaShape.Circle:
-                    Place(skill, new CircleArea(GuardianPosition, skill.Range), Time);
+                    Place(skill, new CircleArea(GuardianPosition, skill.Range + body), Time);
                     break;
                 case AreaShape.Ring:
-                    Place(skill, new RingArea(GuardianPosition, skill.InnerRadius, skill.Range), Time);
+                    Place(skill, new RingArea(GuardianPosition, skill.InnerRadius + body, skill.Range + body), Time);
                     break;
                 case AreaShape.Line:
-                    Place(skill, new LineArea(GuardianPosition, GuardianFacing, skill.Range, skill.Width), Time);
+                    Place(skill, new LineArea(GuardianPosition, GuardianFacing, skill.Range + body, skill.Width), Time);
                     break;
                 case AreaShape.CirclesOnPlayer:
                     Place(skill, new CircleArea(PlayerPosition, skill.Range), Time);

@@ -199,6 +199,7 @@ Approved after playing the sandbox; art scales to these values.
 | Start distance | Player 12 m from the Guardian | Spells reach at once; melee takes a few steps |
 | Guardian move speed | 5 m/s (player 7 m/s) | The player can always outrun it, so every hit can be evaded |
 | Chase stop | 2.5 m | Inside melee range (3 m), so both sides can hit once it stops |
+| Body radius | Alma Mater 0.8 m, Columbia Lion 1.8 m, Book Keeper 1.0 m (DECIDED 2026-11-23) | Distances to the Guardian (melee, spells, chase stop, auto-attacks) are measured to its body, not its centre; areas centred on it (cone, circle, ring, line) grow by the radius; the player slides around the body. So the player fights in front of the lion's face, not under its chin |
 | First skill | One strategy interval into the fight (8 s for Steady) | Time to close in and set up |
 | Charge | Leaves the Guardian at the end of its line | The charge animation moves the Guardian; it is not in place |
 

@@ -73,6 +73,12 @@ namespace TheArtifacts.Core.Combat
         /// lore, and the hint that makes its mechanic learnable without knowing the place.
         /// </summary>
         public string StoryCard;
+        /// <summary>
+        /// Body radius in metres (Combat Spec 4.8): distances to the Guardian (melee, spells, chase, auto-attacks) are
+        /// measured to its body, not its centre, and its skill areas grow by this much, so a large Guardian is fought
+        /// in front of its face instead of under it. The player cannot walk into it.
+        /// </summary>
+        public float BodyRadius;
         /// <summary>Reduce physical / magic damage taken as value / (value + 100), like the player's (Combat Spec 2).</summary>
         public float Def, Res;
         /// <summary>Artifact ids a win here can give (GDD 6.5, Combat Spec 5.3).</summary>

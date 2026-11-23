@@ -425,6 +425,47 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That(sim.DistanceToGuardian, Is.EqualTo(before - PlayerRules.LungeDistance).Within(0.3));
         }
 
+        // ---------- Body radius (Combat Spec 4.8) ----------
+
+        static CombatSim Lion(params string[] skills) => new CombatSim(PrototypeContent.StarterBuild,
+            skills.Length == 0 ? PrototypeContent.DefaultSetup : new GuardianSetup("T3", skills, "steady"), seed: 1,
+            PrototypeContent.GuardianById("columbia_lion"));
+
+        [Test]
+        public void BodyRadius_TheGuardianStopsItsChaseAtItsBody_NotItsCentre()
+        {
+            var sim = Lion();
+            var radius = sim.Guardian.BodyRadius;
+            Assert.That(radius, Is.GreaterThan(1f), "the lion is long; the player should not stand under its chin");
+
+            RunUntil(sim, s => s.Phase != GuardianPhase.Idle, 4f);  // stand still while it closes in
+            var centre = Vec2.Distance(sim.PlayerPosition, sim.GuardianPosition);
+
+            Assert.That(centre, Is.EqualTo(GuardianRules.ChaseStopDistance + radius).Within(0.2));
+            Assert.That(sim.DistanceToGuardian, Is.EqualTo(GuardianRules.ChaseStopDistance).Within(0.2));
+            Assert.That(sim.InMeleeRange, Is.True);
+        }
+
+        [Test]
+        public void BodyRadius_GrowsAreasCentredOnTheGuardian()
+        {
+            var sim = Lion("slam");
+            RunUntil(sim, s => s.ActiveTelegraphs.Count > 0, 20f);
+
+            var slam = (CircleArea)sim.ActiveTelegraphs[0].Area;
+            Assert.That(slam.Radius, Is.EqualTo(PrototypeContent.Skill("slam").Range + sim.Guardian.BodyRadius).Within(1e-4));
+        }
+
+        [Test]
+        public void BodyRadius_ThePlayerCannotWalkIntoTheBody()
+        {
+            var sim = Lion();
+            RunFor(sim, 3f, s => new PlayerInput((s.GuardianPosition - s.PlayerPosition).Normalized()));
+
+            Assert.That(Vec2.Distance(sim.PlayerPosition, sim.GuardianPosition), Is.GreaterThanOrEqualTo(sim.Guardian.BodyRadius - 1e-3));
+            Assert.That(sim.DistanceToGuardian, Is.EqualTo(0f).Within(1e-3));
+        }
+
         // ---------- Guardian skills, tells, recovery ----------
 
         [Test]
