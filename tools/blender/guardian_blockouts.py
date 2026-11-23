@@ -27,6 +27,9 @@ from mathutils import Euler, Matrix, Quaternion, Vector
 COLLECTION = "Guardians"
 TEXTURE_METRES = 2.0
 EXPORT_DIR = None  # set to ".../game/Assets/_Project/Art/Models/Guardians" to export
+# Guardians whose FBX now comes from a generated model (tools/blender/prepare_generated.py): built here for reference,
+# never exported over it.
+GENERATED = {"alma_mater", "columbia_lion", "book_keeper"}
 
 
 # ---------------------------------------------------------------- helpers
@@ -1121,8 +1124,9 @@ def build(export_dir=EXPORT_DIR):
         obj.location.x = (i - 1) * 7.0
     if export_dir:
         os.makedirs(export_dir, exist_ok=True)
-        for obj in models:
-            export(obj, os.path.join(export_dir, obj.name + ".fbx"))
+        for guardian_id, obj in zip(("alma_mater", "columbia_lion", "book_keeper"), models):
+            if guardian_id not in GENERATED:
+                export(obj, os.path.join(export_dir, guardian_id + ".fbx"))
     return models
 
 

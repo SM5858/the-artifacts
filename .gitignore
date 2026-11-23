@@ -65,3 +65,6 @@
 /tools/**/obj/
 /server/**/bin/
 /server/**/obj/
+
+# Raw AI-generated models (tools/blender/prepare_generated.py keeps them; tens of MB each)
+/art_source/

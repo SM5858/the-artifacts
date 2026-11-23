@@ -236,7 +236,8 @@ Inside a fight, the moment-to-moment loop runs in real time: the Guardian telegr
   | AgedBronze (Alma Mater until 2026-11-23; kept for later use): *Metal 017*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Metal017) | CC0 | `Art/Materials/AgedBronze` |
   | DarkBronze (Columbia Lion): *Metal 013*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Metal013) | CC0 | `Art/Materials/DarkBronze` |
   | Verdigris (Alma Mater, from 2026-11-23): *Metal 058 C*, 1K maps | [ambientCG](https://ambientcg.com/view?id=Metal058C) | CC0 | `Art/Materials/Verdigris` |
-  | Guardian blockouts (lich, lion, golem; stand-ins until the paid models) | Original, built from primitives by `tools/blender/guardian_blockouts.py` in Blender 5.3 | Original (this project) | `Art/Models/Guardians` |
+  | Guardian blockouts (lich, lion, golem; procedural reference, no longer exported) | Original, built from primitives by `tools/blender/guardian_blockouts.py` in Blender 5.3 | Original (this project) | `tools/blender` |
+  | Guardian models and texture sets (Alma Mater, Columbia Lion, Book Keeper; 2026-11-23) | Generated with Tripo AI image-to-3D from this project's own AI concept sheets, then decimated to 80k triangles, scaled, and exported by `tools/blender/prepare_generated.py`; raw generations kept locally in `art_source/generated` (not in git) | Tripo terms of the generating account (commercial use needs a paid plan; confirm before release) | `Art/Models/Guardians`, `Art/Materials/{AlmaMater,ColumbiaLion,BookKeeper}` |
 - **Columbia names and landmarks** (Alma Mater, the Columbia Lion, the bookstore, Columbia blue) are used for the class prototype only. A public release needs the university's permission or replacement content.
 - **Concepts considered before this one:**
   - *AI Mafia* — simpler to prototype; set aside because The Artifacts connects real-world discovery with RPG progression.
