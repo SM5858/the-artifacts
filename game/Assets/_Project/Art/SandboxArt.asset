@@ -17,7 +17,10 @@ MonoBehaviour:
   Guardians:
   - GuardianId: alma_mater
     Material: {fileID: 2100000, guid: 26d881aaf964e4e7797163dc9702c193, type: 2}
+    Model: {fileID: 919132149155446097, guid: 61fa5af378dee4b0aa0ddefdb36b96ee, type: 3}
   - GuardianId: columbia_lion
     Material: {fileID: 2100000, guid: 8231ed38cdce24dfb8522299f637f783, type: 2}
+    Model: {fileID: 919132149155446097, guid: f350fa929cc6b4674bed47b068858d4c, type: 3}
   - GuardianId: book_keeper
     Material: {fileID: 2100000, guid: 318758085742642478fc1c9c815b99f6, type: 2}
+    Model: {fileID: 919132149155446097, guid: 25cd106028f5447a38f25b5e6c1e3837, type: 3}
