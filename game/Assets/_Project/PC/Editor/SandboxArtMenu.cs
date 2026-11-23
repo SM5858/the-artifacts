@@ -187,7 +187,8 @@ namespace TheArtifacts.PC.Editor
             var importer = (ModelImporter)assetImporter;
             importer.useFileScale = true;
             importer.globalScale = 1f;
-            importer.materialImportMode = ModelImporterMaterialImportMode.None;
+            // Keep the Blender material slot names (Robe, Mantle, Bone, Metal, Hair): CombatSandbox colours by them.
+            importer.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
             importer.importAnimation = false;
             importer.importCameras = false;
             importer.importLights = false;

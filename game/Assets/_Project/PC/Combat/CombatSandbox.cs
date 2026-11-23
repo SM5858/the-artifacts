@@ -60,6 +60,11 @@ namespace TheArtifacts.PC.Combat
         static readonly Color GuardianRecovery = new Color(0.3f, 0.9f, 0.35f);
         static readonly Color GuardianFury = new Color(0.75f, 0.15f, 0.6f);
         static readonly Color EyeColor = new Color(0.35f, 1f, 0.9f);
+        // The lich's material slots (concept: blue-grey gown, verdigris mantle, bone, gilded bronze).
+        static readonly Color RobeTint = new Color(0.62f, 0.72f, 0.95f);
+        static readonly Color HairTint = new Color(0.6f, 0.65f, 0.6f);
+        static readonly Color BoneColor = new Color(0.78f, 0.74f, 0.64f);
+        static readonly Color BronzeColor = new Color(0.72f, 0.56f, 0.3f);
         static readonly Color TelegraphStart = new Color(0.55f, 0.25f, 0.05f);
         static readonly Color TelegraphHit = new Color(1f, 0.1f, 0.05f);
 
@@ -104,6 +109,8 @@ namespace TheArtifacts.PC.Combat
         /// <summary>The player flashes red until this time after taking damage.</summary>
         float _hurtUntil;
         Material _guardianMaterial, _telegraphTemplate;
+        /// <summary>The model's materials, one per slot kind; all of them glow with the tell.</summary>
+        readonly List<Material> _guardianSlots = new List<Material>();
         readonly Dictionary<Telegraph, (GameObject go, Material mat)> _telegraphViews =
             new Dictionary<Telegraph, (GameObject, Material)>();
         readonly Dictionary<string, (GameObject go, Material mat)> _loreViews = new Dictionary<string, (GameObject, Material)>();
@@ -444,15 +451,53 @@ namespace TheArtifacts.PC.Combat
             _guardianModel.transform.localScale = Vector3.one / _guardian.localScale.y;
             _guardianModel.transform.localPosition = new Vector3(0f, -1f, 0f);
             _guardianModel.transform.localRotation = Quaternion.identity;
+            _guardianSlots.Clear();
+            var bySlot = new Dictionary<string, Material>();
             foreach (var r in _guardianModel.GetComponentsInChildren<Renderer>(true))
             {
                 var isOwl = r.name == "Owl";
-                var material = isOwl ? _weakPointMaterial : r.name == "Eyes" ? EyeGlow() : _guardianMaterial;
-                r.sharedMaterials = Enumerable.Repeat(material, r.sharedMaterials.Length).ToArray();
+                var special = isOwl ? _weakPointMaterial : r.name == "Eyes" ? EyeGlow() : null;
+                // Each slot is coloured by its Blender material's name (Robe, Mantle, Bone, Metal, Hair); others
+                // take the Guardian material as it is.
+                r.sharedMaterials = r.sharedMaterials
+                    .Select(m => special ?? SlotMaterial(m != null ? m.name : "", bySlot))
+                    .ToArray();
                 if (isOwl) _weakPoint = r.transform;
             }
             if (_weakPoint != _owlSphere) _weakPoint.gameObject.SetActive(false);
             _motion = new GuardianMotion(_guardianModel.transform, _guardian, guardianId);
+        }
+
+        Material SlotMaterial(string slot, Dictionary<string, Material> bySlot)
+        {
+            var kind = slot.StartsWith("Robe") ? "Robe" : slot.StartsWith("Bone") ? "Bone"
+                : slot.StartsWith("Metal") ? "Metal" : slot.StartsWith("Hair") ? "Hair" : "Main";
+            if (bySlot.TryGetValue(kind, out var existing)) return existing;
+            Material m;
+            switch (kind)
+            {
+                case "Robe":
+                case "Hair":
+                    m = new Material(_guardianMaterial);
+                    m.SetColor("_BaseColor", _guardianMaterial.GetColor("_BaseColor") * (kind == "Robe" ? RobeTint : HairTint));
+                    break;
+                case "Bone":
+                    m = Lit(_lit, BoneColor);
+                    m.SetFloat("_Smoothness", 0.25f);
+                    break;
+                case "Metal":
+                    m = Lit(_lit, BronzeColor);
+                    m.SetFloat("_Metallic", 0.85f);
+                    m.SetFloat("_Smoothness", 0.55f);
+                    break;
+                default:
+                    m = _guardianMaterial;
+                    break;
+            }
+            m.EnableKeyword("_EMISSION");
+            bySlot[kind] = m;
+            _guardianSlots.Add(m);
+            return m;
         }
 
         /// <summary>The lich's glowing eyes (concept: verdigris lich scholar): unlit, so they read in any light.</summary>
@@ -544,6 +589,7 @@ namespace TheArtifacts.PC.Combat
                     _ => _sim.IsFuryActive ? GuardianFury : Color.black,
                 };
                 _guardianMaterial.SetColor("_EmissionColor", glow);
+                foreach (var m in _guardianSlots) m.SetColor("_EmissionColor", glow);
             }
             else
             {
