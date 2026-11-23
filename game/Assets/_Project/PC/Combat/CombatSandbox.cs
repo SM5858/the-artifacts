@@ -112,6 +112,8 @@ namespace TheArtifacts.PC.Combat
         Transform _weakPoint;
         Transform _nose, _owlSphere;
         GameObject _guardianModel;
+        /// <summary>Procedural motion for the model; null for the capsule.</summary>
+        GuardianMotion _motion;
         Material _weakPointMaterial;
         /// <summary>Textured materials show state through emission or a tint instead of a flat color.</summary>
         bool _guardianTextured, _loreTextured;
@@ -185,6 +187,7 @@ namespace TheArtifacts.PC.Combat
             _moveTarget = null;
             _spellTarget = null;
             _sim = new CombatSim(CurrentBuild, fight.Setup, seed, PrototypeContent.GuardianById(guardianId));
+            _motion?.Reset();
             if (_preferredBar != null)
             {
                 try { _sim.SetArtifactSkillBar(_preferredBar); }
@@ -355,6 +358,7 @@ namespace TheArtifacts.PC.Combat
         void LateUpdate()
         {
             if (_camera == null || _sim == null) return;
+            if (!_inMenu) _motion?.Update(_sim, Time.deltaTime);
 
             var away = _player.position - _guardian.position;
             away.y = 0f;
@@ -427,6 +431,7 @@ namespace TheArtifacts.PC.Combat
             _guardian.GetComponent<Renderer>().sharedMaterial = _guardianMaterial;
 
             if (_guardianModel != null) Destroy(_guardianModel);
+            _motion = null;
             var model = art != null ? art.ModelFor(guardianId) : null;
             _guardianModel = model != null ? Instantiate(model, _guardian, false) : null;
             _guardian.GetComponent<Renderer>().enabled = _guardianModel == null;
@@ -447,6 +452,7 @@ namespace TheArtifacts.PC.Combat
                 if (isOwl) _weakPoint = r.transform;
             }
             if (_weakPoint != _owlSphere) _weakPoint.gameObject.SetActive(false);
+            _motion = new GuardianMotion(_guardianModel.transform, _guardian, guardianId);
         }
 
         /// <summary>The lich's glowing eyes (concept: verdigris lich scholar): unlit, so they read in any light.</summary>
@@ -594,6 +600,10 @@ namespace TheArtifacts.PC.Combat
             {
                 var e = events[_eventCursor];
                 if (e.Type == CombatEventType.PlayerDamaged && e.Amount > 0f) _hurtUntil = Time.time + 0.15f;
+                // The model lunges when a skill lands (hit or dodged) and swings lighter for an auto-attack.
+                if (e.Type == CombatEventType.SkillHit || e.Type == CombatEventType.SkillMissed) _motion?.Strike();
+                if (e.Type == CombatEventType.PlayerDamaged && e.Id == "guardian_auto") _motion?.Strike(0.5f);
+                if (e.Type == CombatEventType.GuardianDamaged && e.Amount > 0f) _motion?.Flinch();
                 string line = e.Type switch
                 {
                     CombatEventType.PlayerDamaged when e.Id == "guardian_auto" => $"Guardian strikes you {e.Amount:0}",

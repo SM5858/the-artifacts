@@ -20,7 +20,7 @@ import random
 
 import bmesh
 import bpy
-from mathutils import Euler, Vector
+from mathutils import Euler, Matrix, Vector
 
 COLLECTION = "Guardians"
 TEXTURE_METRES = 2.0
@@ -204,6 +204,21 @@ def finish(parts, name, scale=1.0, smooth_deg=35):
     return obj
 
 
+def part(parts, name, pivot, parent, scale=1.0, smooth_deg=35):
+    """
+    A moving part: joined like finish, with its origin moved to the joint it turns around (pivot, before scaling),
+    and parented without moving it. Unity animates these by name (GuardianMotion).
+    """
+    obj = finish(parts, name, scale, smooth_deg)
+    joint = Vector(pivot) * scale
+    obj.data.transform(Matrix.Translation(-joint))
+    obj.location = joint
+    obj.parent = parent
+    # Both are pure translations here, so the inverse of the parent's offset keeps the part where it is.
+    obj.matrix_parent_inverse = Matrix.Translation(-parent.matrix_world.to_translation())
+    return obj
+
+
 def cube_uvs(obj):
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
@@ -220,9 +235,10 @@ def lich(col):
     """
     Alma Mater as a lich (concept: "Verdigris Lich Scholar"): a tall skeletal scholar in a layered, torn robe and
     mantle, a laurel wreath with a small finial, a crowned sceptre in the right hand, a book hanging from the belt,
-    and the owl perched on the sash. The eyes are their own object ("Eyes") so Unity can make them glow.
+    and the owl perched on the sash. The eyes are their own object ("Eyes") so Unity can make them glow. Head, ArmR (with the sceptre), and ArmL
+    move.
     """
-    p = []
+    p, head, arm_r, arm_l = [], [], [], []
     # Inner gown to the floor, and the bodice above it.
     p.append(drape(col, "gown", 3.0, 0.02, (0.34, 0.26), (0.72, 0.52), 0, 0, seed=1,
                    folds=11, fold_depth=0.06, hem_jag=0.08, torn=0.1, thickness=0.04))
@@ -254,54 +270,57 @@ def lich(col):
 
     # Neck, skull, hair gathered in a bun, laurel wreath, and the small finial on top.
     p.append(limb(col, "neck", (0, 0.0, 3.6), (0, -0.02, 3.85), 0.06, 0.055, segments=10))
-    p.append(sphere(col, "skull", (0, -0.03, 4.0), (0.17, 0.19, 0.21)))
-    p.append(box(col, "jaw", (0, -0.13, 3.83), (0.1, 0.08, 0.045), bevel=0.025))
-    p.append(sphere(col, "hair", (0, 0.04, 4.06), (0.18, 0.17, 0.17)))
-    p.append(sphere(col, "bun", (0, 0.2, 4.1), (0.11, 0.09, 0.1)))
-    p.append(torus(col, "wreath", (0, 0.01, 4.12), 0.17, 0.022, tilt_deg=-12))
+    head.append(sphere(col, "skull", (0, -0.03, 4.0), (0.17, 0.19, 0.21)))
+    head.append(box(col, "jaw", (0, -0.13, 3.83), (0.1, 0.08, 0.045), bevel=0.025))
+    head.append(sphere(col, "hair", (0, 0.04, 4.06), (0.18, 0.17, 0.17)))
+    head.append(sphere(col, "bun", (0, 0.2, 4.1), (0.11, 0.09, 0.1)))
+    head.append(torus(col, "wreath", (0, 0.01, 4.12), 0.17, 0.022, tilt_deg=-12))
     for k in range(14):
         a = 2 * math.pi * k / 14
         if abs(math.sin(a / 2)) < 0.25:
             continue  # the leaves meet at the front
         x, y = 0.18 * math.sin(a), -0.18 * math.cos(a) * 0.98
-        p.append(ico(col, "leaf", (x, y + 0.01, 4.13 + 0.04 * math.cos(a)), (0.045, 0.02, 0.022), subdivisions=1))
-    p.append(limb(col, "finial_stem", (0, -0.02, 4.2), (0, -0.02, 4.38), 0.03, 0.022, segments=8))
-    p.append(sphere(col, "finial_knob", (0, -0.02, 4.34), (0.05, 0.05, 0.045)))
-    p.append(cone(col, "finial_tip", (0, -0.02, 4.38), 0.03, 0.0, 0.08, segments=8))
+        head.append(ico(col, "leaf", (x, y + 0.01, 4.13 + 0.04 * math.cos(a)), (0.045, 0.02, 0.022), subdivisions=1))
+    head.append(limb(col, "finial_stem", (0, -0.02, 4.2), (0, -0.02, 4.38), 0.03, 0.022, segments=8))
+    head.append(sphere(col, "finial_knob", (0, -0.02, 4.34), (0.05, 0.05, 0.045)))
+    head.append(cone(col, "finial_tip", (0, -0.02, 4.38), 0.03, 0.0, 0.08, segments=8))
 
     # Right arm (-X) raised, the bony hand gripping the sceptre; a wide sleeve hangs from it.
-    p.append(limb(col, "upper_arm_r", (-0.4, 0.0, 3.5), (-0.5, -0.02, 3.0), 0.07, 0.055, segments=10))
-    p.append(limb(col, "forearm_r", (-0.5, -0.02, 3.0), (-0.66, -0.2, 3.3), 0.05, 0.04, segments=10))
-    p.append(limb(col, "sleeve_r", (-0.42, 0.0, 3.45), (-0.56, -0.04, 2.6), 0.13, 0.26, segments=16))
-    p.append(sphere(col, "hand_r", (-0.7, -0.22, 3.32), (0.06, 0.05, 0.08)))
+    arm_r.append(limb(col, "upper_arm_r", (-0.4, 0.0, 3.5), (-0.5, -0.02, 3.0), 0.07, 0.055, segments=10))
+    arm_r.append(limb(col, "forearm_r", (-0.5, -0.02, 3.0), (-0.66, -0.2, 3.3), 0.05, 0.04, segments=10))
+    arm_r.append(limb(col, "sleeve_r", (-0.42, 0.0, 3.45), (-0.56, -0.04, 2.6), 0.13, 0.26, segments=16))
+    arm_r.append(sphere(col, "hand_r", (-0.7, -0.22, 3.32), (0.06, 0.05, 0.08)))
     # Crowned sceptre, floor to above the head.
-    p.append(limb(col, "sceptre", (-0.72, -0.22, 0.02), (-0.72, -0.22, 4.4), 0.035, 0.035, segments=10))
+    arm_r.append(limb(col, "sceptre", (-0.72, -0.22, 0.02), (-0.72, -0.22, 4.4), 0.035, 0.035, segments=10))
     for z in (0.15, 1.6, 3.05, 3.6, 4.3):
-        p.append(torus(col, "sceptre_band", (-0.72, -0.22, z), 0.045, 0.014))
-    p.append(cone(col, "crown_base", (-0.72, -0.22, 4.4), 0.05, 0.11, 0.1, segments=16))
-    p.append(torus(col, "crown_rim", (-0.72, -0.22, 4.5), 0.1, 0.018))
+        arm_r.append(torus(col, "sceptre_band", (-0.72, -0.22, z), 0.045, 0.014))
+    arm_r.append(cone(col, "crown_base", (-0.72, -0.22, 4.4), 0.05, 0.11, 0.1, segments=16))
+    arm_r.append(torus(col, "crown_rim", (-0.72, -0.22, 4.5), 0.1, 0.018))
     for k in range(4):
         a = math.pi / 2 * k
-        p.append(limb(col, "crown_arch", (-0.72 + 0.1 * math.cos(a), -0.22 + 0.1 * math.sin(a), 4.5),
+        arm_r.append(limb(col, "crown_arch", (-0.72 + 0.1 * math.cos(a), -0.22 + 0.1 * math.sin(a), 4.5),
                       (-0.72, -0.22, 4.66), 0.012, 0.012, segments=6))
-    p.append(sphere(col, "crown_orb", (-0.72, -0.22, 4.68), (0.035, 0.035, 0.035)))
-    p.append(box(col, "crown_cross_v", (-0.72, -0.22, 4.77), (0.01, 0.01, 0.06), bevel=0.0))
-    p.append(box(col, "crown_cross_h", (-0.72, -0.22, 4.79), (0.035, 0.01, 0.01), bevel=0.0))
+    arm_r.append(sphere(col, "crown_orb", (-0.72, -0.22, 4.68), (0.035, 0.035, 0.035)))
+    arm_r.append(box(col, "crown_cross_v", (-0.72, -0.22, 4.77), (0.01, 0.01, 0.06), bevel=0.0))
+    arm_r.append(box(col, "crown_cross_h", (-0.72, -0.22, 4.79), (0.035, 0.01, 0.01), bevel=0.0))
 
     # Left arm (+X) hangs at the side, skeletal hand open; its sleeve falls from the shoulder.
-    p.append(limb(col, "upper_arm_l", (0.4, 0.0, 3.5), (0.47, 0.0, 2.95), 0.07, 0.055, segments=10))
-    p.append(limb(col, "forearm_l", (0.47, 0.0, 2.95), (0.5, -0.06, 2.45), 0.05, 0.035, segments=10))
-    p.append(limb(col, "sleeve_l", (0.42, 0.0, 3.45), (0.52, 0.0, 2.75), 0.13, 0.25, segments=16))
-    p.append(sphere(col, "hand_l", (0.51, -0.07, 2.35), (0.05, 0.04, 0.09)))
+    arm_l.append(limb(col, "upper_arm_l", (0.4, 0.0, 3.5), (0.47, 0.0, 2.95), 0.07, 0.055, segments=10))
+    arm_l.append(limb(col, "forearm_l", (0.47, 0.0, 2.95), (0.5, -0.06, 2.45), 0.05, 0.035, segments=10))
+    arm_l.append(limb(col, "sleeve_l", (0.42, 0.0, 3.45), (0.52, 0.0, 2.75), 0.13, 0.25, segments=16))
+    arm_l.append(sphere(col, "hand_l", (0.51, -0.07, 2.35), (0.05, 0.04, 0.09)))
 
     # Sandalled feet under the gown.
     for x in (0.12, -0.12):
         p.append(box(col, "foot", (x, -0.48, 0.04), (0.06, 0.13, 0.04), bevel=0.02))
-    body = finish(p, "alma_mater", scale=1.05, smooth_deg=60)
-
-    eyes = finish([sphere(col, "eye_l", (0.062, -0.19, 4.02), (0.04, 0.022, 0.034)),
-                   sphere(col, "eye_r", (-0.062, -0.19, 4.02), (0.04, 0.022, 0.034))], "Eyes", scale=1.05)
-    eyes.parent = body
+    s = 1.05
+    body = finish(p, "alma_mater", scale=s, smooth_deg=60)
+    # Moving parts for Unity's procedural motion, each pivoting at its joint.
+    head_obj = part(head, "Head", (0, -0.02, 3.8), body, scale=s, smooth_deg=60)
+    part(arm_r, "ArmR", (-0.42, 0.0, 3.5), body, scale=s, smooth_deg=60)
+    part(arm_l, "ArmL", (0.42, 0.0, 3.5), body, scale=s, smooth_deg=60)
+    part([sphere(col, "eye_l", (0.062, -0.19, 4.02), (0.04, 0.022, 0.034)),
+          sphere(col, "eye_r", (-0.062, -0.19, 4.02), (0.04, 0.022, 0.034))], "Eyes", (0, -0.02, 3.8), head_obj, scale=s)
 
     # The owl perches on the sash at the left of the chest (GDD 6.7). Separate so Unity can show it only while it is
     # out; while hidden, it is tucked into the robe.
@@ -311,61 +330,73 @@ def lich(col):
         cone(col, "owl_ear_l", (0.26, -0.34, 3.32), 0.02, 0.0, 0.05, segments=6),
         cone(col, "owl_ear_r", (0.18, -0.34, 3.32), 0.02, 0.0, 0.05, segments=6),
     ]
-    owl_obj = finish(owl, "Owl", scale=1.05)
-    owl_obj.parent = body
+    part(owl, "Owl", (0.22, -0.33, 3.05), body, scale=s)
     return body
 
 
 def lion(col):
-    """Columbia Lion: a lion with a heavy mane."""
-    p = []
+    """Columbia Lion: a lion with a heavy mane. Head, the four legs, and the tail move."""
+    p, head, tail = [], [], []
+    legs = {"LegFL": [], "LegFR": [], "LegBL": [], "LegBR": []}
     p.append(sphere(col, "barrel", (0, 0.3, 1.75), (0.82, 1.6, 0.78)))
     p.append(sphere(col, "chest", (0, -0.9, 1.9), (0.92, 0.85, 0.95)))
     p.append(sphere(col, "haunch", (0, 1.4, 1.75), (0.78, 0.8, 0.82)))
     p.append(limb(col, "neck", (0, -1.2, 2.2), (0, -1.75, 2.65), 0.62, 0.52))
     mane = ico(col, "mane", (0, -1.72, 2.68), (1.12, 0.85, 1.15), subdivisions=3)
     roughen(mane, 0.12, seed=7)
-    p.append(mane)
-    p.append(sphere(col, "head", (0, -2.12, 2.75), (0.52, 0.58, 0.52)))
-    p.append(box(col, "muzzle", (0, -2.62, 2.58), (0.3, 0.32, 0.22), bevel=0.1))
-    p.append(sphere(col, "nose", (0, -2.92, 2.7), (0.12, 0.08, 0.08)))
-    p.append(box(col, "jaw", (0, -2.55, 2.32), (0.26, 0.28, 0.1), bevel=0.06))
-    p.append(cone(col, "ear_l", (0.36, -1.98, 3.15), 0.13, 0.04, 0.2, segments=10))
-    p.append(cone(col, "ear_r", (-0.36, -1.98, 3.15), 0.13, 0.04, 0.2, segments=10))
-    for x in (0.48, -0.48):
-        p.append(limb(col, "foreleg", (x, -1.0, 1.7), (x, -1.1, 0.2), 0.38, 0.26))
-        p.append(sphere(col, "forepaw", (x, -1.22, 0.15), (0.3, 0.38, 0.17)))
-        p.append(limb(col, "thigh", (x, 1.45, 1.75), (x, 1.75, 0.95), 0.46, 0.3))
-        p.append(limb(col, "hindleg", (x, 1.75, 0.95), (x, 1.55, 0.2), 0.3, 0.24))
-        p.append(sphere(col, "hindpaw", (x, 1.45, 0.15), (0.28, 0.36, 0.16)))
-    p.append(limb(col, "tail", (0, 2.15, 1.95), (0, 3.1, 1.0), 0.11, 0.07, segments=10))
+    head.append(mane)
+    head.append(sphere(col, "head", (0, -2.12, 2.75), (0.52, 0.58, 0.52)))
+    head.append(box(col, "muzzle", (0, -2.62, 2.58), (0.3, 0.32, 0.22), bevel=0.1))
+    head.append(sphere(col, "nose", (0, -2.92, 2.7), (0.12, 0.08, 0.08)))
+    head.append(box(col, "jaw", (0, -2.55, 2.32), (0.26, 0.28, 0.1), bevel=0.06))
+    head.append(cone(col, "ear_l", (0.36, -1.98, 3.15), 0.13, 0.04, 0.2, segments=10))
+    head.append(cone(col, "ear_r", (-0.36, -1.98, 3.15), 0.13, 0.04, 0.2, segments=10))
+    for x, side in ((0.48, "L"), (-0.48, "R")):
+        fore, hind = legs["LegF" + side], legs["LegB" + side]
+        fore.append(limb(col, "foreleg", (x, -1.0, 1.7), (x, -1.1, 0.2), 0.38, 0.26))
+        fore.append(sphere(col, "forepaw", (x, -1.22, 0.15), (0.3, 0.38, 0.17)))
+        hind.append(limb(col, "thigh", (x, 1.45, 1.75), (x, 1.75, 0.95), 0.46, 0.3))
+        hind.append(limb(col, "hindleg", (x, 1.75, 0.95), (x, 1.55, 0.2), 0.3, 0.24))
+        hind.append(sphere(col, "hindpaw", (x, 1.45, 0.15), (0.28, 0.36, 0.16)))
+    tail.append(limb(col, "tail", (0, 2.15, 1.95), (0, 3.1, 1.0), 0.11, 0.07, segments=10))
     tuft = ico(col, "tuft", (0, 3.2, 0.9), (0.2, 0.2, 0.25))
     roughen(tuft, 0.04, seed=3)
-    p.append(tuft)
-    return finish(p, "columbia_lion", scale=0.9)
+    tail.append(tuft)
+    s = 0.9
+    body = finish(p, "columbia_lion", scale=s)
+    part(head, "Head", (0, -1.45, 2.45), body, scale=s)
+    for name, parts in legs.items():
+        x = 0.48 if name.endswith("L") else -0.48
+        part(parts, name, (x, -1.0, 1.7) if "F" in name else (x, 1.5, 1.75), body, scale=s)
+    part(tail, "Tail", (0, 2.15, 1.95), body, scale=s)
+    return body
 
 
 def golem(col):
-    """Book Keeper: a plain stone golem of stacked blocks, with a shelf of stone books in its chest."""
+    """
+    Book Keeper: a plain stone golem of stacked blocks, with a shelf of stone books in its chest. Head, both arms, and
+    both legs move.
+    """
     rng = random.Random(11)
     p = []
+    groups = {"Head": [], "ArmL": [], "ArmR": [], "LegL": [], "LegR": []}
 
-    def block(name, loc, half, bevel=0.06):
+    def block(name, loc, half, bevel=0.06, group=None):
         rot = (rng.uniform(-3, 3), rng.uniform(-3, 3), rng.uniform(-4, 4))
-        p.append(box(col, name, loc, half, rot_deg=rot, bevel=bevel))
+        (groups[group] if group else p).append(box(col, name, loc, half, rot_deg=rot, bevel=bevel))
 
     block("torso", (0, 0, 2.8), (0.95, 0.6, 0.8))
     block("pelvis", (0, 0, 1.72), (0.7, 0.48, 0.3))
-    block("head", (0, -0.12, 3.88), (0.34, 0.32, 0.28))
-    p.append(box(col, "brow", (0, -0.42, 3.98), (0.3, 0.06, 0.06), bevel=0.02))
-    for side in (1, -1):
+    block("head", (0, -0.12, 3.88), (0.34, 0.32, 0.28), group="Head")
+    groups["Head"].append(box(col, "brow", (0, -0.42, 3.98), (0.3, 0.06, 0.06), bevel=0.02))
+    for side, s in ((1, "L"), (-1, "R")):
         block("shoulder", (side * 1.22, 0, 3.3), (0.42, 0.45, 0.38))
-        block("upper_arm", (side * 1.32, 0, 2.5), (0.3, 0.3, 0.5))
-        block("forearm", (side * 1.38, -0.12, 1.62), (0.37, 0.37, 0.45))
-        block("fist", (side * 1.4, -0.16, 0.96), (0.42, 0.42, 0.36))
-        block("thigh", (side * 0.48, 0, 1.15), (0.36, 0.36, 0.38))
-        block("shin", (side * 0.5, 0, 0.52), (0.33, 0.33, 0.3))
-        block("foot", (side * 0.5, -0.12, 0.12), (0.42, 0.55, 0.13))
+        block("upper_arm", (side * 1.32, 0, 2.5), (0.3, 0.3, 0.5), group="Arm" + s)
+        block("forearm", (side * 1.38, -0.12, 1.62), (0.37, 0.37, 0.45), group="Arm" + s)
+        block("fist", (side * 1.4, -0.16, 0.96), (0.42, 0.42, 0.36), group="Arm" + s)
+        block("thigh", (side * 0.48, 0, 1.15), (0.36, 0.36, 0.38), group="Leg" + s)
+        block("shin", (side * 0.5, 0, 0.52), (0.33, 0.33, 0.3), group="Leg" + s)
+        block("foot", (side * 0.5, -0.12, 0.12), (0.42, 0.55, 0.13), group="Leg" + s)
 
     # The shelf: a frame on the chest with two rows of stone books.
     p.append(box(col, "shelf_frame", (0, -0.62, 2.8), (0.62, 0.06, 0.55), bevel=0.02))
@@ -380,6 +411,10 @@ def golem(col):
             x += 2 * w + 0.01
     obj = finish(p, "book_keeper")
     roughen(obj, 0.01, seed=5)
+    pivots = {"Head": (0, -0.12, 3.6), "ArmL": (1.25, 0, 3.05), "ArmR": (-1.25, 0, 3.05),
+              "LegL": (0.48, 0, 1.55), "LegR": (-0.48, 0, 1.55)}
+    for name, parts in groups.items():
+        part(parts, name, pivots[name], obj)
     return obj
 
 
@@ -388,7 +423,7 @@ def golem(col):
 def export(obj, path):
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
-    for child in obj.children:
+    for child in obj.children_recursive:
         child.select_set(True)
     bpy.context.view_layer.objects.active = obj
     saved = obj.location.copy()
