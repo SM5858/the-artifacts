@@ -6,7 +6,8 @@ when EXPORT_DIR is set, writes one FBX per Guardian for Unity:
 
     alma_mater.fbx     skeletal scholar in a torn robe and mantle, crowned sceptre, book on the belt; children "Owl"
                        (the weak point) and "Eyes" (glow)
-    columbia_lion.fbx  bronze lion statue: metaball muscle, a mane of swept locks, fangs; child "Eyes" (glow)
+    columbia_lion.fbx  bronze lion guardian: metaball muscle and a sculpted mane of flowing locks, a laurel collar
+                       with a temple medallion, fangs, long claws; child "Eyes" (glow)
     book_keeper.fbx    golem of hewn, chipped stone blocks with a shelf of stone books in its chest; child "Eyes"
 
 Conventions: metres; origin at the feet; the model faces -Y (Blender's front view), which is +Z (forward) in Unity
@@ -20,7 +21,7 @@ import random
 
 import bmesh
 import bpy
-from mathutils import Euler, Matrix, Vector
+from mathutils import Euler, Matrix, Quaternion, Vector
 
 COLLECTION = "Guardians"
 TEXTURE_METRES = 2.0
@@ -613,7 +614,7 @@ def blob(col, name, elements, resolution=0.06):
         el.radius = 1.0
         # With stiffness 2 and threshold 0.6 a lone element's surface sits at about 0.67 of its size.
         el.size_x, el.size_y, el.size_z = (h * 1.5 for h in half)
-        el.rotation = Euler([math.radians(a) for a in rot]).to_quaternion()
+        el.rotation = rot if isinstance(rot, Quaternion) else Euler([math.radians(a) for a in rot]).to_quaternion()
     bpy.context.view_layer.update()
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
@@ -625,107 +626,181 @@ def blob(col, name, elements, resolution=0.06):
     return mesh_obj
 
 
+def lock(base, flow, length, width, rng, gravity=0.35, curl=0.25):
+    """
+    Metaball elements for one flowing lock of mane: from the root along flow, sagging under gravity, curling at the
+    tip, flattened like a sculpted ribbon. Locks in one blob melt into each other like cast bronze.
+    """
+    base, flow = Vector(base), Vector(flow).normalized()
+    side = flow.cross(Vector((0, 0, 1)))
+    side = side.normalized() if side.length > 1e-4 else Vector((1, 0, 0))
+    twist = rng.uniform(-0.15, 0.15)
+    pts = []
+    for k in range(6):
+        t = k / 5
+        q = base + flow * (length * t) + Vector((0, 0, -gravity * (length * t) ** 2)) + side * (twist * length * t * t)
+        if k >= 4:
+            q += (Vector((0, 0, 1)) * 0.35 - flow * 0.2) * (curl * length * (t - 0.6))
+        pts.append(q)
+    elements = []
+    for k in range(5):
+        a, b = pts[k], pts[k + 1]
+        w = width * (1.0 - 0.45 * k / 5)
+        d = (b - a)
+        quat = Vector((0, 1, 0)).rotation_difference(d.normalized())
+        elements.append(((a + b) / 2, (w, d.length * 0.75, w * 0.42), quat))
+    return elements
+
+
 def lion(col):
     """
-    Columbia Lion as a living bronze statue: a muscular lion (shoulders, ribcage, haunches melt together) with a deep
-    mane of curling tufts, a heavy brow, whisker pads, bared fangs, glowing eyes, toed paws with claws, and a tufted
-    tail. Head, the four legs, and the tail are separate parts; "Eyes" glows.
+    Columbia Lion (concept: "Ancient bronze lion guardian" sheet, 2026-11-23): a tall, lean, muscular lion standing
+    square, head high and roaring, with a deep chest and tucked waist, long legs, big paws with long curved claws, a
+    great mane of long flowing locks over the head, chest, and shoulders, a laurel collar with a temple medallion on
+    the chest, glowing eyes, and a long S-curved tail ending in a flame-like tuft. Head (with the mane), the four
+    legs, and the tail are separate parts; "Eyes" glows.
     """
     rng = random.Random(17)
     p, head, tail = [], [], []
     legs = {"LegFL": [], "LegFR": [], "LegBL": [], "LegBR": []}
 
     p.append(blob(col, "lion_body", [
-        ((0, -0.85, 1.95), (0.78, 0.75, 0.82), (0, 0, 0)),     # chest
-        ((0, 0.2, 1.88), (0.66, 1.1, 0.66), (0, 0, 0)),        # ribcage, tucking toward the waist
-        ((0, 0.75, 1.92), (0.55, 0.5, 0.55), (0, 0, 0)),       # waist
-        ((0, 1.35, 1.82), (0.66, 0.65, 0.72), (0, 0, 0)),      # haunch
-        ((0.5, -0.85, 2.15), (0.3, 0.45, 0.45), (0, 0, 0)),    # shoulder blades
-        ((-0.5, -0.85, 2.15), (0.3, 0.45, 0.45), (0, 0, 0)),
-        ((0, -1.45, 2.4), (0.5, 0.55, 0.5), (-30, 0, 0)),      # neck
-        ((0, 0.0, 1.3), (0.5, 0.9, 0.3), (0, 0, 0)),           # belly
-    ]))
+        ((0, -0.85, 1.98), (0.7, 0.62, 0.82), (0, 0, 0)),       # deep chest
+        ((0, -0.2, 2.05), (0.54, 0.8, 0.6), (0, 0, 0)),         # ribcage
+        ((0, 0.6, 2.25), (0.42, 0.6, 0.36), (0, 0, 0)),         # waist: the back stays level, the belly tucks up
+        ((0, 1.35, 2.15), (0.44, 0.5, 0.42), (0, 0, 0)),        # haunch
+        ((0.4, -0.85, 2.35), (0.24, 0.42, 0.5), (-15, 0, 0)),   # shoulder blades
+        ((-0.4, -0.85, 2.35), (0.24, 0.42, 0.5), (-15, 0, 0)),
+        ((0, -1.4, 2.7), (0.42, 0.5, 0.58), (-40, 0, 0)),       # neck, rising
+    ] + [e for x in (0.42, -0.42) for e in (
+        ((x, -0.95, 1.65), (0.3, 0.36, 0.6), (6, 0, 0)),        # upper forelegs and triceps
+        ((x * 0.85, 1.42, 1.82), (0.2, 0.42, 0.44), (-15, 0, 0)),  # thighs, inside the haunch
+    )], resolution=0.05))
 
-    # Legs: muscle masses down to the paw, each its own part.
-    for x, side in ((0.5, "L"), (-0.5, "R")):
-        sgn = 1 if side == "L" else -1
+    # Legs: long, muscled, ending in big paws with long curved claws.
+    for x, side in ((0.42, "L"), (-0.42, "R")):
         fore = blob(col, "lion_fore" + side, [
-            ((x, -0.98, 1.4), (0.34, 0.38, 0.52), (8, 0, 0)),      # upper foreleg
-            ((x, -1.06, 0.8), (0.25, 0.27, 0.42), (4, 0, 0)),      # forearm
-            ((x, -1.1, 0.35), (0.2, 0.21, 0.18), (0, 0, 0)),       # wrist
-            ((x, -1.22, 0.13), (0.26, 0.32, 0.14), (0, 0, 0)),     # paw
-        ], resolution=0.045)
+            ((x * 1.05, -1.0, 1.25), (0.23, 0.29, 0.26), (0, 0, 0)),  # elbow
+            ((x, -1.02, 0.85), (0.26, 0.28, 0.48), (3, 0, 0)),      # forearm
+            ((x, -1.06, 0.33), (0.19, 0.2, 0.16), (0, 0, 0)),       # wrist
+            ((x, -1.2, 0.14), (0.25, 0.33, 0.14), (0, 0, 0)),       # paw
+        ], resolution=0.04)
         hind = blob(col, "lion_hind" + side, [
-            ((x, 1.48, 1.45), (0.38, 0.6, 0.6), (-15, 0, 0)),      # thigh
-            ((x, 1.76, 0.9), (0.24, 0.3, 0.38), (25, 0, 0)),       # gaskin to the hock
-            ((x, 1.62, 0.45), (0.18, 0.19, 0.3), (-10, 0, 0)),     # cannon
-            ((x, 1.5, 0.13), (0.25, 0.32, 0.14), (0, 0, 0)),       # paw
-        ], resolution=0.045)
+            ((x, 1.74, 1.2), (0.23, 0.3, 0.5), (25, 0, 0)),         # gaskin to the hock
+            ((x, 1.66, 0.52), (0.17, 0.18, 0.34), (-10, 0, 0)),     # cannon
+            ((x, 1.5, 0.14), (0.23, 0.32, 0.14), (0, 0, 0)),        # paw
+        ], resolution=0.04)
         legs["LegF" + side].append(fore)
         legs["LegB" + side].append(hind)
-        for out, (py, pz) in ((legs["LegF" + side], (-1.22, 0.13)), (legs["LegB" + side], (1.5, 0.13))):
-            for k in range(4):  # toes and claws along the front of the paw
-                tx = x + (k - 1.5) * 0.1
-                out.append(sphere(col, "toe", (tx, py - 0.26, pz), (0.06, 0.08, 0.07), segments=12, rings=6))
-                out.append(limb(col, "claw", (tx, py - 0.32, pz + 0.02), (tx, py - 0.4, pz - 0.06), 0.022, 0.003,
-                                segments=6))
+        for out, py in ((legs["LegF" + side], -1.2), (legs["LegB" + side], 1.5)):
+            for k in range(4):  # toes, each with a long claw curving down to the floor
+                tx = x + (k - 1.5) * 0.105
+                out.append(sphere(col, "toe", (tx, py - 0.27, 0.12), (0.065, 0.09, 0.08), segments=12, rings=6))
+                _chain(col, out, [(tx, py - 0.33, 0.15), (tx, py - 0.43, 0.13), (tx, py - 0.49, 0.06),
+                                  (tx, py - 0.5, 0.01)], 0.03, 0.006, joints=False)
 
-    # Head: skull, muzzle, whisker pads, brow, jaw; the nose, fangs, and ears on top.
+    # Head: high and angular, a heavy brow, a long muzzle, the jaw dropped open in a roar.
     head.append(blob(col, "lion_head", [
-        ((0, -2.1, 2.78), (0.45, 0.5, 0.42), (0, 0, 0)),
-        ((0, -2.55, 2.6), (0.27, 0.33, 0.21), (0, 0, 0)),       # muzzle
-        ((0, -2.42, 2.8), (0.17, 0.36, 0.12), (12, 0, 0)),      # bridge of the nose
-        ((0.15, -2.66, 2.55), (0.14, 0.15, 0.13), (0, 0, 0)),   # whisker pads
-        ((-0.15, -2.66, 2.55), (0.14, 0.15, 0.13), (0, 0, 0)),
-        ((0, -2.47, 2.36), (0.2, 0.28, 0.09), (0, 0, 0)),       # lower jaw
-        ((0.19, -2.36, 2.95), (0.15, 0.12, 0.08), (0, 0, 15)),  # brow
-        ((-0.19, -2.36, 2.95), (0.15, 0.12, 0.08), (0, 0, -15)),
-    ], resolution=0.035))
-    head.append(sphere(col, "nose", (0, -2.86, 2.72), (0.12, 0.07, 0.08), segments=16, rings=8))
-    for x in (0.11, -0.11):
-        head.append(limb(col, "fang", (x, -2.78, 2.47), (x * 0.9, -2.8, 2.33), 0.028, 0.004, segments=8))
-        head.append(limb(col, "fang", (x * 0.8, -2.62, 2.33), (x * 0.75, -2.64, 2.43), 0.022, 0.003, segments=8))
-    for x in (0.34, -0.34):
-        head.append(cone(col, "ear", (x, -1.98, 3.12), 0.12, 0.03, 0.18, segments=10))
-    # The mane: a mass round the head and neck, covered in curling tufts that sweep out and back.
-    head.append(blob(col, "lion_mane", [
-        ((0, -1.62, 2.68), (0.72, 0.42, 0.78), (0, 0, 0)),       # round the face, behind it
-        ((0, -1.25, 2.35), (0.66, 0.5, 0.7), (-20, 0, 0)),       # down the neck to the shoulders
-        ((0, -1.6, 1.8), (0.45, 0.38, 0.45), (0, 0, 0)),          # the chest ruff
-    ], resolution=0.07))
-    for k in range(190):
-        u = rng.uniform(0, 2 * math.pi)   # round the neck, viewed from the front
-        v = rng.uniform(0.0, 1.0)         # how far back along the neck
-        r = 0.62 + 0.1 * v + rng.uniform(-0.05, 0.05)
-        base = Vector((math.sin(u) * r, -1.9 + v * 0.8, 2.62 - 0.25 * v + math.cos(u) * r * 1.05))
-        if math.cos(u) < -0.55 and v < 0.3:
-            continue  # leave the throat under the jaw clear
-        out = Vector((math.sin(u), 0.0, math.cos(u))).normalized()
-        # A lock of hair: thick at the root, swept back, curling down at the end.
-        mid = base + out * rng.uniform(0.14, 0.24) + Vector((0, rng.uniform(0.12, 0.25), 0.02))
-        tip = mid + out * rng.uniform(0.05, 0.12) + Vector((0, rng.uniform(0.1, 0.2), -rng.uniform(0.08, 0.16)))
-        width = rng.uniform(0.13, 0.19)
-        head.append(limb(col, "lock", base, mid, width, width * 0.75, segments=8))
-        head.append(sphere(col, "lock_bend", mid, (width * 0.75,) * 3, segments=8, rings=5))
-        head.append(limb(col, "lock", mid, tip, width * 0.75, 0.035, segments=8))
+        ((0, -1.95, 3.32), (0.36, 0.4, 0.34), (0, 0, 0)),          # skull
+        ((0, -2.15, 3.46), (0.28, 0.22, 0.11), (25, 0, 0)),        # sloping forehead
+        ((0.15, -2.3, 3.4), (0.17, 0.12, 0.075), (0, -25, 0)),     # heavy brow in a frowning V
+        ((-0.15, -2.3, 3.4), (0.17, 0.12, 0.075), (0, 25, 0)),
+        ((0, -2.42, 3.26), (0.16, 0.32, 0.12), (18, 0, 0)),        # long, broad bridge of the nose
+        ((0.13, -2.52, 3.03), (0.16, 0.18, 0.13), (0, 0, 0)),      # whisker pads
+        ((-0.13, -2.52, 3.03), (0.16, 0.18, 0.13), (0, 0, 0)),
+        ((0.26, -2.05, 3.1), (0.13, 0.22, 0.15), (0, 0, 0)),       # cheeks
+        ((-0.26, -2.05, 3.1), (0.13, 0.22, 0.15), (0, 0, 0)),
+    ], resolution=0.028))
+    head.append(blob(col, "lion_jaw", [
+        ((0, -2.3, 2.79), (0.19, 0.27, 0.085), (-25, 0, 0)),       # lower jaw, dropped open in a roar
+        ((0, -2.1, 2.9), (0.2, 0.2, 0.1), (0, 0, 0)),
+    ], resolution=0.028))
+    head.append(sphere(col, "nose", (0, -2.7, 3.15), (0.13, 0.08, 0.075), segments=16, rings=8))
+    for x in (0.1, -0.1):
+        head.append(limb(col, "fang", (x * 1.2, -2.6, 2.98), (x * 1.1, -2.62, 2.78), 0.035, 0.004, segments=8))
+        head.append(limb(col, "fang", (x, -2.48, 2.72), (x * 0.95, -2.52, 2.88), 0.03, 0.004, segments=8))
+        head.append(cone(col, "ear", (x * 2.8, -1.82, 3.58), 0.11, 0.025, 0.2, segments=10))
 
-    # Tail: a curving chain ending in a tuft.
-    pts = [(0, 2.05, 1.95), (0, 2.5, 1.7), (0.08, 2.85, 1.3), (0.12, 3.05, 0.95)]
-    _chain(col, tail, pts, 0.11, 0.075)
-    for k in range(9):
-        a = 2 * math.pi * k / 9
-        d = Vector((math.cos(a) * 0.12, 0.08 + math.sin(a) * 0.05, -0.25))
-        tail.append(limb(col, "tail_tuft", (0.12, 3.05, 0.95), Vector((0.12, 3.05, 0.95)) + d * 1.3, 0.11, 0.025, segments=6))
+    # The mane: a mass round the head and neck, then long locks: a crown round the face sweeping back, locks down
+    # the neck and over the shoulders, and a bib down the chest to the knees.
+    # The mane: a great volume over the head, neck, shoulders and chest (concept side view: it reaches the elbows
+    # and back to mid-back), its surface sculpted by locks lying along it, flowing back and down, curling at the ends.
+    mane = [
+        ((0, -1.68, 3.2), (0.74, 0.5, 0.82), (0, 0, 0)),         # halo round the face
+        ((0, -1.2, 3.0), (0.64, 0.6, 0.66), (0, 0, 0)),          # back of the head
+        ((0, -0.85, 2.5), (0.68, 0.6, 0.62), (0, 0, 0)),         # over the neck and shoulders
+        ((0, -1.55, 2.05), (0.55, 0.42, 0.72), (0, 0, 0)),       # chest bib
+        ((0.45, -1.15, 1.95), (0.3, 0.42, 0.6), (0, 0, 0)),      # down to the elbows
+        ((-0.45, -1.15, 1.95), (0.3, 0.42, 0.6), (0, 0, 0)),
+    ]
+    for k in range(44):  # round the face, sweeping out and back
+        u = 2 * math.pi * k / 44 + rng.uniform(-0.05, 0.05)
+        r = 0.56 + rng.uniform(-0.03, 0.04)
+        base = Vector((math.sin(u) * r, -2.0 + rng.uniform(0, 0.08), 3.15 + math.cos(u) * r * 1.1))
+        flow = Vector((math.sin(u) * 0.9, 0.7, math.cos(u) * 0.8 - 0.3))
+        mane += lock(base, flow, rng.uniform(0.4, 0.62), rng.uniform(0.17, 0.22), rng, gravity=0.3, curl=0.35)
+    for k in range(95):  # lying along the head, neck and shoulders, flowing back and down
+        u = rng.uniform(-2.1, 2.1)
+        y = rng.uniform(-1.85, -0.55)
+        r = 0.58 + 0.08 * math.sin((y + 1.85) / 1.3 * math.pi)
+        zc = 3.05 - 0.55 * (y + 1.85)
+        base = Vector((math.sin(u) * r, y, zc + math.cos(u) * r * 0.7))
+        flow = Vector((math.sin(u) * 0.6, 0.6, -0.7 + 0.3 * math.cos(u)))
+        mane += lock(base, flow, rng.uniform(0.45, 0.7), rng.uniform(0.18, 0.24), rng, gravity=0.3, curl=0.5)
+    for k in range(32):  # the bib, falling down the chest
+        x = rng.uniform(-0.5, 0.5)
+        z = rng.uniform(1.7, 2.75)
+        base = Vector((x, -1.9 - 0.08 * (1 - abs(x) / 0.5), z))
+        flow = Vector((x * 0.5, -0.1, -1.0))
+        mane += lock(base, flow, rng.uniform(0.4, 0.65), rng.uniform(0.17, 0.22), rng, gravity=0.05, curl=0.5)
+    head.append(blob(col, "lion_mane", mane, resolution=0.045))
+
+    # The laurel collar across the chest and its temple medallion.
+    cc, major, squash = Vector((0, -1.6, 2.4)), 0.8, 0.95
+    head.append(torus(col, "collar", cc, major, 0.06, tilt_deg=50, squash_y=squash))
+    tilt = Matrix.Rotation(math.radians(50), 4, "X")
+    for k in range(22):
+        a = math.pi * (0.2 + 0.6 * k / 21) + math.pi / 2  # the front half of the collar
+        on = tilt @ Vector((major * math.cos(a), major * squash * math.sin(a), 0.0)) + cc
+        leaf = ico(col, "collar_leaf", (0, 0, 0), (0.06, 0.022, 0.008), subdivisions=1)
+        head.append(_turned(leaf, Matrix.Translation(on + Vector((0, -0.06, 0))) @ tilt
+                            @ Matrix.Rotation(a + math.pi / 2 + (0.4 if k % 2 else -0.4), 4, "Z")))
+    front = tilt @ Vector((0, -major * squash, 0)) + cc
+    face = Matrix.Translation(front + Vector((0, -0.08, 0))) @ Matrix.Rotation(math.radians(-40), 4, "X") \
+        @ Matrix.Diagonal((1.4, 1.4, 1.4, 1))
+    medallion = [limb(col, "medallion", (0, 0.03, 0), (0, -0.02, 0), 0.15, 0.15, segments=28),
+                 torus(col, "medallion_rim", (0, -0.025, 0), 0.14, 0.018, tilt_deg=90),
+                 box(col, "temple_base", (0, -0.035, -0.07), (0.085, 0.012, 0.012), bevel=0.0),
+                 box(col, "temple_roof", (0, -0.035, 0.065), (0.09, 0.012, 0.012), bevel=0.0),
+                 box(col, "temple_pediment", (0, -0.035, 0.09), (0.05, 0.012, 0.05), rot_deg=(0, 45, 0), bevel=0.0)]
+    for cx in (-0.06, -0.02, 0.02, 0.06):
+        medallion.append(limb(col, "temple_column", (cx, -0.035, -0.06), (cx, -0.035, 0.055), 0.011, 0.011,
+                              segments=6))
+    for o in medallion:
+        head.append(_turned(o, face))
+
+    # Tail: long, rising then falling in an S, ending in a flame-like tuft of locks.
+    pts = [(0, 2.0, 2.25), (0, 2.35, 2.32), (0, 2.8, 2.05), (0.05, 3.08, 1.5), (0.1, 3.15, 0.95), (0.16, 3.02, 0.6)]
+    elements = []
+    for k, (a, b) in enumerate(zip(pts, pts[1:])):
+        a, b = Vector(a), Vector(b)
+        w = 0.11 - 0.008 * k
+        elements.append(((a + b) / 2, (w, (b - a).length * 0.7, w), Vector((0, 1, 0)).rotation_difference((b - a).normalized())))
+    for k in range(10):
+        a = 2 * math.pi * k / 10
+        flow = Vector((math.cos(a) * 0.35, -0.3 + math.sin(a) * 0.35, -1.0))
+        elements += lock((0.16, 3.02, 0.66), flow, rng.uniform(0.35, 0.55), 0.1, rng, gravity=0.1, curl=0.6)
+    tail.append(blob(col, "lion_tail", elements, resolution=0.035))
 
     s = 0.9
     body = finish(p, "columbia_lion", scale=s, smooth_deg=70)
-    head_obj = part(head, "Head", (0, -1.45, 2.45), body, scale=s, smooth_deg=70)
+    head_obj = part(head, "Head", (0, -1.45, 2.75), body, scale=s, smooth_deg=70)
     for name, parts in legs.items():
-        x = 0.5 if name.endswith("L") else -0.5
-        part(parts, name, (x, -1.0, 1.7) if "F" in name else (x, 1.5, 1.75), body, scale=s, smooth_deg=70)
-    part(tail, "Tail", (0, 2.05, 1.95), body, scale=s, smooth_deg=70)
-    part([sphere(col, "eye", (x, -2.5, 2.86), (0.05, 0.03, 0.035)) for x in (0.17, -0.17)], "Eyes",
-         (0, -1.45, 2.45), head_obj, scale=s)
+        x = 0.42 if name.endswith("L") else -0.42
+        part(parts, name, (x, -1.0, 2.0) if "F" in name else (x, 1.5, 2.1), body, scale=s, smooth_deg=70)
+    part(tail, "Tail", (0, 2.0, 2.25), body, scale=s, smooth_deg=70)
+    part([sphere(col, "eye", (x, -2.33, 3.32), (0.05, 0.02, 0.022)) for x in (0.15, -0.15)], "Eyes",
+         (0, -1.45, 2.75), head_obj, scale=s)
     return body
 
 
