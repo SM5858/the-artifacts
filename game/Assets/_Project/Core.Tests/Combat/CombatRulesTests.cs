@@ -204,8 +204,9 @@ namespace TheArtifacts.Core.Tests.Combat
         {
             var shelf = sim.FindLoreTarget(id);
             var range = System.Math.Min(PlayerRules.FireBoltRange, PlayerRules.LightningBoltRange) - 0.5f;
-            RunUntil(sim, s => Vec2.Distance(s.PlayerPosition, shelf.Position) <= range, 5f,
-                s => new PlayerInput((shelf.Position - s.PlayerPosition).Normalized()));
+            // Veer a little to the side: the Guardian's body stands between the start and the shelf (Combat Spec 4.8).
+            RunUntil(sim, s => Vec2.Distance(s.PlayerPosition, shelf.Position) <= range, 8f,
+                s => new PlayerInput(((shelf.Position - s.PlayerPosition).Normalized() + new Vec2(0.3f, 0f)).Normalized()));
             return shelf;
         }
 
