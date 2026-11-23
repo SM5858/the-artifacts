@@ -35,6 +35,10 @@ namespace TheArtifacts.PC.Combat
 
         float _time, _walkPhase, _speed, _moving, _windup, _slump, _tremble, _strike, _flinch, _death, _dt;
         Vec2? _lastPosition;
+        /// <summary>The Guardian's velocity in its own frame (x right, z forward), m/s.</summary>
+        Vector3 _localVelocity;
+        /// <summary>The lich's robe joints, top to bottom: each lags the one above it on a loose spring (x roll, y pitch).</summary>
+        readonly Vector2[] _drag = new Vector2[3], _dragRate = new Vector2[3];
 
         /// <param name="model">The model's root, a child of <paramref name="frame"/>.</param>
         /// <param name="frame">The Guardian's transform: +Z is its facing, +Y up.</param>
@@ -65,6 +69,8 @@ namespace TheArtifacts.PC.Combat
         {
             _time = _walkPhase = _speed = _moving = _windup = _slump = _tremble = _strike = _flinch = _death = 0f;
             _lastPosition = null;
+            _localVelocity = Vector3.zero;
+            for (var i = 0; i < _drag.Length; i++) _drag[i] = _dragRate[i] = Vector2.zero;
             foreach (var b in _bones.Values) b.T.localRotation = b.RestRotation;
         }
 
@@ -76,6 +82,12 @@ namespace TheArtifacts.PC.Combat
 
             // Speed from the simulation, so a charge or a chase both move the legs.
             var speed = _lastPosition is Vec2 last ? Vec2.Distance(last, sim.GuardianPosition) / dt : 0f;
+            if (_lastPosition is Vec2 from)
+            {
+                var v = (sim.GuardianPosition - from) * (1f / dt);
+                _localVelocity = Vector3.Lerp(_localVelocity, _frame.InverseTransformDirection(new Vector3(v.X, 0f, v.Y)),
+                    1f - Mathf.Exp(-8f * dt));
+            }
             _lastPosition = sim.GuardianPosition;
             _speed = Damp(_speed, speed, 6f, dt);
             var ongoing = sim.Outcome == CombatOutcome.Ongoing;
@@ -154,8 +166,19 @@ namespace TheArtifacts.PC.Combat
             Turn("Hand_L", -35f * cast + 12f * Mathf.Sin(t * 10f) * cast);
 
             // The robe swings like cloth through three joints: it trails when she glides or lunges, and sways gently.
-            for (var i = 1; i <= 3; i++)
-                Turn($"Robe{i}", 7f * m + 6f * s - 3f * w + 3f * Mathf.Sin(t * 1.3f - i * 0.6f), 0f, 2.5f * Mathf.Sin(t * 1.0f - i * 0.6f));
+            // Her legs under the robe drag behind as she glides: the robe trails against her motion, each joint a
+            // little later than the one above, and swings past and settles when she stops or turns.
+            var lag = Mathf.Min(_dt, 0.05f);
+            var pull = new Vector2(-_localVelocity.x * 3f, _localVelocity.z * 3.5f);
+            pull = Vector2.ClampMagnitude(pull, 10f); // per joint: about 30° at the hem at full speed
+            for (var i = 0; i < _drag.Length; i++)
+            {
+                var target = i == 0 ? pull : _drag[i - 1];
+                _dragRate[i] += (40f * (target - _drag[i]) - 5f * _dragRate[i]) * lag;
+                _drag[i] += _dragRate[i] * lag;
+                Turn($"Robe{i + 1}", _drag[i].y + 6f * s - 3f * w + 2f * Mathf.Sin(t * 1.3f - i * 0.6f), 0f,
+                    _drag[i].x + 2f * Mathf.Sin(t * 1.0f - i * 0.6f), 20f);
+            }
         }
 
         /// <summary>
@@ -244,22 +267,23 @@ namespace TheArtifacts.PC.Combat
             // Standing, it sways its weight from leg to leg like a machine idling.
             var idle = Mathf.Sin(t * 0.8f) * (1f - m) * (1f - w);
             Root(p, 0.15f * Mathf.Abs(Mathf.Sin(a)) * m - 0.12f * stomp - 0.25f * w - 0.4f * s - 0.15f * sl - 1.0f * d,
-                6f * m - 14f * w + 25f * s + 10f * sl + 30f * d, 6f * step + 3f * idle);
+                6f * m - 14f * w + 25f * s + 10f * sl + 30f * d, 2.5f * step + 2f * idle);
 
             // Legs: alternate, knees fold only while a foot is in the air, the toe points as it lifts; a wide braced
             // stance in the tell; kneel when it falls.
             void Leg(string upper, string lower, string foot, string toe, float phase, float side)
             {
                 var lift = Mathf.Max(0f, Mathf.Cos(phase)) * m;
-                Turn(upper, -32f * Mathf.Sin(phase) * m - 20f * w + 10f * s - 70f * d, 0f, side * (8f * w + 4f * idle));
-                Turn(lower, 60f * lift + 30f * w + 15f * s + 100f * d);
-                Turn(foot, -20f * lift - 10f * w - 30f * d);
-                Turn(toe, 20f * lift + 15f * d);
+                // The legs keep up with the gait so the feet plant instead of sliding; the slowness is in the body.
+                Turn(upper, -30f * Mathf.Sin(phase) * m - 20f * w + 10f * s - 70f * d, 0f, side * (8f * w + 3f * idle), 16f);
+                Turn(lower, 55f * lift + 30f * w + 15f * s + 100f * d, 0f, 0f, 16f);
+                Turn(foot, -20f * lift - 10f * w - 30f * d, 0f, 0f, 16f);
+                Turn(toe, 20f * lift + 15f * d, 0f, 0f, 16f);
             }
             Leg("UpperLeg_L", "LowerLeg_L", "Foot_L", "Toe_L", a, 1f);
             Leg("UpperLeg_R", "LowerLeg_R", "Foot_R", "Toe_R", a + Mathf.PI, -1f);
 
-            Turn("Hips", 0f, 12f * step, 6f * step + 4f * idle);
+            Turn("Hips", 0f, 10f * step, 3f * step + 3f * idle);
             Turn("Spine", p.Breath * 2f - 10f * w + 20f * s + 8f * sl, -10f * step + 15f * w - 10f * s);
             Turn("Chest", -18f * w + 35f * s + 15f * sl - 15f * _flinch + 25f * d, -6f * step, p.Shake - 3f * idle);
 
@@ -302,7 +326,7 @@ namespace TheArtifacts.PC.Combat
         }
 
         /// <summary>Eases a bone toward a pose: pitch about the Guardian's right (positive tips forward), yaw about up, roll about forward.</summary>
-        void Turn(string bone, float pitch, float yaw = 0f, float roll = 0f)
+        void Turn(string bone, float pitch, float yaw = 0f, float roll = 0f, float follow = 0f)
         {
             if (bone == null || !_bones.TryGetValue(bone, out var b)) return;
             var parent = b.T.parent;
@@ -310,7 +334,7 @@ namespace TheArtifacts.PC.Combat
             var up = parent.InverseTransformDirection(_frame.up);
             var forward = parent.InverseTransformDirection(_frame.forward);
             var target = Quaternion.AngleAxis(pitch, right) * Quaternion.AngleAxis(yaw, up) * Quaternion.AngleAxis(roll, forward) * b.RestRotation;
-            b.T.localRotation = Quaternion.Slerp(b.T.localRotation, target, 1f - Mathf.Exp(-_follow * _dt));
+            b.T.localRotation = Quaternion.Slerp(b.T.localRotation, target, 1f - Mathf.Exp(-(follow > 0f ? follow : _follow) * _dt));
         }
 
         static float Damp(float current, float target, float rate, float dt) =>
