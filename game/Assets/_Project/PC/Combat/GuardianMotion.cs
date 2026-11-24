@@ -52,11 +52,67 @@ namespace TheArtifacts.PC.Combat
             {
                 "alma_mater" => (Body.Lich, 12f, 1.2f),
                 "columbia_lion" => (Body.Lion, 22f, 1.5f),
-                "book_keeper" => (Body.Golem, 7f, 1.7f),
+                "book_keeper" => (Body.Golem, 7f, 3.5f),
                 _ => (Body.Other, 10f, 2f),
             };
             foreach (var t in model.GetComponentsInChildren<Transform>(true))
                 if (t != model && !_bones.ContainsKey(t.name)) _bones[t.name] = (t, t.localRotation);
+            if (_body == Body.Golem)
+            {
+                _legs.Add(LegRig.At(this, "UpperLeg_L", "LowerLeg_L", "Foot_L"));
+                _legs.Add(LegRig.At(this, "UpperLeg_R", "LowerLeg_R", "Foot_R"));
+                _legs.RemoveAll(l => l == null);
+            }
+        }
+
+        /// <summary>
+        /// A two-bone leg solved in the Guardian's side view (z forward, y up, metres), from its rest pose: given where
+        /// the ankle should be, it returns the hip, knee and ankle pitches (degrees, GuardianMotion's sign) that put it
+        /// there with the knee in front and the sole level.
+        /// </summary>
+        sealed class LegRig
+        {
+            public string Upper, Lower, Foot;
+            Vector2 _hip, _knee, _ankle; // (z, y)
+            float _thigh, _shin;
+
+            public static LegRig At(GuardianMotion m, string upper, string lower, string foot)
+            {
+                if (!m._bones.ContainsKey(upper) || !m._bones.ContainsKey(lower) || !m._bones.ContainsKey(foot)) return null;
+                var leg = new LegRig { Upper = upper, Lower = lower, Foot = foot };
+                leg._hip = m.Side(m._bones[upper].T.position);
+                leg._knee = m.Side(m._bones[lower].T.position);
+                leg._ankle = m.Side(m._bones[foot].T.position);
+                leg._thigh = (leg._knee - leg._hip).magnitude;
+                leg._shin = (leg._ankle - leg._knee).magnitude;
+                return leg;
+            }
+
+            /// <summary>Angle of a side-view direction forward from straight down (radians).</summary>
+            static float Down(Vector2 v) => Mathf.Atan2(v.x, -v.y);
+
+            /// <param name="forward">How far ahead of its rest place the ankle goes (m).</param>
+            /// <param name="up">How far above it (m).</param>
+            public (float Hip, float Knee, float Ankle) Solve(float forward, float up)
+            {
+                var r = _ankle + new Vector2(forward, up) - _hip;
+                var reach = Mathf.Clamp(r.magnitude, Mathf.Abs(_thigh - _shin) + 1e-3f, (_thigh + _shin) * 0.999f);
+                var a = Mathf.Acos(Mathf.Clamp((_thigh * _thigh + reach * reach - _shin * _shin) / (2f * _thigh * reach), -1f, 1f));
+                var b = Mathf.Acos(Mathf.Clamp((_shin * _shin + reach * reach - _thigh * _thigh) / (2f * _shin * reach), -1f, 1f));
+                var thigh = Down(r) + a - Down(_knee - _hip);
+                var shin = Down(r) - b - Down(_ankle - _knee);
+                // A positive pitch swings a hanging bone backward, so each angle forward is a negative pitch.
+                return (-thigh * Mathf.Rad2Deg, -(shin - thigh) * Mathf.Rad2Deg, shin * Mathf.Rad2Deg);
+            }
+        }
+
+        readonly List<LegRig> _legs = new List<LegRig>();
+
+        /// <summary>A world point in the Guardian's side view: (forward, up) in metres.</summary>
+        Vector2 Side(Vector3 world)
+        {
+            var local = _frame.InverseTransformPoint(world) * _frame.localScale.y;
+            return new Vector2(local.z, local.y);
         }
 
         /// <summary>A skill landed or an auto-attack swung: lunge and slam (weight 0–1).</summary>
@@ -262,28 +318,46 @@ namespace TheArtifacts.PC.Combat
         {
             float w = _windup, s = p.Strike, sl = _slump, tr = _tremble, d = p.Death, m = _moving, t = _time;
             var a = _walkPhase;
-            var step = Mathf.Sin(a) * m;
-            var stomp = Mathf.Pow(1f - Mathf.Abs(Mathf.Cos(a)), 4f) * m; // a jolt as each foot lands
+            var step = Mathf.Cos(a) * m; // +1 when the left foot is out in front
+            var stomp = Mathf.Pow(Mathf.Abs(Mathf.Cos(a)), 8f) * m; // a jolt as each foot lands
             // Standing, it sways its weight from leg to leg like a machine idling.
             var idle = Mathf.Sin(t * 0.8f) * (1f - m) * (1f - w);
-            Root(p, 0.15f * Mathf.Abs(Mathf.Sin(a)) * m - 0.12f * stomp - 0.25f * w - 0.4f * s - 0.15f * sl - 1.0f * d,
-                6f * m - 14f * w + 25f * s + 10f * sl + 30f * d, 2.5f * step + 2f * idle);
+            // Walking, the hips ride low so both feet reach the floor, and drop as each foot lands.
+            var walkRise = (-0.12f - 0.08f * stomp + 0.04f * Mathf.Abs(Mathf.Sin(a))) * m;
+            Root(p, walkRise - 0.25f * w - 0.4f * s - 0.15f * sl - 1.0f * d,
+                -14f * w + 25f * s + 10f * sl + 30f * d, 2f * idle); // upright as it walks: a lean would sink the front foot
 
-            // Legs: alternate, knees fold only while a foot is in the air, the toe points as it lifts; a wide braced
-            // stance in the tell; kneel when it falls.
-            void Leg(string upper, string lower, string foot, string toe, float phase, float side)
+            // Legs: each foot stays planted on the floor and slides back under the body while the other lifts its knee
+            // and steps through (solved as a two-bone leg so the feet do not skate); a wide braced stance in the tell;
+            // kneel when it falls.
+            const float stance = 0.6f, stride = 0.95f, lift = 0.35f;
+            for (var i = 0; i < _legs.Count; i++)
             {
-                var lift = Mathf.Max(0f, Mathf.Cos(phase)) * m;
-                // The legs keep up with the gait so the feet plant instead of sliding; the slowness is in the body.
-                Turn(upper, -30f * Mathf.Sin(phase) * m - 20f * w + 10f * s - 70f * d, 0f, side * (8f * w + 3f * idle), 16f);
-                Turn(lower, 55f * lift + 30f * w + 15f * s + 100f * d, 0f, 0f, 16f);
-                Turn(foot, -20f * lift - 10f * w - 30f * d, 0f, 0f, 16f);
-                Turn(toe, 20f * lift + 15f * d, 0f, 0f, 16f);
+                var leg = _legs[i];
+                var side = i == 0 ? 1f : -1f;
+                var u = Mathf.Repeat((a + i * Mathf.PI) / (Mathf.PI * 2f), 1f);
+                float forward, up, toe;
+                if (u < stance)
+                {
+                    forward = stride * (0.5f - u / stance);
+                    up = 0f;
+                    toe = 0f;
+                }
+                else
+                {
+                    var v = (u - stance) / (1f - stance);
+                    forward = stride * (Smooth(v) - 0.5f);
+                    up = lift * Mathf.Sin(v * Mathf.PI);
+                    toe = 15f * Mathf.Sin(v * Mathf.PI);
+                }
+                var (hip, knee, ankle) = leg.Solve(forward * m, up * m - walkRise);
+                Turn(leg.Upper, hip - 20f * w + 10f * s - 70f * d, 0f, side * (8f * w + 3f * idle), 18f);
+                Turn(leg.Lower, knee + 30f * w + 15f * s + 100f * d, 0f, 0f, 18f);
+                Turn(leg.Foot, ankle - 10f * w - 30f * d, 0f, 0f, 18f);
+                Turn(i == 0 ? "Toe_L" : "Toe_R", toe * m + 15f * d, 0f, 0f, 18f);
             }
-            Leg("UpperLeg_L", "LowerLeg_L", "Foot_L", "Toe_L", a, 1f);
-            Leg("UpperLeg_R", "LowerLeg_R", "Foot_R", "Toe_R", a + Mathf.PI, -1f);
 
-            Turn("Hips", 0f, 10f * step, 3f * step + 3f * idle);
+            Turn("Hips", 0f, 10f * step, 3f * idle);
             Turn("Spine", p.Breath * 2f - 10f * w + 20f * s + 8f * sl, -10f * step + 15f * w - 10f * s);
             Turn("Chest", -18f * w + 35f * s + 15f * sl - 15f * _flinch + 25f * d, -6f * step, p.Shake - 3f * idle);
 
