@@ -136,8 +136,8 @@ RIGS = {
             ("Toe_R", "Foot_R", (-0.82, -0.4, 0.18), (-0.83, -0.75, 0.1), {"side": -1, "min_x": 0.1, "zmax": 0.3, "ymax": -0.3}),
         ]),
     },
-    # The player: a 1.75 m hunter (art_source/generated/player_sheet.png, the scarf-free sheet). The right hand holds a dagger point down;
-    # the left reaches forward, palm up, to hold a spell. Her centre line is at x = -0.03.
+    # The player: a 1.75 m hunter (art_source/generated/player_sheet.png, the unarmed sheet). The right hand hangs open at
+    # her side; the left reaches forward, palm up, to hold a spell. Her centre line is at x = -0.03.
     "player": {
         "sharpness": 4.0,
         "folder": "Player",
@@ -147,16 +147,16 @@ RIGS = {
             ("Chest", "Spine", (-0.03, -0.06, 1.18), (-0.03, -0.05, 1.38), {}),
             ("Neck", "Chest", (-0.03, -0.04, 1.4), (-0.03, -0.05, 1.5), {"zmin": 1.3}),
             ("Head", "Neck", (-0.03, -0.05, 1.5), (-0.03, -0.06, 1.76), {"zmin": 1.42}),
-            ("Braid1", "Head", (-0.03, 0.1, 1.62), (-0.03, 0.12, 1.48), {"ymin": 0.04, "zmax": 1.64, "radius": 0.09}),
-            ("Braid2", "Braid1", (-0.03, 0.12, 1.48), (-0.03, 0.12, 1.33), {"ymin": 0.04, "zmax": 1.52, "radius": 0.09}),
+            ("Braid1", "Head", (-0.05, 0.08, 1.63), (-0.08, 0.075, 1.47), {"ymin": 0.04, "zmax": 1.64, "radius": 0.09}),
+            ("Braid2", "Braid1", (-0.08, 0.075, 1.47), (-0.11, 0.065, 1.28), {"ymin": 0.04, "zmax": 1.52, "radius": 0.09}),
             ("Shoulder_R", "Chest", (-0.06, -0.05, 1.36), (-0.17, -0.04, 1.35), {"side": -1, "cx": -0.03, "min_x": 0.03, "zmin": 1.22, "radius": 0.12}),
-            ("UpperArm_R", "Shoulder_R", (-0.17, -0.04, 1.35), (-0.22, -0.03, 1.12), {"side": -1, "cx": -0.03, "min_x": 0.12, "radius": 0.09}),
-            ("LowerArm_R", "UpperArm_R", (-0.22, -0.03, 1.12), (-0.29, -0.03, 0.86), {"side": -1, "cx": -0.03, "min_x": 0.15, "radius": 0.08}),
-            ("Hand_R", "LowerArm_R", (-0.29, -0.03, 0.86), (-0.31, -0.06, 0.74), {"side": -1, "cx": -0.03, "min_x": 0.2, "radius": 0.08}),
+            ("UpperArm_R", "Shoulder_R", (-0.17, -0.04, 1.35), (-0.24, -0.07, 1.12), {"side": -1, "cx": -0.03, "min_x": 0.12, "radius": 0.09}),
+            ("LowerArm_R", "UpperArm_R", (-0.24, -0.07, 1.12), (-0.3, -0.1, 0.93), {"side": -1, "cx": -0.03, "min_x": 0.15, "radius": 0.08}),
+            ("Hand_R", "LowerArm_R", (-0.3, -0.1, 0.93), (-0.3, -0.13, 0.77), {"side": -1, "cx": -0.03, "min_x": 0.228, "radius": 0.08}),  # the thigh beside it stops at x = -0.255
             ("Shoulder_L", "Chest", (0.0, -0.05, 1.36), (0.12, -0.04, 1.35), {"side": 1, "cx": -0.03, "min_x": 0.03, "zmin": 1.22, "radius": 0.12}),
             ("UpperArm_L", "Shoulder_L", (0.12, -0.04, 1.35), (0.18, -0.06, 1.1), {"side": 1, "cx": -0.03, "min_x": 0.12, "radius": 0.09}),
             ("LowerArm_L", "UpperArm_L", (0.18, -0.06, 1.1), (0.3, -0.22, 1.05), {"side": 1, "cx": -0.03, "min_x": 0.15, "radius": 0.08}),
-            ("Hand_L", "LowerArm_L", (0.3, -0.22, 1.05), (0.35, -0.33, 1.05), {"side": 1, "cx": -0.03, "min_x": 0.22, "radius": 0.08}),
+            ("Hand_L", "LowerArm_L", (0.3, -0.22, 1.05), (0.35, -0.33, 1.05), {"side": 1, "cx": -0.03, "min_x": 0.22, "radius": 0.14}),  # the cupped fingers curl back in
             ("UpperLeg_R", "Hips", (-0.13, -0.05, 0.92), (-0.17, -0.05, 0.5), {"side": -1, "cx": -0.03, "min_x": 0.0, "zmax": 1.0}),
             ("LowerLeg_R", "UpperLeg_R", (-0.17, -0.05, 0.5), (-0.23, -0.02, 0.1), {"side": -1, "cx": -0.03, "min_x": 0.0, "zmax": 0.6}),
             ("Foot_R", "LowerLeg_R", (-0.23, -0.02, 0.1), (-0.25, -0.17, 0.03), {"side": -1, "cx": -0.03, "min_x": 0.0, "zmax": 0.2}),
@@ -164,9 +164,7 @@ RIGS = {
             ("LowerLeg_L", "UpperLeg_L", (0.11, -0.05, 0.5), (0.16, -0.02, 0.1), {"side": 1, "cx": -0.03, "min_x": 0.0, "zmax": 0.6}),
             ("Foot_L", "LowerLeg_L", (0.16, -0.02, 0.1), (0.18, -0.17, 0.03), {"side": 1, "cx": -0.03, "min_x": 0.0, "zmax": 0.2}),
         ],
-        # The dagger goes wholly with the right hand; the sheathed sword hangs from the hips.
-        "rigid_boxes": [("Hand_R", (-0.45, -0.45, 0.55), (-0.255, 0.02, 0.84))],
-        "rigid_segments": [("Hips", (0.29, -0.07, 0.36), (0.135, -0.195, 1.05), 0.035)],
+        # Unarmed: weapons and artifacts will be separate models attached to the hands and hips.
     },
 }
 

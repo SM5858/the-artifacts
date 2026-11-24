@@ -7,7 +7,7 @@ namespace TheArtifacts.PC.Combat
     /// <summary>
     /// Procedural animation for the rigged player model (Art/Models/Player, bones from tools/blender/rig_guardians.py),
     /// driven by the fight like <see cref="GuardianMotion"/>: she turns to run where she moves and to face the Guardian
-    /// when she stops, runs with counter-swinging arms, slashes with the dagger in her right hand (auto-attack, Heavy
+    /// when she stops, runs with counter-swinging arms, slashes with her right hand, the weapon hand (auto-attack, Heavy
     /// Strike, Lunge, Overpower), casts with her left hand (bolts and artifact skills), raises a guard, flinches when hit,
     /// and falls when she loses.
     /// Bones are turned about her own axes (pitch about her right, positive tips an upright bone forward and swings a
@@ -168,7 +168,7 @@ namespace TheArtifacts.PC.Combat
             Turn("Braid1", -20f * run - 8f * Mathf.Abs(Mathf.Sin(a)) * run - 25f * spin * s, 10f * twist);
             Turn("Braid2", -10f * run - 6f * Mathf.Sin(a * 2f) * run, 8f * twist);
 
-            // The dagger arm: swings with the run; a high wind-up and a cross-body slash; overhead for Heavy Strike;
+            // The weapon arm (empty until equipment is attached): swings with the run; a high wind-up and a cross-body slash; overhead for Heavy Strike;
             // a straight thrust for Lunge; held out wide through the Overpower spin; up across the face on guard.
             Turn("Shoulder_R", -5f * heavy * k - 6f * g);
             Turn("UpperArm_R",
