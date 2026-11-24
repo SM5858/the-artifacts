@@ -9,6 +9,7 @@ machine's; the lion and the lich bend smoothly. PC/Combat/GuardianMotion.cs move
 
     rig("alma_mater"); rig("columbia_lion"); rig("book_keeper")   # in Blender, after prepare()
     export_all(repo)                                               # writes Art/Models/Guardians/<id>.fbx
+    rig("player"); detach("player", ...); export("player", repo)  # Art/Models/Player/player.fbx (see detach)
 """
 
 import os
@@ -135,6 +136,38 @@ RIGS = {
             ("Toe_R", "Foot_R", (-0.82, -0.4, 0.18), (-0.83, -0.75, 0.1), {"side": -1, "min_x": 0.1, "zmax": 0.3, "ymax": -0.3}),
         ]),
     },
+    # The player: a 1.75 m hunter (art_source/generated/player_sheet.png). The right hand holds a dagger point down;
+    # the left reaches forward, palm up, to hold a spell. Her centre line is at x = -0.03.
+    "player": {
+        "sharpness": 4.0,
+        "folder": "Player",
+        "bones": [
+            ("Hips", None, (-0.03, -0.06, 0.92), (-0.03, -0.06, 1.05), {}),
+            ("Spine", "Hips", (-0.03, -0.06, 1.05), (-0.03, -0.06, 1.18), {}),
+            ("Chest", "Spine", (-0.03, -0.06, 1.18), (-0.03, -0.05, 1.38), {}),
+            ("Neck", "Chest", (-0.03, -0.04, 1.4), (-0.03, -0.05, 1.5), {"zmin": 1.3}),
+            ("Head", "Neck", (-0.03, -0.05, 1.5), (-0.03, -0.06, 1.76), {"zmin": 1.42}),
+            ("Braid1", "Head", (-0.03, 0.1, 1.62), (-0.03, 0.12, 1.48), {"ymin": 0.04, "zmax": 1.64, "radius": 0.09}),
+            ("Braid2", "Braid1", (-0.03, 0.12, 1.48), (-0.03, 0.12, 1.33), {"ymin": 0.04, "zmax": 1.52, "radius": 0.09}),
+            ("Shoulder_R", "Chest", (-0.06, -0.05, 1.36), (-0.17, -0.04, 1.35), {"side": -1, "cx": -0.03, "min_x": 0.03, "zmin": 1.22, "radius": 0.12}),
+            ("UpperArm_R", "Shoulder_R", (-0.17, -0.04, 1.35), (-0.22, -0.03, 1.12), {"side": -1, "cx": -0.03, "min_x": 0.12, "radius": 0.09}),
+            ("LowerArm_R", "UpperArm_R", (-0.22, -0.03, 1.12), (-0.29, -0.03, 0.86), {"side": -1, "cx": -0.03, "min_x": 0.15, "radius": 0.08}),
+            ("Hand_R", "LowerArm_R", (-0.29, -0.03, 0.86), (-0.31, -0.06, 0.74), {"side": -1, "cx": -0.03, "min_x": 0.2, "radius": 0.08}),
+            ("Shoulder_L", "Chest", (0.0, -0.05, 1.36), (0.12, -0.04, 1.35), {"side": 1, "cx": -0.03, "min_x": 0.03, "zmin": 1.22, "radius": 0.12}),
+            ("UpperArm_L", "Shoulder_L", (0.12, -0.04, 1.35), (0.18, -0.06, 1.1), {"side": 1, "cx": -0.03, "min_x": 0.12, "radius": 0.09}),
+            ("LowerArm_L", "UpperArm_L", (0.18, -0.06, 1.1), (0.3, -0.22, 1.05), {"side": 1, "cx": -0.03, "min_x": 0.15, "radius": 0.08}),
+            ("Hand_L", "LowerArm_L", (0.3, -0.22, 1.05), (0.35, -0.33, 1.05), {"side": 1, "cx": -0.03, "min_x": 0.22, "radius": 0.08}),
+            ("UpperLeg_R", "Hips", (-0.13, -0.05, 0.92), (-0.17, -0.05, 0.5), {"side": -1, "cx": -0.03, "min_x": 0.0, "zmax": 1.0}),
+            ("LowerLeg_R", "UpperLeg_R", (-0.17, -0.05, 0.5), (-0.23, -0.02, 0.1), {"side": -1, "cx": -0.03, "min_x": 0.0, "zmax": 0.6}),
+            ("Foot_R", "LowerLeg_R", (-0.23, -0.02, 0.1), (-0.25, -0.17, 0.03), {"side": -1, "cx": -0.03, "min_x": 0.0, "zmax": 0.2}),
+            ("UpperLeg_L", "Hips", (0.07, -0.05, 0.92), (0.11, -0.05, 0.5), {"side": 1, "cx": -0.03, "min_x": 0.0, "zmax": 1.0}),
+            ("LowerLeg_L", "UpperLeg_L", (0.11, -0.05, 0.5), (0.16, -0.02, 0.1), {"side": 1, "cx": -0.03, "min_x": 0.0, "zmax": 0.6}),
+            ("Foot_L", "LowerLeg_L", (0.16, -0.02, 0.1), (0.18, -0.17, 0.03), {"side": 1, "cx": -0.03, "min_x": 0.0, "zmax": 0.2}),
+        ],
+        # The dagger goes wholly with the right hand; the sheathed sword hangs from the hips.
+        "rigid_boxes": [("Hand_R", (-0.45, -0.45, 0.55), (-0.255, 0.02, 0.84))],
+        "rigid_segments": [("Hips", (0.27, -0.04, 0.42), (0.12, -0.16, 1.0), 0.035)],
+    },
 }
 
 
@@ -195,6 +228,14 @@ def rig(guardian_id):
         rod = (np.hypot(co[:, 0] - x, co[:, 1] - y) < radius) & (co[:, 2] >= z0) & (co[:, 2] <= z1)
         w[rod] = 0.0
         w[rod, names.index(bone)] = 1.0
+    for bone, lo, hi in spec.get("rigid_boxes", []):
+        box = np.all((co >= np.array(lo)) & (co <= np.array(hi)), axis=1)
+        w[box] = 0.0
+        w[box, names.index(bone)] = 1.0
+    for bone, a, b, radius in spec.get("rigid_segments", []):
+        seg = _segment_distance(co, a, b) < radius
+        w[seg] = 0.0
+        w[seg, names.index(bone)] = 1.0
     # Keep the three strongest, normalised.
     keep = np.argsort(-w, axis=1)[:, :3]
     top = np.take_along_axis(w, keep, axis=1)
@@ -216,6 +257,36 @@ def rig(guardian_id):
     return arm
 
 
+def detach(guardian_id, limbs):
+    """
+    Cuts the faces that join a limb to the body where the generated mesh fused them (an arm hanging against the hip,
+    a braid lying on the back), then rigs again. Without this, moving the limb stretches those faces into long
+    shards. limbs: [(limb bones, bones it may stay joined to)]. Run after rig(): it reads the weights.
+
+        detach("player", [(["UpperArm_R", "LowerArm_R", "Hand_R"], ["Shoulder_R", "Chest"]),
+                          (["UpperArm_L", "LowerArm_L", "Hand_L"], ["Shoulder_L", "Chest"]),
+                          (["Braid1", "Braid2"], ["Head", "Neck"])])
+    """
+    import bmesh
+    mesh = bpy.data.objects[guardian_id]
+    names = [g.name for g in mesh.vertex_groups]
+    dom = np.full(len(mesh.data.vertices), -1)
+    for v in mesh.data.vertices:
+        if v.groups:
+            dom[v.index] = max(v.groups, key=lambda g: g.weight).group
+    parts = [({names.index(n) for n in limb}, {names.index(n) for n in limb + keep}) for limb, keep in limbs]
+    bm = bmesh.new()
+    bm.from_mesh(mesh.data)
+    cut = [f for f in bm.faces
+           if any((d := {dom[v.index] for v in f.verts}) & limb and d - ok for limb, ok in parts)]
+    bmesh.ops.delete(bm, geom=cut, context="FACES_ONLY")
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    bm.to_mesh(mesh.data)
+    bm.free()
+    rig(guardian_id)
+    return len(cut)
+
+
 def export(guardian_id, repo):
     mesh = bpy.data.objects[guardian_id]
     arm = mesh.parent
@@ -224,7 +295,8 @@ def export(guardian_id, repo):
         o.hide_set(False)
         o.select_set(True)
     bpy.context.view_layer.objects.active = arm
-    path = os.path.join(repo, GAME, f"{guardian_id}.fbx")
+    folder = RIGS[guardian_id].get("folder")
+    path = os.path.join(repo, os.path.dirname(GAME), folder, f"{guardian_id}.fbx") if folder else os.path.join(repo, GAME, f"{guardian_id}.fbx")
     bpy.ops.export_scene.fbx(
         filepath=path, use_selection=True, object_types={"ARMATURE", "MESH"}, apply_unit_scale=True,
         apply_scale_options="FBX_SCALE_UNITS", axis_forward="-Z", axis_up="Y", bake_space_transform=False,

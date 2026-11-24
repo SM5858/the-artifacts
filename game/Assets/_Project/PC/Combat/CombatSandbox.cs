@@ -126,6 +126,8 @@ namespace TheArtifacts.PC.Combat
         GameObject _guardianModel;
         /// <summary>Procedural motion for the model; null for the capsule.</summary>
         GuardianMotion _motion;
+        PlayerMotion _playerMotion;
+        Material _playerModelMaterial;
         Material _weakPointMaterial;
         /// <summary>Textured materials show state through emission or a tint instead of a flat color.</summary>
         bool _guardianTextured, _loreTextured;
@@ -200,6 +202,7 @@ namespace TheArtifacts.PC.Combat
             _spellTarget = null;
             _sim = new CombatSim(CurrentBuild, fight.Setup, seed, PrototypeContent.GuardianById(guardianId));
             _motion?.Reset();
+            _playerMotion?.Reset();
             if (_preferredBar != null)
             {
                 try { _sim.SetArtifactSkillBar(_preferredBar); }
@@ -371,6 +374,7 @@ namespace TheArtifacts.PC.Combat
         {
             if (_camera == null || _sim == null) return;
             if (!_inMenu) _motion?.Update(_sim, Time.deltaTime);
+            if (!_inMenu) _playerMotion?.Update(_sim, Time.deltaTime);
 
             var away = _player.position - _guardian.position;
             away.y = 0f;
@@ -406,6 +410,7 @@ namespace TheArtifacts.PC.Combat
 
             _playerMaterial = Lit(lit, PlayerColor);
             _player = Primitive(PrimitiveType.Capsule, "Player", _playerMaterial);
+            AttachPlayerModel();
             // A textured Guardian (stone or bronze) shows its phase by glowing instead of changing color.
             _guardian = Primitive(PrimitiveType.Capsule, "Guardian", null);
             _guardian.localScale = Vector3.one * 2f;
@@ -474,6 +479,29 @@ namespace TheArtifacts.PC.Combat
             }
             if (_weakPoint != _owlSphere) _weakPoint.gameObject.SetActive(false);
             _motion = new GuardianMotion(_guardianModel.transform, _guardian, guardianId);
+        }
+
+        /// <summary>
+        /// Swaps the player capsule for the rigged hunter model when the art asset has one: the capsule (2 m, centred
+        /// at 1 m) stays as the transform that moves and turns, its renderer hidden.
+        /// </summary>
+        void AttachPlayerModel()
+        {
+            if (art == null || art.PlayerModel == null) return;
+            var model = Instantiate(art.PlayerModel, _player, false);
+            model.transform.localPosition = new Vector3(0f, -1f, 0f);
+            // The FBX faces -Z in Unity like the Guardians' models; the player faces +Z.
+            model.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            foreach (var skin in model.GetComponentsInChildren<SkinnedMeshRenderer>(true)) skin.updateWhenOffscreen = true;
+            // Her own copy of the material, so a hit can tint it red like the capsule.
+            if (art.Player != null)
+            {
+                _playerModelMaterial = new Material(art.Player);
+                foreach (var r in model.GetComponentsInChildren<Renderer>(true))
+                    r.sharedMaterials = r.sharedMaterials.Select(_ => _playerModelMaterial).ToArray();
+            }
+            _player.GetComponent<Renderer>().enabled = false;
+            _playerMotion = new PlayerMotion(model.transform, _player);
         }
 
         /// <summary>
@@ -600,6 +628,8 @@ namespace TheArtifacts.PC.Combat
         {
             _player.position = TelegraphMeshes.ToWorld(_sim.PlayerPosition, 1f);
             _playerMaterial.SetColor("_BaseColor", Time.time < _hurtUntil ? new Color(1f, 0.15f, 0.1f) : PlayerColor);
+            if (_playerModelMaterial != null)
+                _playerModelMaterial.SetColor("_BaseColor", Time.time < _hurtUntil ? new Color(1f, 0.45f, 0.4f) : Color.white);
             _guardian.position = TelegraphMeshes.ToWorld(_sim.GuardianPosition, 2f);
             _moveMarker.gameObject.SetActive(_moveTarget.HasValue);
             if (_moveTarget is Vec2 target) _moveMarker.position = TelegraphMeshes.ToWorld(target, TelegraphY);
@@ -677,6 +707,7 @@ namespace TheArtifacts.PC.Combat
                 if (e.Type == CombatEventType.SkillHit || e.Type == CombatEventType.SkillMissed) _motion?.Strike();
                 if (e.Type == CombatEventType.PlayerDamaged && e.Id == "guardian_auto") _motion?.Strike(0.5f);
                 if (e.Type == CombatEventType.GuardianDamaged && e.Amount > 0f) _motion?.Flinch();
+                _playerMotion?.OnEvent(e);
                 string line = e.Type switch
                 {
                     CombatEventType.PlayerDamaged when e.Id == "guardian_auto" => $"Guardian strikes you {e.Amount:0}",

@@ -27,6 +27,9 @@ namespace TheArtifacts.PC.Combat
         public Material Arena;
         public Material Bookshelf;
         public GuardianMaterial[] Guardians = new GuardianMaterial[0];
+        /// <summary>The player's rigged model (Art/Models/Player, origin at the feet) and its material; null keeps the capsule.</summary>
+        public GameObject PlayerModel;
+        public Material Player;
 
         /// <summary>The material for this Guardian, or null.</summary>
         public Material ForGuardian(string guardianId) =>

@@ -3,6 +3,7 @@ Turns a generated Guardian model (Tripo image-to-3D, imported by MCP for Blender
 texture set. Run inside Blender with the generated object in the scene:
 
     prepare("GEN_columbia_lion", "columbia_lion", height=3.3, front_y=-2.5, facing="+Y")
+    prepare("GEN_player", "player", height=1.75, front_y=-0.37, facing="+X", target_tris=60000, folder="Player")
 
 It keeps the raw model (art_source/generated/<id>_raw.glb, not in git: too large), decimates a copy to the
 triangle budget, turns it to face -Y (Blender front), scales it to the Guardian's height with
@@ -51,7 +52,7 @@ def _channel_png(src, channel, path):
     bpy.data.images.remove(img)
 
 
-def prepare(obj_name, guardian_id, height, front_y, facing="+Y", target_tris=80000, repo=REPO):
+def prepare(obj_name, guardian_id, height, front_y, facing="+Y", target_tris=80000, repo=REPO, folder="Guardians"):
     src = bpy.data.objects[obj_name]
     if bpy.context.object and bpy.context.object.mode != "OBJECT":
         bpy.ops.object.mode_set(mode="OBJECT")
@@ -111,7 +112,7 @@ def prepare(obj_name, guardian_id, height, front_y, facing="+Y", target_tris=800
     _channel_png(orm, 2, os.path.join(tex_dir, f"{name}_Metallic.png"))
 
     # The FBX, like guardian_blockouts.export.
-    fbx = os.path.join(repo, GAME, "Models", "Guardians", f"{guardian_id}.fbx")
+    fbx = os.path.join(repo, GAME, "Models", folder, f"{guardian_id}.fbx")
     bpy.ops.export_scene.fbx(
         filepath=fbx, use_selection=True, object_types={"MESH"}, apply_unit_scale=True,
         apply_scale_options="FBX_SCALE_UNITS", axis_forward="-Z", axis_up="Y", bake_space_transform=True,
