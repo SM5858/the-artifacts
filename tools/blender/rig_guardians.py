@@ -152,7 +152,9 @@ RIGS = {
             ("Shoulder_R", "Chest", (-0.06, -0.05, 1.36), (-0.17, -0.04, 1.35), {"side": -1, "cx": -0.03, "min_x": 0.03, "zmin": 1.22, "radius": 0.12}),
             ("UpperArm_R", "Shoulder_R", (-0.17, -0.04, 1.35), (-0.24, -0.07, 1.12), {"side": -1, "cx": -0.03, "min_x": 0.12, "radius": 0.09}),
             ("LowerArm_R", "UpperArm_R", (-0.24, -0.07, 1.12), (-0.3, -0.1, 0.93), {"side": -1, "cx": -0.03, "min_x": 0.15, "radius": 0.08}),
-            ("Hand_R", "LowerArm_R", (-0.3, -0.1, 0.93), (-0.3, -0.13, 0.77), {"side": -1, "cx": -0.03, "min_x": 0.228, "radius": 0.08}),  # the thigh beside it stops at x = -0.255
+            ("Hand_R", "LowerArm_R", (-0.3, -0.1, 0.93), (-0.3, -0.12, 0.835), {"side": -1, "cx": -0.03, "min_x": 0.228, "radius": 0.08}),  # the thigh beside it stops at x = -0.255
+            # The fingers close around a held weapon (PlayerMotion curls them).
+            ("Fingers_R", "Hand_R", (-0.3, -0.12, 0.835), (-0.29, -0.14, 0.765), {"side": -1, "cx": -0.03, "min_x": 0.228, "zmax": 0.85, "radius": 0.06}),
             ("Shoulder_L", "Chest", (0.0, -0.05, 1.36), (0.12, -0.04, 1.35), {"side": 1, "cx": -0.03, "min_x": 0.03, "zmin": 1.22, "radius": 0.12}),
             ("UpperArm_L", "Shoulder_L", (0.12, -0.04, 1.35), (0.18, -0.06, 1.1), {"side": 1, "cx": -0.03, "min_x": 0.12, "radius": 0.09}),
             ("LowerArm_L", "UpperArm_L", (0.18, -0.06, 1.1), (0.3, -0.22, 1.05), {"side": 1, "cx": -0.03, "min_x": 0.15, "radius": 0.08}),
@@ -266,7 +268,7 @@ def detach(guardian_id, limbs):
     sword, a held dagger) to anything that follows another bone, such as the thigh beside it. Run after rig(): it reads
     the weights.
 
-        detach("player", [(["UpperArm_R", "LowerArm_R", "Hand_R"], ["Shoulder_R", "Chest"]),
+        detach("player", [(["UpperArm_R", "LowerArm_R", "Hand_R", "Fingers_R"], ["Shoulder_R", "Chest"]),
                           (["UpperArm_L", "LowerArm_L", "Hand_L"], ["Shoulder_L", "Chest"]),
                           (["Braid1", "Braid2"], ["Head", "Neck"])])
     """

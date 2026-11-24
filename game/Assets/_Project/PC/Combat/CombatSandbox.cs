@@ -128,6 +128,8 @@ namespace TheArtifacts.PC.Combat
         GuardianMotion _motion;
         PlayerMotion _playerMotion;
         Material _playerModelMaterial;
+        Transform _playerModel;
+        readonly List<GameObject> _wornArtifacts = new List<GameObject>();
         Material _weakPointMaterial;
         /// <summary>Textured materials show state through emission or a tint instead of a flat color.</summary>
         bool _guardianTextured, _loreTextured;
@@ -203,6 +205,7 @@ namespace TheArtifacts.PC.Combat
             _sim = new CombatSim(CurrentBuild, fight.Setup, seed, PrototypeContent.GuardianById(guardianId));
             _motion?.Reset();
             _playerMotion?.Reset();
+            WearArtifacts(_sim.Build);
             if (_preferredBar != null)
             {
                 try { _sim.SetArtifactSkillBar(_preferredBar); }
@@ -501,8 +504,45 @@ namespace TheArtifacts.PC.Combat
                     r.sharedMaterials = r.sharedMaterials.Select(_ => _playerModelMaterial).ToArray();
             }
             _player.GetComponent<Renderer>().enabled = false;
+            _playerModel = model.transform;
             _playerMotion = new PlayerMotion(model.transform, _player);
         }
+
+        /// <summary>
+        /// Puts the build's artifacts that have a model on the player: each FBX's root is its pose in the model's rest
+        /// space (tools/blender/prepare_artifact.py), so it is placed under the model while she is at rest, then moved
+        /// to its slot's bone keeping that pose. Call right after PlayerMotion.Reset, which puts her at rest.
+        /// </summary>
+        void WearArtifacts(PlayerBuild build)
+        {
+            foreach (var worn in _wornArtifacts) Destroy(worn);
+            _wornArtifacts.Clear();
+            if (art == null || _playerModel == null) return;
+            var gripping = false;
+            foreach (var artifact in build.Artifacts)
+            {
+                var model = art.ArtifactFor(artifact.Id);
+                var bone = BoneFor(artifact.Slot);
+                var socket = bone != null ? _playerModel.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == bone) : null;
+                if (model.Model == null || socket == null) continue;
+                var worn = Instantiate(model.Model, _playerModel, false);
+                worn.transform.SetParent(socket, true);
+                if (model.Material != null)
+                    foreach (var r in worn.GetComponentsInChildren<Renderer>(true))
+                        r.sharedMaterials = r.sharedMaterials.Select(_ => model.Material).ToArray();
+                _wornArtifacts.Add(worn);
+                gripping |= artifact.Slot == ArtifactSlot.RightHand;
+            }
+            _playerMotion.Gripping = gripping;
+        }
+
+        /// <summary>The player model's bone an artifact in this slot rides on; null for slots with no worn model yet.</summary>
+        static string BoneFor(ArtifactSlot slot) => slot switch
+        {
+            ArtifactSlot.RightHand => "Hand_R",
+            ArtifactSlot.LeftHand => "Hand_L",
+            _ => null,
+        };
 
         /// <summary>
         /// How much larger than its FBX a Guardian is drawn. The golem is 1.3× (5.5 m) so its short legs take steps

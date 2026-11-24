@@ -20,6 +20,9 @@ namespace TheArtifacts.PC.Editor
         public const string GuardianModelsRoot = "Assets/_Project/Art/Models/Guardians";
         /// <summary>The player's rigged model (tools/blender/prepare_generated.py and rig_guardians.py).</summary>
         public const string PlayerModelPath = "Assets/_Project/Art/Models/Player/player.fbx";
+        /// <summary>Worn artifacts (tools/blender/prepare_artifact.py), one FBX per artifact id, posed in the player's rest space.</summary>
+        public const string ArtifactModelsRoot = "Assets/_Project/Art/Models/Artifacts";
+        static readonly string[] ArtifactModelIds = { "columbia_lions_fang" };
 
         // (texture set, tiling)
         static readonly (string Name, float Tiling)[] Sets =
@@ -27,6 +30,7 @@ namespace TheArtifacts.PC.Editor
             ("StoneFloor", 10f), ("OakWood", 1f), ("GolemStone", 1f), ("AgedBronze", 1f), ("DarkBronze", 1f), ("Verdigris", 1f),
             // Generated Guardian models' own texture sets (UV-mapped, so no tiling): tools/blender/prepare_generated.py.
             ("AlmaMater", 1f), ("ColumbiaLion", 1f), ("BookKeeper", 1f), ("Player", 1f),
+            ("ColumbiaLionsFang", 1f),
         };
 
         [MenuItem("The Artifacts/Build Sandbox Materials")]
@@ -42,8 +46,8 @@ namespace TheArtifacts.PC.Editor
             }
             art.Arena = MaterialAt("StoneFloor");
             art.Bookshelf = MaterialAt("OakWood");
-            foreach (var id in new[] { "alma_mater", "columbia_lion", "book_keeper" }) EnsureSkinnedImport($"{GuardianModelsRoot}/{id}.fbx");
-            EnsureSkinnedImport(PlayerModelPath);
+            foreach (var id in new[] { "alma_mater", "columbia_lion", "book_keeper" }) EnsureImport($"{GuardianModelsRoot}/{id}.fbx");
+            EnsureImport(PlayerModelPath);
             art.Guardians = new[]
             {
                 new SandboxArt.GuardianMaterial { GuardianId = "alma_mater", Material = MaterialAt("AlmaMater"), Model = ModelAt("alma_mater") },
@@ -52,6 +56,16 @@ namespace TheArtifacts.PC.Editor
             };
             art.PlayerModel = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerModelPath);
             art.Player = MaterialAt("Player");
+            art.Artifacts = ArtifactModelIds.Select(id =>
+            {
+                var path = $"{ArtifactModelsRoot}/{id}.fbx";
+                EnsureImport(path, skinned: false);
+                return new SandboxArt.ArtifactModel
+                {
+                    ArtifactId = id, Model = AssetDatabase.LoadAssetAtPath<GameObject>(path),
+                    Material = MaterialAt(string.Concat(id.Split('_').Select(w => char.ToUpperInvariant(w[0]) + w.Substring(1)))),
+                };
+            }).Where(a => a.Model != null).ToArray();
             EditorUtility.SetDirty(art);
             AssetDatabase.SaveAssets();
 
@@ -78,17 +92,19 @@ namespace TheArtifacts.PC.Editor
                 .Where(p => !p.EndsWith(".meta")).Select(p => p.Replace('\\', '/')).FirstOrDefault();
 
         /// <summary>
-        /// Writes the rigged-model import settings into the FBX's .meta and reimports it if they differ. An older .meta
-        /// with no rig (animationType None) imports the model as a plain mesh, and its bones then move nothing.
+        /// Writes the model import settings into the FBX's .meta and reimports it if they differ. An older .meta with no
+        /// rig (animationType None) imports a rigged model as a plain mesh, and its bones then move nothing.
         /// </summary>
-        static void EnsureSkinnedImport(string path)
+        static void EnsureImport(string path, bool skinned = true)
         {
             if (!(AssetImporter.GetAtPath(path) is ModelImporter importer)) return;
-            if (importer.animationType == ModelImporterAnimationType.Generic && importer.bakeAxisConversion &&
+            var rig = skinned ? ModelImporterAnimationType.Generic : ModelImporterAnimationType.None;
+            if (importer.animationType == rig && importer.bakeAxisConversion &&
                 !importer.optimizeGameObjects && !importer.importAnimation) return;
             ArtTextureImporter.ApplyGuardianModelSettings(importer);
+            importer.animationType = rig;
             importer.SaveAndReimport();
-            Debug.Log($"{path}: import settings set to a generic rig (skinned) and reimported.");
+            Debug.Log($"{path}: import settings set ({(skinned ? "generic rig, skinned" : "static")}) and reimported.");
         }
 
         static GameObject ModelAt(string guardianId) =>
@@ -205,8 +221,12 @@ namespace TheArtifacts.PC.Editor
         /// <summary>Guardian models: metres as exported, skinned to their bones (GuardianMotion turns them), no clips.</summary>
         void OnPreprocessModel()
         {
-            if (!assetPath.StartsWith(SandboxArtMenu.GuardianModelsRoot) && assetPath != SandboxArtMenu.PlayerModelPath) return;
-            ApplyGuardianModelSettings((ModelImporter)assetImporter);
+            var artifact = assetPath.StartsWith(SandboxArtMenu.ArtifactModelsRoot);
+            if (!assetPath.StartsWith(SandboxArtMenu.GuardianModelsRoot) && assetPath != SandboxArtMenu.PlayerModelPath && !artifact) return;
+            var importer = (ModelImporter)assetImporter;
+            ApplyGuardianModelSettings(importer);
+            // An artifact is one rigid mesh; it shares the player's axis conversion so its pose lands in her hand.
+            if (artifact) importer.animationType = ModelImporterAnimationType.None;
         }
 
         public static void ApplyGuardianModelSettings(ModelImporter importer)

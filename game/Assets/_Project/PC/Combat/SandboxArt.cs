@@ -24,16 +24,33 @@ namespace TheArtifacts.PC.Combat
             public GameObject Model;
         }
 
+        /// <summary>
+        /// An artifact the player wears (tools/blender/prepare_artifact.py). The FBX's root carries its pose in the player
+        /// model's rest space, so attaching it is: instantiate under the model at rest, reparent to the slot's bone.
+        /// </summary>
+        [Serializable]
+        public struct ArtifactModel
+        {
+            public string ArtifactId;
+            public GameObject Model;
+            public Material Material;
+        }
+
         public Material Arena;
         public Material Bookshelf;
         public GuardianMaterial[] Guardians = new GuardianMaterial[0];
         /// <summary>The player's rigged model (Art/Models/Player, origin at the feet) and its material; null keeps the capsule.</summary>
         public GameObject PlayerModel;
         public Material Player;
+        public ArtifactModel[] Artifacts = new ArtifactModel[0];
 
         /// <summary>The material for this Guardian, or null.</summary>
         public Material ForGuardian(string guardianId) =>
             Guardians?.FirstOrDefault(g => g.GuardianId == guardianId).Material;
+
+        /// <summary>The worn model for this artifact (Model null when it has none).</summary>
+        public ArtifactModel ArtifactFor(string artifactId) =>
+            Artifacts == null ? default : Artifacts.FirstOrDefault(a => a.ArtifactId == artifactId);
 
         /// <summary>The model for this Guardian, or null.</summary>
         public GameObject ModelFor(string guardianId) =>

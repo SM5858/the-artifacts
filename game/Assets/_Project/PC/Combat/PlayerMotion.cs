@@ -31,6 +31,12 @@ namespace TheArtifacts.PC.Combat
         Vec2? _lastPosition;
         float _lastSimTime;
         Vec2 _velocity;
+        /// <summary>The axis, in the right hand's space, that curls its fingers toward the palm (null without Fingers_R).</summary>
+        readonly Vector3? _curlAxis;
+        float _grip;
+
+        /// <summary>A weapon is in her right hand: the fingers close around its grip (CombatSandbox.WearArtifacts).</summary>
+        public bool Gripping { get; set; }
 
         /// <param name="model">The model's root, a child of <paramref name="frame"/>.</param>
         /// <param name="frame">The player's transform; this turns it to face where she runs or the Guardian.</param>
@@ -42,6 +48,13 @@ namespace TheArtifacts.PC.Combat
             _rootRotation = model.localRotation;
             foreach (var t in model.GetComponentsInChildren<Transform>(true))
                 if (t != model && !_bones.ContainsKey(t.name)) _bones[t.name] = (t, t.localRotation);
+            // At rest the fingers hang from the knuckles (the wrist-to-knuckle line runs the same way) with the palm
+            // turned to her left; curling turns them from that line toward her left, about an axis fixed in the hand.
+            if (_bones.TryGetValue("Fingers_R", out var fingers) && _bones.TryGetValue("Hand_R", out var hand))
+            {
+                var along = (fingers.T.position - hand.T.position).normalized;
+                _curlAxis = hand.T.InverseTransformDirection(Vector3.Cross(along, -frame.right).normalized);
+            }
         }
 
         /// <summary>Starts the move for a combat event about the player (an ability used, an auto-attack landing, a hit taken).</summary>
@@ -73,7 +86,7 @@ namespace TheArtifacts.PC.Combat
 
         public void Reset()
         {
-            _time = _runPhase = _moving = _guard = _flinch = _fall = 0f;
+            _time = _runPhase = _moving = _guard = _flinch = _fall = _grip = 0f;
             _action = Action.None;
             _lastPosition = null;
             _velocity = Vec2.Zero;
@@ -179,6 +192,10 @@ namespace TheArtifacts.PC.Combat
             Turn("LowerArm_R", -70f * run - 60f * slash * k - 10f * slash * s - 20f * heavy * k - 70f * lunge * k
                 + 60f * lunge * s - 100f * g - 15f * stand);
             Turn("Hand_R", -20f * slash * s + 15f * heavy * s - 20f * lunge * s);
+            // A closed fist around a held weapon (the handle crosses the palm; tools/blender/prepare_artifact.py).
+            _grip = Damp(_grip, Gripping ? 1f : 0f, 12f, _dt);
+            if (_curlAxis is Vector3 curl && _bones.TryGetValue("Fingers_R", out var fingers))
+                fingers.T.localRotation = Quaternion.AngleAxis(80f * _grip, curl) * fingers.RestRotation;
 
             // The spell hand: swings with the run; thrusts forward, palm out, to cast; across the body on guard.
             Turn("Shoulder_L", -8f * cast * s - 6f * g);
