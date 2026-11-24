@@ -46,6 +46,10 @@ namespace TheArtifacts.PC.Combat
         readonly Vector2[] _capeAngle = new Vector2[CapeRows], _capeRate = new Vector2[CapeRows];
         Vector3 _capeVelocity;
         float _lastYaw, _yawRate;
+        // Its empty hanging sleeves (Sleeve_R1-2, Sleeve_L1-2): two rows each, on their own springs, trailing a little less
+        // than the cape and lifting outward as she runs.
+        readonly List<(Transform T, Quaternion RestRotation, int Row, int Side)> _sleeves = new List<(Transform, Quaternion, int, int)>();
+        readonly Vector2[] _sleeveAngle = new Vector2[4], _sleeveRate = new Vector2[4];
 
         /// <param name="model">The model's root, a child of <paramref name="frame"/>.</param>
         /// <param name="frame">The player's transform; this turns it to face where she runs or the Guardian.</param>
@@ -98,11 +102,19 @@ namespace TheArtifacts.PC.Combat
         {
             foreach (var t in worn.GetComponentsInChildren<Transform>(true))
             {
-                // Cape_<R|C|L><row>
-                if (t.name.Length != 7 || !t.name.StartsWith("Cape_")) continue;
-                var column = "RCL".IndexOf(t.name[5]);
-                var row = t.name[6] - '1';
-                if (column >= 0 && row >= 0 && row < CapeRows) _cape.Add((t, t.localRotation, row, column));
+                // Cape_<R|C|L><row>, Sleeve_<R|L><row>
+                if (t.name.Length == 7 && t.name.StartsWith("Cape_"))
+                {
+                    var column = "RCL".IndexOf(t.name[5]);
+                    var row = t.name[6] - '1';
+                    if (column >= 0 && row >= 0 && row < CapeRows) _cape.Add((t, t.localRotation, row, column));
+                }
+                else if (t.name.Length == 9 && t.name.StartsWith("Sleeve_"))
+                {
+                    var side = "RL".IndexOf(t.name[7]);
+                    var row = t.name[8] - '1';
+                    if (side >= 0 && row >= 0 && row < 2) _sleeves.Add((t, t.localRotation, row, side));
+                }
             }
         }
 
@@ -110,12 +122,15 @@ namespace TheArtifacts.PC.Combat
         public void Unwear()
         {
             _cape.Clear();
+            _sleeves.Clear();
             ResetCape();
         }
 
         void ResetCape()
         {
             for (var i = 0; i < CapeRows; i++) _capeAngle[i] = _capeRate[i] = Vector2.zero;
+            for (var i = 0; i < _sleeveAngle.Length; i++) _sleeveAngle[i] = _sleeveRate[i] = Vector2.zero;
+            foreach (var c in _sleeves) c.T.localRotation = c.RestRotation;
             _capeVelocity = Vector3.zero;
             _yawRate = 0f;
             _lastYaw = _frame.eulerAngles.y;
@@ -164,7 +179,7 @@ namespace TheArtifacts.PC.Combat
 
         void Cape(Vec2 velocity, float dt)
         {
-            if (_cape.Count == 0) return;
+            if (_cape.Count == 0 && _sleeves.Count == 0) return;
             var yaw = _frame.eulerAngles.y;
             _yawRate = Mathf.Lerp(_yawRate, Mathf.DeltaAngle(_lastYaw, yaw) / dt, 1f - Mathf.Exp(-10f * dt));
             _lastYaw = yaw;
@@ -192,6 +207,25 @@ namespace TheArtifacts.PC.Combat
                              + 1.2f * Mathf.Sin(_time * 1.3f + row * 0.6f + column);
                 var a = _capeAngle[row];
                 t.localRotation = FrameTurn(t, a.x + ripple, 0f, a.y + 0.4f * ripple * (column - 1)) * rest;
+            }
+
+            for (var i = 0; i < _sleeveAngle.Length; i++)
+            {
+                int which = i / 2, row = i % 2;
+                var outward = which == 0 ? 1f : -1f;  // positive roll swings toward her right: out for the right sleeve
+                var trail = (1.4f + 0.5f * row) * forward;
+                var swing = -(0.8f + 0.5f * row) * side - (0.02f + 0.015f * row) * _yawRate + outward * (6f + 4f * row) * pace;
+                var target = new Vector2(trail, Mathf.Clamp(swing, -40f, 40f));
+                var accel = 90f * (target - _sleeveAngle[i]) - 7f * _sleeveRate[i];
+                _sleeveRate[i] += accel * dt;
+                _sleeveAngle[i] += _sleeveRate[i] * dt;
+            }
+            foreach (var (t, rest, row, sideIndex) in _sleeves)
+            {
+                var flap = pace * (3f + 4f * row) * Mathf.Sin(_time * 10f - row * 1.3f + sideIndex * 2.1f)
+                           + 1.5f * Mathf.Sin(_time * 1.5f + row + sideIndex * 1.4f);
+                var a = _sleeveAngle[sideIndex * 2 + row];
+                t.localRotation = FrameTurn(t, a.x + flap, 0f, a.y + 0.5f * flap * (sideIndex == 0 ? 1f : -1f)) * rest;
             }
         }
 
