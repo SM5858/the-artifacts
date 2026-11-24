@@ -24,3 +24,5 @@ MonoBehaviour:
   - GuardianId: book_keeper
     Material: {fileID: 2100000, guid: fe4cede6dc5a744bba6363009048c806, type: 2}
     Model: {fileID: 919132149155446097, guid: 25cd106028f5447a38f25b5e6c1e3837, type: 3}
+  PlayerModel: {fileID: 919132149155446097, guid: 69e737ad57a8b4f5398d870d65997e58, type: 3}
+  Player: {fileID: 2100000, guid: 78ab22af409344bb28e4d49bb465d958, type: 2}

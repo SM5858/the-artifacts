@@ -136,7 +136,7 @@ RIGS = {
             ("Toe_R", "Foot_R", (-0.82, -0.4, 0.18), (-0.83, -0.75, 0.1), {"side": -1, "min_x": 0.1, "zmax": 0.3, "ymax": -0.3}),
         ]),
     },
-    # The player: a 1.75 m hunter (art_source/generated/player_sheet.png). The right hand holds a dagger point down;
+    # The player: a 1.75 m hunter (art_source/generated/player_sheet.png, the scarf-free sheet). The right hand holds a dagger point down;
     # the left reaches forward, palm up, to hold a spell. Her centre line is at x = -0.03.
     "player": {
         "sharpness": 4.0,
@@ -166,7 +166,7 @@ RIGS = {
         ],
         # The dagger goes wholly with the right hand; the sheathed sword hangs from the hips.
         "rigid_boxes": [("Hand_R", (-0.45, -0.45, 0.55), (-0.255, 0.02, 0.84))],
-        "rigid_segments": [("Hips", (0.27, -0.04, 0.42), (0.12, -0.16, 1.0), 0.035)],
+        "rigid_segments": [("Hips", (0.29, -0.07, 0.36), (0.135, -0.195, 1.05), 0.035)],
     },
 }
 
@@ -186,6 +186,18 @@ def _segment_distance(co, a, b):
     ab = b - a
     t = np.clip(((co - a) @ ab) / (ab @ ab), 0.0, 1.0)
     return np.linalg.norm(co - (a + t[:, None] * ab), axis=1)
+
+
+def _rigid_parts(spec, co):
+    """(bone, vertex mask) for each part that moves wholly with one bone: rods, boxes and segments in the spec."""
+    parts = []
+    for bone, (x, y), radius, z0, z1 in spec.get("rigid", []):
+        parts.append((bone, (np.hypot(co[:, 0] - x, co[:, 1] - y) < radius) & (co[:, 2] >= z0) & (co[:, 2] <= z1)))
+    for bone, lo, hi in spec.get("rigid_boxes", []):
+        parts.append((bone, np.all((co >= np.array(lo)) & (co <= np.array(hi)), axis=1)))
+    for bone, a, b, radius in spec.get("rigid_segments", []):
+        parts.append((bone, _segment_distance(co, a, b) < radius))
+    return parts
 
 
 def rig(guardian_id):
@@ -224,18 +236,9 @@ def rig(guardian_id):
         d = np.maximum(_segment_distance(co, head, tail), 0.02)
         ok = _allowed(co, region) & (d <= region.get("radius", np.inf))
         w[:, j] = np.where(ok, d ** -spec["sharpness"], 0.0)
-    for bone, (x, y), radius, z0, z1 in spec.get("rigid", []):
-        rod = (np.hypot(co[:, 0] - x, co[:, 1] - y) < radius) & (co[:, 2] >= z0) & (co[:, 2] <= z1)
-        w[rod] = 0.0
-        w[rod, names.index(bone)] = 1.0
-    for bone, lo, hi in spec.get("rigid_boxes", []):
-        box = np.all((co >= np.array(lo)) & (co <= np.array(hi)), axis=1)
-        w[box] = 0.0
-        w[box, names.index(bone)] = 1.0
-    for bone, a, b, radius in spec.get("rigid_segments", []):
-        seg = _segment_distance(co, a, b) < radius
-        w[seg] = 0.0
-        w[seg, names.index(bone)] = 1.0
+    for bone, part in _rigid_parts(spec, co):
+        w[part] = 0.0
+        w[part, names.index(bone)] = 1.0
     # Keep the three strongest, normalised.
     keep = np.argsort(-w, axis=1)[:, :3]
     top = np.take_along_axis(w, keep, axis=1)
@@ -261,7 +264,9 @@ def detach(guardian_id, limbs):
     """
     Cuts the faces that join a limb to the body where the generated mesh fused them (an arm hanging against the hip,
     a braid lying on the back), then rigs again. Without this, moving the limb stretches those faces into long
-    shards. limbs: [(limb bones, bones it may stay joined to)]. Run after rig(): it reads the weights.
+    shards. limbs: [(limb bones, bones it may stay joined to)]. Also cuts the faces that join a rigid part (a sheathed
+    sword, a held dagger) to anything that follows another bone, such as the thigh beside it. Run after rig(): it reads
+    the weights.
 
         detach("player", [(["UpperArm_R", "LowerArm_R", "Hand_R"], ["Shoulder_R", "Chest"]),
                           (["UpperArm_L", "LowerArm_L", "Hand_L"], ["Shoulder_L", "Chest"]),
@@ -277,8 +282,14 @@ def detach(guardian_id, limbs):
     parts = [({names.index(n) for n in limb}, {names.index(n) for n in limb + keep}) for limb, keep in limbs]
     bm = bmesh.new()
     bm.from_mesh(mesh.data)
+    co = np.array([v.co[:] for v in mesh.data.vertices])
+    rigid = np.full(len(co), -1)
+    for bone, part in _rigid_parts(RIGS[guardian_id], co):
+        rigid[part] = names.index(bone)
     cut = [f for f in bm.faces
-           if any((d := {dom[v.index] for v in f.verts}) & limb and d - ok for limb, ok in parts)]
+           if any((d := {dom[v.index] for v in f.verts}) & limb and d - ok for limb, ok in parts)
+           or len({rigid[v.index] for v in f.verts}) > 1
+           and any(rigid[v.index] < 0 and dom[v.index] != max(rigid[u.index] for u in f.verts) for v in f.verts)]
     bmesh.ops.delete(bm, geom=cut, context="FACES_ONLY")
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
     bm.to_mesh(mesh.data)
