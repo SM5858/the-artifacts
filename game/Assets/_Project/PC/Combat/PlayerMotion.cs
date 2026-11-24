@@ -38,6 +38,15 @@ namespace TheArtifacts.PC.Combat
         /// <summary>A weapon is in her right hand: the fingers close around its grip (CombatSandbox.WearArtifacts).</summary>
         public bool Gripping { get; set; }
 
+        // A worn cape's bones (tools/blender/make_cape.py: Cape_R1-4, Cape_C1-4, Cape_L1-4): each row swings on a spring
+        // toward a trail set by how she moves, so it streams back as she runs, swings out as she turns or sidesteps,
+        // ripples at speed, and settles with a sway when she stops.
+        readonly List<(Transform T, Quaternion RestRotation, int Row, int Column)> _cape = new List<(Transform, Quaternion, int, int)>();
+        const int CapeRows = 4;
+        readonly Vector2[] _capeAngle = new Vector2[CapeRows], _capeRate = new Vector2[CapeRows];
+        Vector3 _capeVelocity;
+        float _lastYaw, _yawRate;
+
         /// <param name="model">The model's root, a child of <paramref name="frame"/>.</param>
         /// <param name="frame">The player's transform; this turns it to face where she runs or the Guardian.</param>
         public PlayerMotion(Transform model, Transform frame)
@@ -84,8 +93,38 @@ namespace TheArtifacts.PC.Combat
             _actionLength = seconds;
         }
 
+        /// <summary>Takes in a worn artifact's own bones (a cape's), at rest.</summary>
+        public void Wear(Transform worn)
+        {
+            foreach (var t in worn.GetComponentsInChildren<Transform>(true))
+            {
+                // Cape_<R|C|L><row>
+                if (t.name.Length != 7 || !t.name.StartsWith("Cape_")) continue;
+                var column = "RCL".IndexOf(t.name[5]);
+                var row = t.name[6] - '1';
+                if (column >= 0 && row >= 0 && row < CapeRows) _cape.Add((t, t.localRotation, row, column));
+            }
+        }
+
+        /// <summary>Lets go of the worn artifacts' bones (they are being destroyed).</summary>
+        public void Unwear()
+        {
+            _cape.Clear();
+            ResetCape();
+        }
+
+        void ResetCape()
+        {
+            for (var i = 0; i < CapeRows; i++) _capeAngle[i] = _capeRate[i] = Vector2.zero;
+            _capeVelocity = Vector3.zero;
+            _yawRate = 0f;
+            _lastYaw = _frame.eulerAngles.y;
+            foreach (var c in _cape) c.T.localRotation = c.RestRotation;
+        }
+
         public void Reset()
         {
+            ResetCape();
             _time = _runPhase = _moving = _guard = _flinch = _fall = _grip = 0f;
             _action = Action.None;
             _lastPosition = null;
@@ -120,6 +159,49 @@ namespace TheArtifacts.PC.Combat
                     1f - Mathf.Exp(-14f * dt));
 
             Pose();
+            Cape(velocity, dt);
+        }
+
+        void Cape(Vec2 velocity, float dt)
+        {
+            if (_cape.Count == 0) return;
+            var yaw = _frame.eulerAngles.y;
+            _yawRate = Mathf.Lerp(_yawRate, Mathf.DeltaAngle(_lastYaw, yaw) / dt, 1f - Mathf.Exp(-10f * dt));
+            _lastYaw = yaw;
+            _capeVelocity = Vector3.Lerp(_capeVelocity, _frame.InverseTransformDirection(new Vector3(velocity.X, 0f, velocity.Y)),
+                1f - Mathf.Exp(-6f * dt));
+            var forward = Mathf.Clamp(_capeVelocity.z, -3f, 8f);
+            var side = Mathf.Clamp(_capeVelocity.x, -6f, 6f);
+            var pace = Mathf.Clamp01(new Vector2(_capeVelocity.x, _capeVelocity.z).magnitude / 7f);
+            for (var row = 0; row < CapeRows; row++)
+            {
+                // The lower rows trail further: about 15°, 17°, 19°, 21° each (72° at the hem) at her full run.
+                var trail = (1.8f + 0.3f * row) * forward;
+                // Sidestepping or turning swings it out the other way; a turn to her right (positive yaw) flings it left.
+                var swing = -(0.9f + 0.4f * row) * side - (0.02f + 0.012f * row) * _yawRate;
+                var target = new Vector2(trail, Mathf.Clamp(swing, -35f, 35f));
+                // A slightly underdamped spring: it overshoots and sways when she stops.
+                var accel = 70f * (target - _capeAngle[row]) - 8f * _capeRate[row];
+                _capeRate[row] += accel * dt;
+                _capeAngle[row] += _capeRate[row] * dt;
+            }
+            foreach (var (t, rest, row, column) in _cape)
+            {
+                // A ripple that runs down the cape and differs across it, growing with speed; a slow sway at rest.
+                var ripple = pace * (2f + 2.5f * row) * Mathf.Sin(_time * 9f - row * 1.1f + column * 1.7f)
+                             + 1.2f * Mathf.Sin(_time * 1.3f + row * 0.6f + column);
+                var a = _capeAngle[row];
+                t.localRotation = FrameTurn(t, a.x + ripple, 0f, a.y + 0.4f * ripple * (column - 1)) * rest;
+            }
+        }
+
+        /// <summary>A turn about her own axes (pitch about her right, yaw about up, roll about forward) in the bone's parent space.</summary>
+        Quaternion FrameTurn(Transform bone, float pitch, float yaw, float roll)
+        {
+            var parent = bone.parent;
+            return Quaternion.AngleAxis(pitch, parent.InverseTransformDirection(_frame.right))
+                   * Quaternion.AngleAxis(yaw, parent.InverseTransformDirection(_frame.up))
+                   * Quaternion.AngleAxis(roll, parent.InverseTransformDirection(_frame.forward));
         }
 
         void Pose()
@@ -212,11 +294,7 @@ namespace TheArtifacts.PC.Combat
         void Turn(string bone, float pitch, float yaw = 0f, float roll = 0f)
         {
             if (!_bones.TryGetValue(bone, out var b)) return;
-            var parent = b.T.parent;
-            var right = parent.InverseTransformDirection(_frame.right);
-            var up = parent.InverseTransformDirection(_frame.up);
-            var forward = parent.InverseTransformDirection(_frame.forward);
-            var target = Quaternion.AngleAxis(pitch, right) * Quaternion.AngleAxis(yaw, up) * Quaternion.AngleAxis(roll, forward) * b.RestRotation;
+            var target = FrameTurn(b.T, pitch, yaw, roll) * b.RestRotation;
             b.T.localRotation = Quaternion.Slerp(b.T.localRotation, target, 1f - Mathf.Exp(-Follow * _dt));
         }
 

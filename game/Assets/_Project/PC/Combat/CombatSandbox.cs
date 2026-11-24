@@ -517,6 +517,7 @@ namespace TheArtifacts.PC.Combat
         {
             foreach (var worn in _wornArtifacts) Destroy(worn);
             _wornArtifacts.Clear();
+            _playerMotion?.Unwear();
             if (art == null || _playerModel == null) return;
             var gripping = false;
             foreach (var artifact in build.Artifacts)
@@ -527,11 +528,13 @@ namespace TheArtifacts.PC.Combat
                 if (model.Model == null || socket == null) continue;
                 var worn = Instantiate(model.Model, _playerModel, false);
                 worn.transform.SetParent(socket, true);
+                foreach (var skin in worn.GetComponentsInChildren<SkinnedMeshRenderer>(true)) skin.updateWhenOffscreen = true;
                 if (model.Material != null)
                     foreach (var r in worn.GetComponentsInChildren<Renderer>(true))
                         r.sharedMaterials = r.sharedMaterials.Select(_ => model.Material).ToArray();
                 _wornArtifacts.Add(worn);
                 gripping |= artifact.Slot == ArtifactSlot.RightHand;
+                _playerMotion.Wear(worn.transform);
             }
             _playerMotion.Gripping = gripping;
         }
@@ -541,6 +544,7 @@ namespace TheArtifacts.PC.Combat
         {
             ArtifactSlot.RightHand => "Hand_R",
             ArtifactSlot.LeftHand => "Hand_L",
+            ArtifactSlot.Armor => "Chest",  // the cape, hung from her shoulders
             _ => null,
         };
 

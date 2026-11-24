@@ -22,7 +22,9 @@ namespace TheArtifacts.PC.Editor
         public const string PlayerModelPath = "Assets/_Project/Art/Models/Player/player.fbx";
         /// <summary>Worn artifacts (tools/blender/prepare_artifact.py), one FBX per artifact id, posed in the player's rest space.</summary>
         public const string ArtifactModelsRoot = "Assets/_Project/Art/Models/Artifacts";
-        static readonly string[] ArtifactModelIds = { "columbia_lions_fang" };
+        static readonly string[] ArtifactModelIds = { "columbia_lions_fang", "columbia_blue_robe" };
+        /// <summary>Artifacts with their own bones (the cape, tools/blender/make_cape.py); the rest are rigid meshes.</summary>
+        public static readonly string[] SkinnedArtifactIds = { "columbia_blue_robe" };
 
         // (texture set, tiling)
         static readonly (string Name, float Tiling)[] Sets =
@@ -30,7 +32,7 @@ namespace TheArtifacts.PC.Editor
             ("StoneFloor", 10f), ("OakWood", 1f), ("GolemStone", 1f), ("AgedBronze", 1f), ("DarkBronze", 1f), ("Verdigris", 1f),
             // Generated Guardian models' own texture sets (UV-mapped, so no tiling): tools/blender/prepare_generated.py.
             ("AlmaMater", 1f), ("ColumbiaLion", 1f), ("BookKeeper", 1f), ("Player", 1f),
-            ("ColumbiaLionsFang", 1f),
+            ("ColumbiaLionsFang", 1f), ("ColumbiaBlueRobe", 1f),
         };
 
         [MenuItem("The Artifacts/Build Sandbox Materials")]
@@ -59,7 +61,7 @@ namespace TheArtifacts.PC.Editor
             art.Artifacts = ArtifactModelIds.Select(id =>
             {
                 var path = $"{ArtifactModelsRoot}/{id}.fbx";
-                EnsureImport(path, skinned: false);
+                EnsureImport(path, skinned: SkinnedArtifactIds.Contains(id));
                 return new SandboxArt.ArtifactModel
                 {
                     ArtifactId = id, Model = AssetDatabase.LoadAssetAtPath<GameObject>(path),
@@ -225,8 +227,9 @@ namespace TheArtifacts.PC.Editor
             if (!assetPath.StartsWith(SandboxArtMenu.GuardianModelsRoot) && assetPath != SandboxArtMenu.PlayerModelPath && !artifact) return;
             var importer = (ModelImporter)assetImporter;
             ApplyGuardianModelSettings(importer);
-            // An artifact is one rigid mesh; it shares the player's axis conversion so its pose lands in her hand.
-            if (artifact) importer.animationType = ModelImporterAnimationType.None;
+            // An artifact shares the player's axis conversion so its pose lands on her; most are one rigid mesh.
+            if (artifact && !SandboxArtMenu.SkinnedArtifactIds.Contains(Path.GetFileNameWithoutExtension(assetPath)))
+                importer.animationType = ModelImporterAnimationType.None;
         }
 
         public static void ApplyGuardianModelSettings(ModelImporter importer)
