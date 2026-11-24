@@ -453,7 +453,7 @@ namespace TheArtifacts.PC.Combat
             if (_guardianModel == null) return;
 
             // The capsule is scaled ×2 around its centre; undo that so the model stands at its own size on the floor.
-            _guardianModel.transform.localScale = Vector3.one / _guardian.localScale.y;
+            _guardianModel.transform.localScale = Vector3.one * ModelScale(guardianId) / _guardian.localScale.y;
             _guardianModel.transform.localPosition = new Vector3(0f, -1f, 0f);
             // The FBX models face -Z in Unity (Blender's -Y front comes through backwards); the Guardian faces +Z.
             _guardianModel.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
@@ -475,6 +475,12 @@ namespace TheArtifacts.PC.Combat
             if (_weakPoint != _owlSphere) _weakPoint.gameObject.SetActive(false);
             _motion = new GuardianMotion(_guardianModel.transform, _guardian, guardianId);
         }
+
+        /// <summary>
+        /// How much larger than its FBX a Guardian is drawn. The golem is 1.3× (5.5 m) so its short legs take steps
+        /// long enough for its walking speed; its BodyRadius matches (Content.cs).
+        /// </summary>
+        static float ModelScale(string guardianId) => guardianId == "book_keeper" ? 1.3f : 1f;
 
         Material SlotMaterial(string slot, Dictionary<string, Material> bySlot)
         {

@@ -52,11 +52,12 @@ namespace TheArtifacts.PC.Combat
             {
                 "alma_mater" => (Body.Lich, 12f, 1.2f),
                 "columbia_lion" => (Body.Lion, 22f, 1.5f),
-                "book_keeper" => (Body.Golem, 7f, 2.6f),
+                "book_keeper" => (Body.Golem, 7f, 2.4f),
                 _ => (Body.Other, 10f, 2f),
             };
             foreach (var t in model.GetComponentsInChildren<Transform>(true))
                 if (t != model && !_bones.ContainsKey(t.name)) _bones[t.name] = (t, t.localRotation);
+            _size = model.lossyScale.y;
             if (_body == Body.Golem)
             {
                 _legs.Add(LegRig.At(this, "UpperLeg_L", "LowerLeg_L", "Foot_L"));
@@ -107,6 +108,8 @@ namespace TheArtifacts.PC.Combat
         }
 
         readonly List<LegRig> _legs = new List<LegRig>();
+        /// <summary>The model's size in the world relative to its FBX (the golem is drawn larger).</summary>
+        readonly float _size;
 
         /// <summary>A world point in the Guardian's side view: (forward, up) in metres.</summary>
         Vector2 Side(Vector3 world)
@@ -323,14 +326,18 @@ namespace TheArtifacts.PC.Combat
             // Standing, it sways its weight from leg to leg like a machine idling.
             var idle = Mathf.Sin(t * 0.8f) * (1f - m) * (1f - w);
             // Walking, the hips ride low so both feet reach the floor, and drop as each foot lands.
-            var walkRise = (-0.18f - 0.08f * stomp + 0.04f * Mathf.Abs(Mathf.Sin(a))) * m;
+            var walkRise = (-0.18f - 0.08f * stomp + 0.04f * Mathf.Abs(Mathf.Sin(a))) * m * _size;
             Root(p, walkRise - 0.25f * w - 0.4f * s - 0.15f * sl - 1.0f * d,
                 -14f * w + 25f * s + 10f * sl + 30f * d, 2f * idle); // upright as it walks: a lean would sink the front foot
 
             // Legs: each foot stays planted on the floor and slides back under the body while the other lifts its knee
             // and steps through (solved as a two-bone leg so the feet do not skate); a wide braced stance in the tell;
             // kneel when it falls.
-            const float stance = 0.6f, stride = 1.2f, lift = 0.6f;
+            // The planted foot slides back exactly as far as the body travels while it is down, so it does not skate
+            // (up to what the legs can reach).
+            const float stance = 0.6f;
+            var stride = Mathf.Min(stance * Mathf.PI * 2f / _stride, 1.2f * _size);
+            var lift = 0.6f * _size;
             for (var i = 0; i < _legs.Count; i++)
             {
                 var leg = _legs[i];

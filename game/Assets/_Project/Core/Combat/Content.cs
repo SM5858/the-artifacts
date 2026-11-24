@@ -359,7 +359,7 @@ namespace TheArtifacts.Core.Combat
                 Landmark = "Columbia Lion statue", LootPool = new[] { "columbia_lions_fang", "columbia_lions_pelt" },
                 StoryCard = "The lion has stood for Columbia for more than a century. It keeps no secrets and plays no tricks: " +
                     "read its moves, step out of its reach, and strike when it tires." },
-            new GuardianProfile { Id = "book_keeper", Name = "Book Keeper", Type = CreatureType.Construct, BodyRadius = 1.0f,
+            new GuardianProfile { Id = "book_keeper", Name = "Book Keeper", Type = CreatureType.Construct, BodyRadius = 1.8f,
                 Landmark = "Columbia bookstore", LootPool = new[] { "columbia_blue_mortarboard", "columbia_blue_robe" },
                 StoryCard = "The keeper has guarded these shelves longer than anyone remembers, and it fears for its books " +
                     "far more than for itself. Fire near the shelves would break its nerve.",
