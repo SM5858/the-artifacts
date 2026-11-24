@@ -52,7 +52,7 @@ namespace TheArtifacts.PC.Combat
             {
                 "alma_mater" => (Body.Lich, 12f, 1.2f),
                 "columbia_lion" => (Body.Lion, 22f, 1.5f),
-                "book_keeper" => (Body.Golem, 7f, 3.5f),
+                "book_keeper" => (Body.Golem, 7f, 2.6f),
                 _ => (Body.Other, 10f, 2f),
             };
             foreach (var t in model.GetComponentsInChildren<Transform>(true))
@@ -323,14 +323,14 @@ namespace TheArtifacts.PC.Combat
             // Standing, it sways its weight from leg to leg like a machine idling.
             var idle = Mathf.Sin(t * 0.8f) * (1f - m) * (1f - w);
             // Walking, the hips ride low so both feet reach the floor, and drop as each foot lands.
-            var walkRise = (-0.12f - 0.08f * stomp + 0.04f * Mathf.Abs(Mathf.Sin(a))) * m;
+            var walkRise = (-0.18f - 0.08f * stomp + 0.04f * Mathf.Abs(Mathf.Sin(a))) * m;
             Root(p, walkRise - 0.25f * w - 0.4f * s - 0.15f * sl - 1.0f * d,
                 -14f * w + 25f * s + 10f * sl + 30f * d, 2f * idle); // upright as it walks: a lean would sink the front foot
 
             // Legs: each foot stays planted on the floor and slides back under the body while the other lifts its knee
             // and steps through (solved as a two-bone leg so the feet do not skate); a wide braced stance in the tell;
             // kneel when it falls.
-            const float stance = 0.6f, stride = 0.95f, lift = 0.35f;
+            const float stance = 0.6f, stride = 1.2f, lift = 0.6f;
             for (var i = 0; i < _legs.Count; i++)
             {
                 var leg = _legs[i];
@@ -358,8 +358,11 @@ namespace TheArtifacts.PC.Combat
             }
 
             Turn("Hips", 0f, 10f * step, 3f * idle);
-            Turn("Spine", p.Breath * 2f - 10f * w + 20f * s + 8f * sl, -10f * step + 15f * w - 10f * s);
-            Turn("Chest", -18f * w + 35f * s + 15f * sl - 15f * _flinch + 25f * d, -6f * step, p.Shake - 3f * idle);
+            // The body heaves over the planted foot (left while the left foot is down), so the alternation reads from
+            // the front as well as the side.
+            var weight = Mathf.Sin(a - 0.1f * Mathf.PI) * m;
+            Turn("Spine", p.Breath * 2f - 10f * w + 20f * s + 8f * sl, -10f * step + 15f * w - 10f * s, 7f * weight);
+            Turn("Chest", -18f * w + 35f * s + 15f * sl - 15f * _flinch + 25f * d, -6f * step, p.Shake - 3f * idle + 4f * weight);
 
             // The head scans in steps and holds, like a machine (neck first, then head); it looks up at its fists in the tell.
             var scan = Mathf.Round((Mathf.PerlinNoise(t * 0.3f, 9.1f) - 0.5f) * 4f) * 20f * (1f - w);
