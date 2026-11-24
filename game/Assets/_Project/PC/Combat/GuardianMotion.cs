@@ -35,6 +35,9 @@ namespace TheArtifacts.PC.Combat
 
         float _time, _walkPhase, _speed, _moving, _windup, _slump, _tremble, _strike, _flinch, _death, _dt;
         Vec2? _lastPosition;
+        float _lastSimTime;
+        /// <summary>The Guardian's velocity over the last simulation step (m/s, floor plane).</summary>
+        Vec2 _velocity;
         /// <summary>The Guardian's velocity in its own frame (x right, z forward), m/s.</summary>
         Vector3 _localVelocity;
         /// <summary>The lich's robe joints, top to bottom: each lags the one above it on a loose spring (x roll, y pitch).</summary>
@@ -128,6 +131,7 @@ namespace TheArtifacts.PC.Combat
         {
             _time = _walkPhase = _speed = _moving = _windup = _slump = _tremble = _strike = _flinch = _death = 0f;
             _lastPosition = null;
+            _velocity = Vec2.Zero;
             _localVelocity = Vector3.zero;
             for (var i = 0; i < _drag.Length; i++) _drag[i] = _dragRate[i] = Vector2.zero;
             foreach (var b in _bones.Values) b.T.localRotation = b.RestRotation;
@@ -140,14 +144,10 @@ namespace TheArtifacts.PC.Combat
             _time += dt;
 
             // Speed from the simulation, so a charge or a chase both move the legs.
-            var speed = _lastPosition is Vec2 last ? Vec2.Distance(last, sim.GuardianPosition) / dt : 0f;
-            if (_lastPosition is Vec2 from)
-            {
-                var v = (sim.GuardianPosition - from) * (1f / dt);
-                _localVelocity = Vector3.Lerp(_localVelocity, _frame.InverseTransformDirection(new Vector3(v.X, 0f, v.Y)),
-                    1f - Mathf.Exp(-8f * dt));
-            }
-            _lastPosition = sim.GuardianPosition;
+            _velocity = SimVelocity(sim, sim.GuardianPosition, ref _lastPosition, ref _lastSimTime, _velocity);
+            var speed = _velocity.Length;
+            _localVelocity = Vector3.Lerp(_localVelocity, _frame.InverseTransformDirection(new Vector3(_velocity.X, 0f, _velocity.Y)),
+                1f - Mathf.Exp(-8f * dt));
             _speed = Damp(_speed, speed, 6f, dt);
             var ongoing = sim.Outcome == CombatOutcome.Ongoing;
             _moving = Damp(_moving, ongoing && speed > 0.3f ? 1f : 0f, 6f, dt);
@@ -419,6 +419,27 @@ namespace TheArtifacts.PC.Combat
             var forward = parent.InverseTransformDirection(_frame.forward);
             var target = Quaternion.AngleAxis(pitch, right) * Quaternion.AngleAxis(yaw, up) * Quaternion.AngleAxis(roll, forward) * b.RestRotation;
             b.T.localRotation = Quaternion.Slerp(b.T.localRotation, target, 1f - Mathf.Exp(-(follow > 0f ? follow : _follow) * _dt));
+        }
+
+        /// <summary>
+        /// Velocity measured over simulation time, not frame time: the sim steps at 60 Hz, so at a higher frame rate
+        /// most frames see no movement, and a per-frame speed would read as standing still. Holds the last step's value
+        /// between steps; zero once the fight is over.
+        /// </summary>
+        internal static Vec2 SimVelocity(CombatSim sim, Vec2 position, ref Vec2? lastPosition, ref float lastTime, Vec2 current)
+        {
+            if (sim.Outcome != CombatOutcome.Ongoing || lastPosition == null || sim.Time < lastTime)
+            {
+                lastPosition = position;
+                lastTime = sim.Time;
+                return Vec2.Zero;
+            }
+            var elapsed = sim.Time - lastTime;
+            if (elapsed <= 1e-5f) return current;
+            var velocity = (position - lastPosition.Value) * (1f / elapsed);
+            lastPosition = position;
+            lastTime = sim.Time;
+            return velocity;
         }
 
         static float Damp(float current, float target, float rate, float dt) =>

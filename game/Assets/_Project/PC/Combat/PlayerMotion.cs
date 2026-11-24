@@ -29,6 +29,8 @@ namespace TheArtifacts.PC.Combat
         Action _action;
         float _actionTime, _actionLength;
         Vec2? _lastPosition;
+        float _lastSimTime;
+        Vec2 _velocity;
 
         /// <param name="model">The model's root, a child of <paramref name="frame"/>.</param>
         /// <param name="frame">The player's transform; this turns it to face where she runs or the Guardian.</param>
@@ -74,6 +76,7 @@ namespace TheArtifacts.PC.Combat
             _time = _runPhase = _moving = _guard = _flinch = _fall = 0f;
             _action = Action.None;
             _lastPosition = null;
+            _velocity = Vec2.Zero;
             _root.localPosition = _rootPosition;
             _root.localRotation = _rootRotation;
             foreach (var b in _bones.Values) b.T.localRotation = b.RestRotation;
@@ -85,8 +88,8 @@ namespace TheArtifacts.PC.Combat
             _dt = dt;
             _time += dt;
 
-            var velocity = _lastPosition is Vec2 last ? (sim.PlayerPosition - last) * (1f / dt) : Vec2.Zero;
-            _lastPosition = sim.PlayerPosition;
+            _velocity = GuardianMotion.SimVelocity(sim, sim.PlayerPosition, ref _lastPosition, ref _lastSimTime, _velocity);
+            var velocity = _velocity;
             var speed = velocity.Length;
             var alive = sim.Outcome != CombatOutcome.Loss;
             _moving = Damp(_moving, alive && speed > 0.5f ? 1f : 0f, 8f, dt);
@@ -96,9 +99,9 @@ namespace TheArtifacts.PC.Combat
             _fall = alive ? 0f : Mathf.Min(1f, _fall + dt / 0.9f);
             if (_action != Action.None && (_actionTime += dt) >= _actionLength) _action = Action.None;
 
-            // Face where she runs; standing, attacking or casting, face the Guardian.
+            // Face where she is going while she moves (even mid-swing or mid-cast); standing, face the Guardian.
             var toGuardian = sim.GuardianPosition - sim.PlayerPosition;
-            var face = speed > 0.5f && _action == Action.None && _guard < 0.5f ? velocity : toGuardian;
+            var face = speed > 0.5f ? velocity : toGuardian;
             if (alive && face.LengthSquared > 1e-6f)
                 _frame.rotation = Quaternion.Slerp(_frame.rotation, Quaternion.LookRotation(new Vector3(face.X, 0f, face.Y)),
                     1f - Mathf.Exp(-14f * dt));
@@ -127,10 +130,12 @@ namespace TheArtifacts.PC.Combat
                 case Action.Cast: cast = 1f; break;
             }
             var busy = Mathf.Max(slash, heavy, lunge, spin, cast) * Mathf.Max(k, s);
+            // The legs keep running through a swing or a cast; the arms and trunk give way to the move.
+            var legs = m * (1f - lunge * s) * (1f - spin * s);
             var run = m * (1f - busy) * (1f - g);
 
             // The body: a light bob as she runs, a lean into lunges, a full turn for Overpower, a fall backwards.
-            var bob = run * 0.05f * Mathf.Abs(Mathf.Cos(a));
+            var bob = legs * 0.05f * Mathf.Abs(Mathf.Cos(a));
             var crouch = 0.06f * g + 0.1f * lunge * s + 0.05f * heavy * s;
             _root.localPosition = _rootPosition + new Vector3(0f, bob - crouch - 0.05f * f, 0.6f * lunge * s);
             var turn = spin * 360f * Smooth(Mathf.Clamp01((u - 0.2f) / 0.6f));
@@ -138,20 +143,20 @@ namespace TheArtifacts.PC.Combat
                                   * Quaternion.AngleAxis(-80f * f - 6f * fl, Vector3.right) * _rootRotation;
 
             // Legs: a run with folding knees and swinging thighs; a split stance for the lunge; bent knees on guard.
-            var stand = 1f - run;
+            var stand = 1f - legs;
             void Leg(string upper, string lower, string foot, float phase, float split)
             {
                 var swing = Mathf.Sin(phase);
                 var fold = Mathf.Pow(Mathf.Max(0f, Mathf.Cos(phase)), 1.5f);
-                Turn(upper, run * (-40f * swing - 15f * fold) - 12f * g * stand + split * 40f * lunge * s - 8f * heavy * s);
-                Turn(lower, run * (15f + 85f * fold) + 22f * g * stand + 20f * lunge * s + 10f * heavy * s + 30f * f);
-                Turn(foot, run * (-10f + 25f * fold) - 10f * g * stand);
+                Turn(upper, legs * (-40f * swing - 15f * fold) - 12f * g * stand + split * 40f * lunge * s - 8f * heavy * s);
+                Turn(lower, legs * (15f + 85f * fold) + 22f * g * stand + 20f * lunge * s + 10f * heavy * s + 30f * f);
+                Turn(foot, legs * (-10f + 25f * fold) - 10f * g * stand);
             }
             Leg("UpperLeg_L", "LowerLeg_L", "Foot_L", a, -1f);
             Leg("UpperLeg_R", "LowerLeg_R", "Foot_R", a + Mathf.PI, 0.8f);
 
             // The trunk leans into the run and twists against the legs; it winds up and turns through each attack.
-            var twist = run * Mathf.Sin(a);
+            var twist = legs * Mathf.Sin(a);
             Turn("Hips", 0f, 8f * twist);
             Turn("Spine", 10f * run + breath * 1.5f + 15f * lunge * s + 12f * heavy * s - 10f * heavy * k - 10f * fl,
                 -6f * twist + 20f * slash * k - 30f * slash * s + 15f * heavy * k - 10f * cast * s);
