@@ -58,6 +58,7 @@ namespace TheArtifacts.PC.Combat
         static readonly Color GuardianIdle = new Color(0.45f, 0.12f, 0.12f);
         static readonly Color GuardianTell = new Color(1f, 0.55f, 0.1f);
         static readonly Color GuardianRecovery = new Color(0.3f, 0.9f, 0.35f);
+        static readonly Color GuardianHit = new Color(1.4f, 1.3f, 1.2f);  // a brief white flash when a hit lands
         static readonly Color GuardianFury = new Color(0.75f, 0.15f, 0.6f);
         static readonly Color EyeColor = new Color(0.35f, 1f, 0.9f);
         // The lich's material slots (concept: blue-grey gown, verdigris mantle, bone, gilded bronze).
@@ -112,7 +113,7 @@ namespace TheArtifacts.PC.Combat
         Transform _player, _guardian, _moveMarker;
         Material _playerMaterial;
         /// <summary>The player flashes red until this time after taking damage.</summary>
-        float _hurtUntil;
+        float _hurtUntil, _guardianHitUntil;
         Material _guardianMaterial, _telegraphTemplate;
         /// <summary>The model's materials, one per slot kind; all of them glow with the tell.</summary>
         readonly List<Material> _guardianSlots = new List<Material>();
@@ -269,6 +270,7 @@ namespace TheArtifacts.PC.Combat
             {
                 _sim.Step(SimStep, new PlayerInput(MoveTowardTarget(), _pendingAbility, _pendingArtifactSkill, _spellTarget, _pendingAutoToggle));
                 if (_spellTarget != null && _sim.IsLoreSpent(_spellTarget)) _spellTarget = null;
+                if (_sim.IsDashing) _moveTarget = null;  // a dash-in attack replaces the walk
                 _pendingAbility = Ability.None;
                 _pendingArtifactSkill = SkillBarSlot.None;
                 _pendingAutoToggle = false;
@@ -683,7 +685,7 @@ namespace TheArtifacts.PC.Combat
 
             if (_guardianTextured)
             {
-                var glow = _sim.Phase switch
+                var glow = Time.time < _guardianHitUntil ? GuardianHit : _sim.Phase switch
                 {
                     GuardianPhase.Tell => GuardianTell * 1.5f,
                     GuardianPhase.Recovery => GuardianRecovery,
@@ -694,7 +696,7 @@ namespace TheArtifacts.PC.Combat
             }
             else
             {
-                var color = _sim.Phase switch
+                var color = Time.time < _guardianHitUntil ? GuardianHit : _sim.Phase switch
                 {
                     GuardianPhase.Tell => GuardianTell,
                     GuardianPhase.Recovery => GuardianRecovery,
@@ -750,7 +752,11 @@ namespace TheArtifacts.PC.Combat
                 // The model lunges when a skill lands (hit or dodged) and swings lighter for an auto-attack.
                 if (e.Type == CombatEventType.SkillHit || e.Type == CombatEventType.SkillMissed) _motion?.Strike();
                 if (e.Type == CombatEventType.PlayerDamaged && e.Id == "guardian_auto") _motion?.Strike(0.5f);
-                if (e.Type == CombatEventType.GuardianDamaged && e.Amount > 0f) _motion?.Flinch();
+                if (e.Type == CombatEventType.GuardianDamaged && e.Amount > 0f)
+                {
+                    _motion?.Flinch();
+                    _guardianHitUntil = Time.time + 0.1f;
+                }
                 _playerMotion?.OnEvent(e);
                 string line = e.Type switch
                 {
@@ -762,6 +768,7 @@ namespace TheArtifacts.PC.Combat
                     CombatEventType.AbilityRejected => $"Can't: {e.Id.Replace(":", " - ")}",
                     CombatEventType.GuardianDamaged when e.Id != "auto" => $"{e.Id.Replace('_', ' ')} {e.Amount:0}",
                     CombatEventType.CriticalHit => "  critical!",
+                    CombatEventType.GuardianStaggered when e.Amount >= PlayerRules.HeavyStrikeStagger => "  Guardian staggers!",
                     CombatEventType.StatusApplied => $"Guardian {e.Id.ToLowerInvariant()}",
                     CombatEventType.StatusResisted => $"Guardian resists {e.Id.ToLowerInvariant()}",
                     CombatEventType.WeakPointHit => $"  {_sim.FindWeakPoint(e.Id)?.Name.ToLowerInvariant()} struck!",
@@ -825,6 +832,11 @@ namespace TheArtifacts.PC.Combat
             {
                 Bar(cast, 1f, GuardianRecovery);
                 GUI.Label(cast, "OPENING  -  crit chance +50%", _center);
+            }
+            else if (_sim.IsStaggered)
+            {
+                Bar(cast, Mathf.Clamp01(_sim.StaggerRemaining / PlayerRules.OverpowerStagger), new Color(0.9f, 0.75f, 0.3f));
+                GUI.Label(cast, "STAGGERED  -  it cannot strike back", _center);
             }
             else if (_sim.Phase == GuardianPhase.Incapacitated)
             {

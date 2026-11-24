@@ -24,6 +24,27 @@ namespace TheArtifacts.Core.Combat
         public const float AutoSwing = 2.0f;
         public const float AutoCoefficient = 1.0f;
 
+        /// <summary>
+        /// Dash-in: a melee attack (Heavy Strike, Overpower, or an auto-attack swing) used out of melee range but within
+        /// this distance of the Guardian's body dashes the player in at <see cref="DashSpeed"/> and strikes on arrival.
+        /// </summary>
+        public const float DashInRange = 8f;
+        public const float DashSpeed = 25f;
+        /// <summary>The dash stops this far from the Guardian's body (inside melee range) before the attack lands.</summary>
+        public const float DashStopDistance = 2.5f;
+        /// <summary>A dash that has not reached the Guardian by now (it charged away) is called off.</summary>
+        public const float DashMaxTime = 0.6f;
+
+        /// <summary>
+        /// Stagger: how long a hit stops the Guardian from chasing, auto-attacking, or starting a skill. It does not
+        /// interrupt a tell (the Guardian is committed to a telegraphed skill) and does not stack; a longer one replaces it.
+        /// </summary>
+        public const float AutoStagger = 0.4f;
+        public const float HeavyStrikeStagger = 0.7f;
+        public const float LungeStagger = 0.5f;
+        public const float OverpowerStagger = 1.0f;
+        public const float SpellStagger = 0.4f;
+
         public const float HeavyStrikeCooldown = 6f;
         public const float HeavyStrikeCoefficient = 2.5f;
 

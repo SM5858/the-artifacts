@@ -162,9 +162,11 @@ namespace TheArtifacts.PC.Combat
             }
             _windup = Damp(_windup, windup, 12f, dt);
             _slump = Damp(_slump, ongoing && sim.Phase == GuardianPhase.Recovery ? 1f : 0f, 6f, dt);
-            _tremble = Damp(_tremble, ongoing && sim.Phase == GuardianPhase.Incapacitated ? 1f : 0f, 8f, dt);
+            _tremble = Damp(_tremble, ongoing && sim.Phase == GuardianPhase.Incapacitated ? 1f : ongoing && sim.IsStaggered ? 0.5f : 0f, 8f, dt);
             _strike = Mathf.Max(0f, _strike - dt / 0.6f);
             _flinch = Mathf.Max(0f, _flinch - dt / 0.25f);
+            // Staggered by a hit: it stays knocked back, shaking, until it recovers.
+            if (ongoing && sim.IsStaggered) _flinch = Mathf.Max(_flinch, 0.75f);
             _death = sim.Outcome == CombatOutcome.Win ? Mathf.Min(1f, _death + dt / 1.6f) : 0f;
 
             var p = new Pose

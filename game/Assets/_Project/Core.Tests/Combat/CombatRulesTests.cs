@@ -426,6 +426,127 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That(sim.DistanceToGuardian, Is.EqualTo(before - PlayerRules.LungeDistance).Within(0.3));
         }
 
+        // ---------- Dash-in and stagger (Combat Spec 2) ----------
+
+        /// <summary>Stands still until the chasing Guardian is about this far from the player.</summary>
+        static void WaitUntilAt(CombatSim sim, float distance) => RunUntil(sim, s => s.DistanceToGuardian <= distance, 5f);
+
+        [Test]
+        public void HeavyStrike_WithinDashRange_DashesInAndStrikesOnArrival()
+        {
+            var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
+            WaitUntilAt(sim, 6.5f);
+            Assert.That(sim.InMeleeRange, Is.False);
+
+            Use(sim, Ability.HeavyStrike);
+            Assert.That(sim.IsDashing, Is.True);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.Zero, "it lands on arrival, not at once");
+            Assert.That(sim.CooldownRemaining(Ability.HeavyStrike), Is.Zero);
+            RunUntil(sim, s => !s.IsDashing, PlayerRules.DashMaxTime);
+
+            Assert.That(sim.InMeleeRange, Is.True);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.GreaterThan(0f));
+            Assert.That(sim.CooldownRemaining(Ability.HeavyStrike), Is.GreaterThan(0f));
+        }
+
+        [Test]
+        public void Dash_IgnoresMovementInput()
+        {
+            var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
+            WaitUntilAt(sim, 6.5f);
+            Use(sim, Ability.HeavyStrike);
+            var away = (sim.PlayerPosition - sim.GuardianPosition).Normalized();
+
+            RunUntil(sim, s => !s.IsDashing, PlayerRules.DashMaxTime, _ => new PlayerInput(away));
+
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.GreaterThan(0f));
+        }
+
+        [Test]
+        public void AutoAttack_DashesInWhileStanding_ButNotWhileMoving()
+        {
+            var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
+            sim.Step(Dt, PlayerInput.None.WithToggleAutoAttack());
+            WaitUntilAt(sim, 9f);
+            // Backing off keeps her out: a swing never pulls a moving (dodging) player in.
+            RunFor(sim, 0.5f, s => new PlayerInput((s.PlayerPosition - s.GuardianPosition).Normalized()));
+            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.DashStarted), Is.False);
+
+            WaitUntilAt(sim, 6.5f);
+            RunUntil(sim, s => s.Events.Any(e => e.Type == CombatEventType.GuardianDamaged && e.Id == "auto"), 1f);
+
+            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.DashStarted && e.Id == "auto"), Is.True);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "auto"), Is.GreaterThan(0f));
+        }
+
+        [Test]
+        public void MeleeSkills_BeyondDashRange_AreRejected()
+        {
+            var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
+            Assert.That(sim.DistanceToGuardian, Is.GreaterThan(PlayerRules.DashInRange));
+
+            Use(sim, Ability.Overpower);
+
+            Assert.That(sim.IsDashing, Is.False);
+            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("Overpower:range"));
+        }
+
+        [Test]
+        public void Hit_StaggersTheGuardian_SoItNeitherChasesNorStrikesBack()
+        {
+            var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
+            Engage(sim);
+            Assert.That(sim.Phase, Is.EqualTo(GuardianPhase.Idle));
+
+            Use(sim, Ability.HeavyStrike);
+            Assert.That(sim.IsStaggered, Is.True);
+            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.GuardianStaggered).Amount, Is.EqualTo(PlayerRules.HeavyStrikeStagger));
+            var at = sim.GuardianPosition;
+            var hp = sim.PlayerHp;
+
+            // Back off while it reels: it does not follow or swing.
+            RunUntil(sim, s => !s.IsStaggered, 2f, s => new PlayerInput((s.PlayerPosition - s.GuardianPosition).Normalized()));
+
+            Assert.That(Vec2.Distance(sim.GuardianPosition, at), Is.LessThan(1e-4f));
+            Assert.That(sim.PlayerHp, Is.EqualTo(hp));
+            Assert.That(sim.Phase, Is.EqualTo(GuardianPhase.Idle));
+        }
+
+        [Test]
+        public void Hit_DoesNotStaggerATell()
+        {
+            var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
+            Engage(sim);
+            RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 10f);
+            var skill = sim.CurrentSkill;
+
+            Use(sim, Ability.HeavyStrike);
+
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.GreaterThan(0f));
+            Assert.That(sim.IsStaggered, Is.False);
+            Assert.That(sim.Phase, Is.EqualTo(GuardianPhase.Tell));
+            Assert.That(sim.CurrentSkill, Is.SameAs(skill));
+        }
+
+        [Test]
+        public void Stagger_DelaysASkillThatCameDue_UntilItRecovers()
+        {
+            var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
+            Engage(sim);
+            // Strike just before its first skill is due (the steady strategy's first skill comes at 8 s).
+            RunUntil(sim, s => s.Time >= 7.8f, 8f);
+            Assert.That(sim.Phase, Is.EqualTo(GuardianPhase.Idle));
+            Use(sim, Ability.Overpower);
+            Assert.That(sim.IsStaggered, Is.True);
+
+            RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 3f);
+
+            var staggered = sim.Events.Last(e => e.Type == CombatEventType.GuardianStaggered);
+            var tell = sim.Events.First(e => e.Type == CombatEventType.TellStarted);
+            Assert.That(tell.Time, Is.GreaterThanOrEqualTo(staggered.Time + PlayerRules.OverpowerStagger - 1e-3f));
+            Assert.That(tell.Time, Is.LessThan(staggered.Time + PlayerRules.OverpowerStagger + 0.1f));
+        }
+
         // ---------- Body radius (Combat Spec 4.8) ----------
 
         static CombatSim Lion(params string[] skills) => new CombatSim(PrototypeContent.StarterBuild,

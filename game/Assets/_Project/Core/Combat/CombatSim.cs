@@ -85,6 +85,10 @@ namespace TheArtifacts.Core.Combat
         LoreNoEffect,
         /// <summary>A player attack struck an exposed weak point; Id is the weak point, Amount the damage dealt.</summary>
         WeakPointHit,
+        /// <summary>The player dashes in for a melee attack; Id is the ability ("auto" for an auto-attack swing).</summary>
+        DashStarted,
+        /// <summary>A hit staggered the Guardian; Id is the hit's source, Amount the stagger in seconds.</summary>
+        GuardianStaggered,
     }
 
     /// <summary>Feedback for the UI and the per-attempt trace.</summary>
@@ -158,6 +162,11 @@ namespace TheArtifacts.Core.Combat
         public bool IsFuryActive => Time < _furyEnd;
         public GuardianStatus? ActiveStatus { get; private set; }
         public GuardianProfile Guardian { get; }
+        /// <summary>A hit has the Guardian reeling: it does not chase, auto-attack, or start a skill.</summary>
+        public float StaggerRemaining { get; private set; }
+        public bool IsStaggered => StaggerRemaining > 0f;
+        /// <summary>The player is dashing in for a melee attack (movement input is ignored meanwhile).</summary>
+        public bool IsDashing => _dash.HasValue;
 
         public IReadOnlyList<Telegraph> ActiveTelegraphs => _telegraphs;
         public IReadOnlyList<CombatEvent> Events => _events;
@@ -177,6 +186,9 @@ namespace TheArtifacts.Core.Combat
         float _loreOpeningEnd = float.NegativeInfinity;
         /// <summary>This tick's aimed weak point, or null.</summary>
         WeakPoint _aimedWeakPoint;
+        /// <summary>The melee attack the player is dashing in to make (<see cref="Ability.None"/> for an auto-attack swing).</summary>
+        Ability? _dash;
+        float _dashTime;
 
         readonly GuardianStrategy _strategy;
         readonly Random _rng;
@@ -265,8 +277,9 @@ namespace TheArtifacts.Core.Combat
 
             Time += dt;
             TickPlayerTimers(dt);
-            MovePlayer(input.Move, dt);
             _aimedWeakPoint = input.Target != null ? FindWeakPoint(input.Target) : null;
+            if (_dash.HasValue) Dash(dt);
+            else MovePlayer(input.Move, dt);
             if (input.ToggleAutoAttack)
             {
                 AutoAttacking = !AutoAttacking;
@@ -274,7 +287,7 @@ namespace TheArtifacts.Core.Combat
             }
             if (input.Ability != Ability.None) TryUse(input.Ability, input.Target);
             if (input.ArtifactSkill != SkillBarSlot.None) TryUseArtifactSkill(input.ArtifactSkill);
-            PlayerAutoAttack();
+            PlayerAutoAttack(standing: input.Move.LengthSquared < 1e-8f);
             if (CheckEnd()) return;
 
             UpdateGuardian(dt);
@@ -395,7 +408,7 @@ namespace TheArtifacts.Core.Combat
             if (target != null && FindWeakPoint(target) != null) target = null;  // a weak point is on the Guardian
             if (CooldownRemaining(ability) > 0f) return "cooldown";
             if (GcdRemaining > 0f) return "gcd";
-            if ((ability == Ability.HeavyStrike || ability == Ability.Overpower) && !InMeleeRange) return "range";
+            if (IsDashMelee(ability) && DistanceToGuardian > PlayerRules.DashInRange) return "range";
             if (IsSpell(ability))
             {
                 var (manaCost, range) = SpellCost(ability);
@@ -421,11 +434,56 @@ namespace TheArtifacts.Core.Combat
                 return;
             }
 
+            // Out of melee range but close enough: dash in and strike on arrival. The GCD starts now, so nothing else is used
+            // on the way; the cooldown starts when the attack lands.
+            if (IsDashMelee(ability) && !InMeleeRange)
+            {
+                StartDash(ability);
+                GcdRemaining = PlayerRules.GlobalCooldown;
+                return;
+            }
+            Perform(ability, target);
+        }
+
+        static bool IsDashMelee(Ability ability) => ability == Ability.HeavyStrike || ability == Ability.Overpower;
+
+        void StartDash(Ability ability)
+        {
+            _dash = ability;
+            _dashTime = 0f;
+            Emit(CombatEventType.DashStarted, ability == Ability.None ? "auto" : ability.ToString(), 0f);
+        }
+
+        /// <summary>Runs the player at the Guardian; on arrival the attack lands, and a dash too long is called off.</summary>
+        void Dash(float dt)
+        {
+            _dashTime += dt;
+            var toGuardian = GuardianPosition - PlayerPosition;
+            var gap = DistanceToGuardian - PlayerRules.DashStopDistance;
+            if (gap > 0f && toGuardian.LengthSquared > 1e-8f)
+                PlayerPosition = KeepOutOfBody(ClampToArena(PlayerPosition + toGuardian.Normalized() * Math.Min(gap, PlayerRules.DashSpeed * dt)));
+            var ability = _dash.Value;
+            if (DistanceToGuardian <= PlayerRules.DashStopDistance + 0.05f)
+            {
+                _dash = null;
+                if (ability == Ability.None) _playerAutoTimer = 0f;  // the swing follows in PlayerAutoAttack this tick
+                else Perform(ability, null);
+            }
+            else if (_dashTime >= PlayerRules.DashMaxTime)
+            {
+                _dash = null;
+                Emit(CombatEventType.AbilityRejected, $"{(ability == Ability.None ? "auto" : ability.ToString())}:range", 0f);
+            }
+        }
+
+        void Perform(Ability ability, string target)
+        {
             var inRecovery = Phase == GuardianPhase.Recovery;
             switch (ability)
             {
                 case Ability.HeavyStrike:
-                    DamageGuardian(PlayerRules.HeavyStrikeCoefficient * Build.Strength, "heavy_strike", DamageType.Physical, canCrit: true);
+                    DamageGuardian(PlayerRules.HeavyStrikeCoefficient * Build.Strength, "heavy_strike", DamageType.Physical, canCrit: true,
+                        stagger: PlayerRules.HeavyStrikeStagger);
                     _cooldowns[ability] = Cooldown(ability, PlayerRules.HeavyStrikeCooldown);
                     break;
 
@@ -439,27 +497,31 @@ namespace TheArtifacts.Core.Combat
                     var toGuardian = GuardianPosition - PlayerPosition;
                     var travel = Math.Max(0f, Math.Min(PlayerRules.LungeDistance, DistanceToGuardian - 2f));
                     PlayerPosition = ClampToArena(PlayerPosition + toGuardian.Normalized() * travel);
-                    if (InMeleeRange) DamageGuardian(PlayerRules.LungeCoefficient * Build.Strength, "lunge", DamageType.Physical, canCrit: true);
+                    if (InMeleeRange) DamageGuardian(PlayerRules.LungeCoefficient * Build.Strength, "lunge", DamageType.Physical, canCrit: true,
+                        stagger: PlayerRules.LungeStagger);
                     _cooldowns[ability] = Cooldown(ability, PlayerRules.LungeCooldown);
                     break;
                 }
 
                 case Ability.Overpower:
-                    DamageGuardian(PlayerRules.OverpowerCoefficient * Build.Strength, "overpower", DamageType.Physical, canCrit: true);
+                    DamageGuardian(PlayerRules.OverpowerCoefficient * Build.Strength, "overpower", DamageType.Physical, canCrit: true,
+                        stagger: PlayerRules.OverpowerStagger);
                     _cooldowns[ability] = Cooldown(ability, PlayerRules.OverpowerCooldown);
                     break;
 
                 case Ability.LightningBolt:
                     PlayerMp -= PlayerRules.LightningBoltManaCost;
                     if (target != null) HitLore(FindLoreTarget(target), Element.Lightning, ability);
-                    else DamageGuardian(PlayerRules.LightningBoltBaseDamage + PlayerRules.LightningBoltCoefficient * Build.Intelligence, "lightning_bolt", DamageType.Magic, canCrit: true);
+                    else DamageGuardian(PlayerRules.LightningBoltBaseDamage + PlayerRules.LightningBoltCoefficient * Build.Intelligence, "lightning_bolt", DamageType.Magic, canCrit: true,
+                        stagger: PlayerRules.SpellStagger);
                     _cooldowns[ability] = Cooldown(ability, PlayerRules.LightningBoltCooldown);
                     break;
 
                 case Ability.FireBolt:
                     PlayerMp -= PlayerRules.FireBoltManaCost;
                     if (target != null) HitLore(FindLoreTarget(target), Element.Fire, ability);
-                    else DamageGuardian(PlayerRules.FireBoltBaseDamage + PlayerRules.FireBoltCoefficient * Build.Intelligence, "fire_bolt", DamageType.Magic, canCrit: true);
+                    else DamageGuardian(PlayerRules.FireBoltBaseDamage + PlayerRules.FireBoltCoefficient * Build.Intelligence, "fire_bolt", DamageType.Magic, canCrit: true,
+                        stagger: PlayerRules.SpellStagger);
                     _cooldowns[ability] = Cooldown(ability, PlayerRules.FireBoltCooldown);
                     break;
             }
@@ -488,10 +550,18 @@ namespace TheArtifacts.Core.Combat
         float Cooldown(Ability ability, float baseCooldown) =>
             (Build.Passive(TraitEffectKind.SetCooldown, ability)?.Value ?? baseCooldown) * (1f - Build.CooldownReduction);
 
-        void PlayerAutoAttack()
+        /// <param name="standing">No movement input this tick: a swing that is due may dash in. While the player moves
+        /// (dodging) or the Guardian is telegraphing a skill, auto-attack never pulls her in.</param>
+        void PlayerAutoAttack(bool standing)
         {
-            if (!AutoAttacking || _playerAutoTimer > 0f || !InMeleeRange) return;
-            DamageGuardian(PlayerRules.AutoCoefficient * Build.Strength, "auto", DamageType.Physical, canCrit: true);
+            if (!AutoAttacking || _playerAutoTimer > 0f || _dash.HasValue) return;
+            if (!InMeleeRange)
+            {
+                if (standing && Phase != GuardianPhase.Tell && DistanceToGuardian <= PlayerRules.DashInRange) StartDash(Ability.None);
+                return;
+            }
+            DamageGuardian(PlayerRules.AutoCoefficient * Build.Strength, "auto", DamageType.Physical, canCrit: true,
+                stagger: PlayerRules.AutoStagger);
             _playerAutoTimer = PlayerRules.AutoSwing;
         }
 
@@ -499,7 +569,8 @@ namespace TheArtifacts.Core.Combat
         /// All player damage, reflects included, is scaled by type traits and reduced by the Guardian's Def or Res
         /// (Combat Spec 2). Attacks may crit; the roll is skipped when the chance is 0 (no Precision, no opening).
         /// </summary>
-        void DamageGuardian(float amount, string source, DamageType type, bool canCrit = false)
+        /// <param name="stagger">How long the hit staggers the Guardian (0 for reflects and other indirect damage).</param>
+        void DamageGuardian(float amount, string source, DamageType type, bool canCrit = false, float stagger = 0f)
         {
             var chance = CritChance;
             var crit = canCrit && chance > 0f && _rng.NextDouble() < chance;
@@ -512,7 +583,19 @@ namespace TheArtifacts.Core.Combat
             Emit(CombatEventType.GuardianDamaged, source, amount);
             if (crit) Emit(CombatEventType.CriticalHit, source, amount);
             if (weakPoint != null) Emit(CombatEventType.WeakPointHit, weakPoint.Id, amount);
+            if (stagger > 0f && amount > 0f && CanStagger && stagger > StaggerRemaining)
+            {
+                StaggerRemaining = stagger;
+                Emit(CombatEventType.GuardianStaggered, source, stagger);
+            }
         }
+
+        /// <summary>
+        /// Whether a hit staggers the Guardian now. Not during a tell: it is committed to a telegraphed skill, so the
+        /// player cannot cancel it by hitting (only a status interrupts a tell, Section 4.5). Not while incapacitated, which
+        /// already stops it. A Guardian guard stance or damage immunity, when added, belongs here too.
+        /// </summary>
+        public bool CanStagger => Phase != GuardianPhase.Tell && Phase != GuardianPhase.Incapacitated;
 
         void HealPlayer(float amount, string source)
         {
@@ -608,6 +691,7 @@ namespace TheArtifacts.Core.Combat
             _queued.Clear();
             _pulsesLeft = 0;
             CurrentSkill = null;
+            StaggerRemaining = 0f;
 
             var end = Time + duration;
             _phaseEnd = Phase == GuardianPhase.Incapacitated ? Math.Max(_phaseEnd, end) : end;
@@ -620,6 +704,18 @@ namespace TheArtifacts.Core.Combat
 
         void UpdateGuardian(float dt)
         {
+            if (StaggerRemaining > 0f)
+            {
+                StaggerRemaining = Math.Max(0f, StaggerRemaining - dt);
+                // Reeling: no chase, no auto-attack (its swing timer waits too, so it cannot strike back the moment it
+                // recovers), and no new skill; a skill whose time came starts as soon as the stagger ends.
+                if (Phase == GuardianPhase.Idle) return;
+                if (Phase == GuardianPhase.ComboGap)
+                {
+                    _phaseEnd = Math.Max(_phaseEnd, Time + StaggerRemaining);
+                    return;
+                }
+            }
             _guardianAutoTimer = Math.Max(0f, _guardianAutoTimer - dt);
 
             switch (Phase)

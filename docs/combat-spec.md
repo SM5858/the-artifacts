@@ -23,6 +23,8 @@ Labels as in the GDD: **[DECIDED]** chosen by me as Design Lead; **[OPEN]** unre
 - **Cooldowns:** every ability cooldown is shortened by the Agility rating.
 - **Global cooldown (GCD):** 1.0 s after any hotbar skill.
 - **Movement:** run speed 7 m/s × (1 + Speed / 100). Turning and moving never stop auto-attack, but attacking requires melee range (≤ 3 m).
+- **Dash-in [DECIDED 2026-11-23]:** a melee attack (Heavy Strike, Overpower, or a due auto-attack swing) used out of melee range but within **8 m** of the Guardian's body dashes the player in at 25 m/s and lands on arrival, 2.5 m from the body. The GCD starts when the dash starts, the cooldown when the attack lands, and movement input is ignored during the dash. Auto-attack dashes in only while the player stands still (no movement input) and the Guardian is not telegraphing, so it never pulls a dodging player into a telegraph. A dash that has not arrived after 0.6 s is called off. Beyond 8 m the attack is rejected ("range"). Added after playtesting: landing melee hits from exactly 3 m was too hard.
+- **Stagger [DECIDED 2026-11-23]:** a direct hit staggers the Guardian (auto 0.4 s, Heavy Strike 0.7 s, Lunge 0.5 s, Overpower 1.0 s, bolts 0.4 s; reflects and other indirect damage do not). While staggered it does not chase, auto-attack (its swing timer waits too), or start a skill; a skill whose time came starts as soon as the stagger ends, and a combo's second skill waits for it. Staggers do not stack: a longer one replaces a shorter one. A tell cannot be staggered (the Guardian is committed to a telegraphed skill; only a status interrupts a tell, Section 4.5), and neither can an incapacitated Guardian. A Guardian guard stance or damage immunity, if added, will also block stagger. The sandbox shows it with a white hit flash, the Guardian held recoiling and shaking, and a STAGGERED bar.
 - **Telegraphs:** every Guardian skill shows its area on the ground for its full tell time; the area is fixed when the tell starts.
 - **No fight timer.** A fight ends only when either side's HP reaches zero. Guardian auto-attacks already make a long fight a losing one for the player.
 
@@ -50,11 +52,11 @@ Both builds use the same abilities, so a tester learns one control scheme. The b
 
 | Key | Ability | Cooldown | Effect | Intent |
 |---|---|---|---|---|
-| A | Auto-attack (toggle) **[DECIDED 2026-11-20]** | 2.0 s swing | 1.0 × Strength while in range. Off at the start of a fight; A turns it on or off. Moving does not stop it (Section 2) | commit |
-| Q | Heavy Strike | 6 s | 2.5 × Strength | commit |
+| A | Auto-attack (toggle) **[DECIDED 2026-11-20]** | 2.0 s swing | 1.0 × Strength while in range. Off at the start of a fight; A turns it on or off. Moving does not stop it (Section 2). Dashes in from up to 8 m while standing (Section 2) | commit |
+| Q | Heavy Strike | 6 s | 2.5 × Strength. Dashes in from up to 8 m (Section 2) | commit |
 | W | Guard | 12 s | 60% less damage taken for 2 s | defend |
 | E | Lunge | 10 s | Dash up to 8 m to the Guardian, 1.0 × Strength | switch tactics (re-engage after evading) |
-| R | Overpower (ultimate) **[PROPOSED 2026-11-19]** | 45 s | 8.0 × Strength, melee. Best saved for an opening, where it is likely to crit | commit (rewards reading tells) |
+| R | Overpower (ultimate) **[PROPOSED 2026-11-19]** | 45 s | 8.0 × Strength, melee; dashes in from up to 8 m. Best saved for an opening, where it is likely to crit | commit (rewards reading tells) |
 | T | Lightning Bolt **[DECIDED 2026-11-19]** | 8 s | Magic: 100 + 1.5 × Intelligence (useful at any Intelligence), range 15 m, costs 30 MP. Strong against most Guardians, nearly useless against Alma Mater (high Res) | commit at range |
 | F | Fire Bolt **[DECIDED 2026-11-19; numbers PROPOSED]** | 6 s | Magic: 60 + 1.0 × Intelligence, range 25 m (reaches the bookshelves from most of the arena), costs 20 MP. Weaker than Lightning Bolt; its value is fire, which sets lore targets alight (4.5) | commit at range, or aim at a lore target |
 | Right-click (or Ctrl+click on a trackpad) | Move | — | Run to the clicked point (hold to steer); walk out of telegraphed areas | evade |
