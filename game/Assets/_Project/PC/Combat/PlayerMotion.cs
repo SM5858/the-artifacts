@@ -22,8 +22,8 @@ namespace TheArtifacts.PC.Combat
         readonly Quaternion _rootRotation;
         readonly Dictionary<string, (Transform T, Quaternion RestRotation)> _bones = new Dictionary<string, (Transform, Quaternion)>();
         const float Follow = 20f;
-        /// <summary>Radians of run cycle per metre: about 2.6 m per cycle at her 7 m/s run.</summary>
-        const float Stride = 2.4f;
+        /// <summary>Radians of run cycle per metre: about 3.1 m per cycle, 2.2 strides a second at her 7 m/s run.</summary>
+        const float Stride = 2.0f;
 
         float _time, _runPhase, _moving, _guard, _flinch, _fall, _dt;
         Action _action;
@@ -171,12 +171,14 @@ namespace TheArtifacts.PC.Combat
             // The trunk leans into the run and twists against the legs; it winds up and turns through each attack.
             var twist = legs * Mathf.Sin(a);
             Turn("Hips", 0f, 8f * twist);
-            Turn("Spine", 10f * run + breath * 1.5f + 15f * lunge * s + 12f * heavy * s - 10f * heavy * k - 10f * fl,
+            // A runner's forward lean (about 25° through spine and chest), kept while she swings or casts on the move;
+            // the neck and head tip back so she still looks ahead.
+            Turn("Spine", 16f * legs + breath * 1.5f + 15f * lunge * s + 12f * heavy * s - 10f * heavy * k - 10f * fl,
                 -6f * twist + 20f * slash * k - 30f * slash * s + 15f * heavy * k - 10f * cast * s);
-            Turn("Chest", 6f * run + breath * 2f + 8f * heavy * s - 6f * fl,
+            Turn("Chest", 9f * legs + breath * 2f + 8f * heavy * s - 6f * fl,
                 -8f * twist + 15f * slash * k - 25f * slash * s - 15f * cast * s);
-            Turn("Neck", -4f * run + 4f * g);
-            Turn("Head", -6f * run - 8f * fl + 4f * g, -10f * slash * k + 15f * slash * s, 3f * Mathf.Sin(t * 0.4f));
+            Turn("Neck", -8f * legs + 4f * g);
+            Turn("Head", -10f * legs - 8f * fl + 4f * g, -10f * slash * k + 15f * slash * s, 3f * Mathf.Sin(t * 0.4f));
             // The braid trails as she runs and swings when she turns.
             Turn("Braid1", -20f * run - 8f * Mathf.Abs(Mathf.Sin(a)) * run - 25f * spin * s, 10f * twist);
             Turn("Braid2", -10f * run - 6f * Mathf.Sin(a * 2f) * run, 8f * twist);
