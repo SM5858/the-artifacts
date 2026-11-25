@@ -128,6 +128,7 @@ namespace TheArtifacts.PC.Combat
         /// <summary>Procedural motion for the model; null for the capsule.</summary>
         GuardianMotion _motion;
         PlayerMotion _playerMotion;
+        PlayerEffects _playerEffects;
         Material _playerModelMaterial;
         Transform _playerModel;
         readonly List<GameObject> _wornArtifacts = new List<GameObject>();
@@ -206,6 +207,7 @@ namespace TheArtifacts.PC.Combat
             _sim = new CombatSim(CurrentBuild, fight.Setup, seed, PrototypeContent.GuardianById(guardianId));
             _motion?.Reset();
             _playerMotion?.Reset();
+            _playerEffects?.Reset();
             WearArtifacts(_sim.Build);
             if (_preferredBar != null)
             {
@@ -252,7 +254,7 @@ namespace TheArtifacts.PC.Combat
             // Skills on Q W E R T F, auto-attack toggle on A, artifact skill bar on 1 2 3 4 C V (Combat Spec 3.2).
             if (_pendingAbility == Ability.None)
             {
-                if (kb.qKey.wasPressedThisFrame) _pendingAbility = Ability.HeavyStrike;
+                if (kb.qKey.wasPressedThisFrame) _pendingAbility = Ability.DoubleStrike;
                 else if (kb.wKey.wasPressedThisFrame) _pendingAbility = Ability.Guard;
                 else if (kb.eKey.wasPressedThisFrame) _pendingAbility = Ability.Lunge;
                 else if (kb.rKey.wasPressedThisFrame) _pendingAbility = Ability.Overpower;
@@ -380,6 +382,7 @@ namespace TheArtifacts.PC.Combat
             if (_camera == null || _sim == null) return;
             if (!_inMenu) _motion?.Update(_sim, Time.deltaTime);
             if (!_inMenu) _playerMotion?.Update(_sim, Time.deltaTime);
+            if (!_inMenu && _playerMotion != null) _playerEffects?.Update(_playerMotion);
 
             var away = _player.position - _guardian.position;
             away.y = 0f;
@@ -508,6 +511,7 @@ namespace TheArtifacts.PC.Combat
             _player.GetComponent<Renderer>().enabled = false;
             _playerModel = model.transform;
             _playerMotion = new PlayerMotion(model.transform, _player);
+            _playerEffects = new PlayerEffects(model.transform);
         }
 
         /// <summary>
@@ -539,6 +543,48 @@ namespace TheArtifacts.PC.Combat
                 _playerMotion.Wear(worn.transform);
             }
             _playerMotion.Gripping = gripping;
+            AttachBladeTip();
+        }
+
+        /// <summary>
+        /// Puts the blade trail's anchor on the tip of the weapon in her right hand (its mesh's point farthest from the
+        /// grip, the artifact's origin), or a hand's length past her fingers when she is unarmed.
+        /// </summary>
+        void AttachBladeTip()
+        {
+            if (_playerEffects == null || _playerModel == null) return;
+            var bones = _playerModel.GetComponentsInChildren<Transform>(true);
+            var weapon = _wornArtifacts.FirstOrDefault(w => w.transform.parent != null && w.transform.parent.name == "Hand_R");
+            if (weapon != null)
+            {
+                var grip = weapon.transform.position;
+                var tip = grip;
+                foreach (var filter in weapon.GetComponentsInChildren<MeshFilter>(true))
+                {
+                    var mesh = filter.sharedMesh;
+                    if (mesh == null) continue;
+                    if (mesh.isReadable || Application.isEditor)
+                    {
+                        foreach (var v in mesh.vertices)
+                        {
+                            var w = filter.transform.TransformPoint(v);
+                            if ((w - grip).sqrMagnitude > (tip - grip).sqrMagnitude) tip = w;
+                        }
+                    }
+                    else
+                    {
+                        // No vertex access: the blade runs from the grip through the middle of its bounds.
+                        var centre = filter.GetComponent<Renderer>().bounds.center;
+                        tip = grip + 2f * (centre - grip);
+                    }
+                }
+                _playerEffects.AttachBladeTip(weapon.transform, tip);
+                return;
+            }
+            var hand = bones.FirstOrDefault(t => t.name == "Hand_R");
+            var fingers = bones.FirstOrDefault(t => t.name == "Fingers_R");
+            if (hand != null && fingers != null)
+                _playerEffects.AttachBladeTip(hand, fingers.position + (fingers.position - hand.position).normalized * 0.2f);
         }
 
         /// <summary>The player model's bone an artifact in this slot rides on; null for slots with no worn model yet.</summary>
@@ -768,7 +814,7 @@ namespace TheArtifacts.PC.Combat
                     CombatEventType.AbilityRejected => $"Can't: {e.Id.Replace(":", " - ")}",
                     CombatEventType.GuardianDamaged when e.Id != "auto" => $"{e.Id.Replace('_', ' ')} {e.Amount:0}",
                     CombatEventType.CriticalHit => "  critical!",
-                    CombatEventType.GuardianStaggered when e.Amount >= PlayerRules.HeavyStrikeStagger => "  Guardian staggers!",
+                    CombatEventType.GuardianStaggered when e.Amount >= PlayerRules.DoubleStrikeStagger => "  Guardian staggers!",
                     CombatEventType.StatusApplied => $"Guardian {e.Id.ToLowerInvariant()}",
                     CombatEventType.StatusResisted => $"Guardian resists {e.Id.ToLowerInvariant()}",
                     CombatEventType.WeakPointHit => $"  {_sim.FindWeakPoint(e.Id)?.Name.ToLowerInvariant()} struck!",
@@ -856,7 +902,7 @@ namespace TheArtifacts.PC.Combat
 
             var abilities = new[]
             {
-                (Ability.HeavyStrike, "Q Heavy"), (Ability.Guard, "W Guard"), (Ability.Lunge, "E Lunge"), (Ability.Overpower, "R Overpower"),
+                (Ability.DoubleStrike, "Q Double"), (Ability.Guard, "W Guard"), (Ability.Lunge, "E Lunge"), (Ability.Overpower, "R Overpower"),
                 (Ability.LightningBolt, "T Lightning"), (Ability.FireBolt, "F Fire"),
             };
             for (var i = 0; i < abilities.Length; i++)
@@ -878,7 +924,7 @@ namespace TheArtifacts.PC.Combat
             GUI.Label(new Rect(16f, 16f, 800f, 130f),
                 $"{(accountLoop ? GameSession.Account?.Username : build.ToString())} (gear {_sim.Build.GearScore})   {_sim.Time:0.0}s\n" +
                 $"Guardian: {_sim.Setup}   [{SetupLine()}]\n" +
-                "Right-click (or Ctrl+click) move   Q Heavy  W Guard  E Lunge  R Overpower  T Lightning Bolt  F Fire Bolt  A auto-attack on/off\n" +
+                "Right-click (or Ctrl+click) move   Q Double Strike  W Guard  E Lunge  R Overpower  T Lightning Bolt  F Fire Bolt  A auto-attack on/off\n" +
                 "Left-click a bookshelf or something on the Guardian to aim at it (Esc: back to the Guardian)" +
                 (_spellTarget != null ? $"   Target: {_sim.FindLoreTarget(_spellTarget)?.Name ?? _sim.FindWeakPoint(_spellTarget)?.Name} ({_spellTarget})" : "") + "\n" +
                 "Artifact skills: 1 2 3 4 C V (click two slots on the right to swap them)", _label);

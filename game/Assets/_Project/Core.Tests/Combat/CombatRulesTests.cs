@@ -135,21 +135,27 @@ namespace TheArtifacts.Core.Tests.Combat
         // ---------- Player abilities ----------
 
         [Test]
-        public void HeavyStrike_DealsCoefficientTimesStrength_AndGoesOnCooldown()
+        public void DoubleStrike_HitsTwice_ForCoefficientTimesStrength_AndGoesOnCooldown()
         {
             var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
             Engage(sim);
 
-            Use(sim, Ability.HeavyStrike);
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(AtT3(100f)).Within(1e-3));
+            Use(sim, Ability.DoubleStrike);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "double_strike"), Is.EqualTo(AtT3(50f)).Within(1e-3), "the first hit");
+            Assert.That(sim.IsCommitted, Is.True);
+            RunUntil(sim, s => !s.IsCommitted, 1f);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "double_strike"), Is.EqualTo(AtT3(100f)).Within(1e-3));
+            var hits = sim.Events.Where(e => e.Type == CombatEventType.GuardianDamaged && e.Id == "double_strike").ToArray();
+            Assert.That(hits.Length, Is.EqualTo(2));
+            Assert.That(hits[1].Time - hits[0].Time, Is.EqualTo(PlayerRules.DoubleStrikeInterval).Within(Dt));
 
             RunFor(sim, 1.1f);
-            Use(sim, Ability.HeavyStrike);
-            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("HeavyStrike:cooldown"));
+            Use(sim, Ability.DoubleStrike);
+            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("DoubleStrike:cooldown"));
 
             RunFor(sim, 5f);
-            Use(sim, Ability.HeavyStrike);
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(AtT3(200f)).Within(1e-3));
+            Finish(sim, Ability.DoubleStrike);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "double_strike"), Is.EqualTo(AtT3(200f)).Within(1e-3));
         }
 
         [Test]
@@ -159,8 +165,8 @@ namespace TheArtifacts.Core.Tests.Combat
                 new GuardianProfile { Id = "test", Type = CreatureType.Beast, Def = 100f });
             Engage(sim);
 
-            Use(sim, Ability.HeavyStrike);
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(AtT3(100f, guardianDef: 100f)).Within(1e-3));
+            Finish(sim, Ability.DoubleStrike);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "double_strike"), Is.EqualTo(AtT3(100f, guardianDef: 100f)).Within(1e-3));
         }
 
         // ---------- Lightning Bolt, Agility, Precision, Speed (Combat Spec 2, 3.2) ----------
@@ -296,17 +302,17 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That(At(owl.FirstAppearance + owl.Interval + 0.5f), Is.True);
         }
 
-        /// <summary>Two identical fights up to <paramref name="time"/>; then Heavy Strike, aimed at the body and at the owl.</summary>
-        static (float Body, float Owl, CombatSim OwlSim) HeavyStrikeAt(float time)
+        /// <summary>Two identical fights up to <paramref name="time"/>; then Double Strike's first hit, aimed at the body and at the owl.</summary>
+        static (float Body, float Owl, CombatSim OwlSim) DoubleStrikeAt(float time)
         {
             float Strike(string target, out CombatSim sim)
             {
                 sim = AlmaMater();
                 Engage(sim);
                 RunUntil(sim, s => s.Time >= time, 60f, s => new PlayerInput((s.GuardianPosition - s.PlayerPosition).Normalized() * 0.01f));
-                var before = DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike");
-                sim.Step(Dt, new PlayerInput(Vec2.Zero, Ability.HeavyStrike, target: target));
-                return DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike") - before;
+                var before = DamageTo(sim, CombatEventType.GuardianDamaged, "double_strike");
+                sim.Step(Dt, new PlayerInput(Vec2.Zero, Ability.DoubleStrike, target: target));
+                return DamageTo(sim, CombatEventType.GuardianDamaged, "double_strike") - before;
             }
             var body = Strike(null, out _);
             var owl = Strike("owl", out var owlSim);
@@ -316,7 +322,7 @@ namespace TheArtifacts.Core.Tests.Combat
         [Test]
         public void Owl_WhileOut_AttacksAimedAtItDealDoubleDamage()
         {
-            var (body, owl, sim) = HeavyStrikeAt(12.5f);
+            var (body, owl, sim) = DoubleStrikeAt(12.5f);
             Assert.That(body, Is.GreaterThan(0f));
             Assert.That(owl, Is.EqualTo(2f * body).Within(1e-3));
             Assert.That(sim.Events.Any(e => e.Type == CombatEventType.WeakPointHit && e.Id == "owl"));
@@ -325,7 +331,7 @@ namespace TheArtifacts.Core.Tests.Combat
         [Test]
         public void Owl_WhileHidden_AttacksAimedAtItHitTheBody()
         {
-            var (body, owl, sim) = HeavyStrikeAt(16f);
+            var (body, owl, sim) = DoubleStrikeAt(16f);
             Assert.That(body, Is.GreaterThan(0f));
             Assert.That(owl, Is.EqualTo(body).Within(1e-3));
             Assert.That(sim.Events.Any(e => e.Type == CombatEventType.WeakPointHit), Is.False);
@@ -357,10 +363,10 @@ namespace TheArtifacts.Core.Tests.Combat
             var sim = Sim(new PlayerBuild(sharp, null), "T3", "steady", "cleave", "slam", "charge");
             Engage(sim);
 
-            Use(sim, Ability.HeavyStrike);
+            Finish(sim, Ability.DoubleStrike);
 
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.EqualTo(AtT3(150f)).Within(1e-3));
-            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.CriticalHit && e.Id == "heavy_strike"), Is.True);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "double_strike"), Is.EqualTo(AtT3(150f)).Within(1e-3));
+            Assert.That(sim.Events.Any(e => e.Type == CombatEventType.CriticalHit && e.Id == "double_strike"), Is.True);
         }
 
         [Test]
@@ -388,7 +394,7 @@ namespace TheArtifacts.Core.Tests.Combat
             var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
             Engage(sim);
 
-            Use(sim, Ability.HeavyStrike);
+            Use(sim, Ability.DoubleStrike);
             Use(sim, Ability.Overpower);
 
             Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("Overpower:gcd"));
@@ -399,31 +405,75 @@ namespace TheArtifacts.Core.Tests.Combat
         {
             var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
 
-            Use(sim, Ability.HeavyStrike);
+            Use(sim, Ability.DoubleStrike);
 
-            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("HeavyStrike:range"));
+            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("DoubleStrike:range"));
         }
 
         [Test]
-        public void KeenEdge_ShortensHeavyStrikeCooldown()
+        public void KeenEdge_ShortensDoubleStrikeCooldown()
         {
             var sim = Sim(TestArtifacts.With(TestArtifacts.KeenEdge), "T3", "steady", "cleave", "slam", "charge");
             Engage(sim);
 
-            Use(sim, Ability.HeavyStrike);
+            Use(sim, Ability.DoubleStrike);
 
-            Assert.That(sim.CooldownRemaining(Ability.HeavyStrike), Is.EqualTo(4.5f).Within(1e-4));
+            Assert.That(sim.CooldownRemaining(Ability.DoubleStrike), Is.EqualTo(4.5f).Within(1e-4));
         }
 
         [Test]
-        public void Lunge_ClosesDistance()
+        public void Lunge_LeapsInOverTime_AndStrikesOnLanding()
         {
             var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
-            var before = sim.DistanceToGuardian;
+            WaitUntilAt(sim, 8f);
+            var start = sim.PlayerPosition;
 
             Use(sim, Ability.Lunge);
+            Assert.That(sim.IsDashing, Is.True);
+            Assert.That(sim.LeapProgress, Is.GreaterThanOrEqualTo(0f).And.LessThan(0.2f));
+            Assert.That(Vec2.Distance(sim.PlayerPosition, start), Is.LessThan(1.5f), "a leap, not a jump cut");
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "lunge"), Is.Zero);
 
-            Assert.That(sim.DistanceToGuardian, Is.EqualTo(before - PlayerRules.LungeDistance).Within(0.3));
+            // Movement input does nothing in the air.
+            RunUntil(sim, s => !s.IsDashing, 1f, s => new PlayerInput((s.PlayerPosition - s.GuardianPosition).Normalized()));
+
+            Assert.That(sim.Time - sim.Events.Last(e => e.Type == CombatEventType.AbilityUsed && e.Id == "Lunge").Time,
+                Is.EqualTo(PlayerRules.LungeLeapTime).Within(Dt));
+            Assert.That(sim.InMeleeRange, Is.True);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "lunge"), Is.GreaterThan(0f));
+        }
+
+        [Test]
+        public void Lunge_GoesAtMostItsDistance()
+        {
+            var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
+            sim.ApplyGuardianStatus(GuardianStatus.Stun, 5f);  // it stays put while she backs off
+            RunFor(sim, 1f, s => new PlayerInput((s.PlayerPosition - s.GuardianPosition).Normalized()));
+            Assert.That(sim.DistanceToGuardian, Is.GreaterThan(PlayerRules.LungeDistance + PlayerRules.DashStopDistance + 1f));
+            var start = sim.PlayerPosition;
+
+            Finish(sim, Ability.Lunge);
+
+            Assert.That(Vec2.Distance(sim.PlayerPosition, start), Is.EqualTo(PlayerRules.LungeDistance).Within(0.05));
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "lunge"), Is.Zero);
+            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.AbilityRejected).Id, Is.EqualTo("Lunge:range"));
+        }
+
+        [Test]
+        public void Overpower_WindsUpBeforeTheBlow_AndRootsHer()
+        {
+            var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
+            Engage(sim);
+            var at = sim.PlayerPosition;
+
+            Use(sim, Ability.Overpower);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "overpower"), Is.Zero);
+            RunUntil(sim, s => !s.IsCommitted, 1f, s => new PlayerInput((s.PlayerPosition - s.GuardianPosition).Normalized()));
+
+            Assert.That(Vec2.Distance(sim.PlayerPosition, at), Is.LessThan(1e-4f));
+            var blow = sim.Events.First(e => e.Type == CombatEventType.GuardianDamaged && e.Id == "overpower");
+            var used = sim.Events.Last(e => e.Type == CombatEventType.AbilityUsed && e.Id == "Overpower");
+            Assert.That(blow.Time - used.Time, Is.EqualTo(PlayerRules.OverpowerWindup).Within(Dt));
         }
 
         // ---------- Dash-in and stagger (Combat Spec 2) ----------
@@ -432,21 +482,21 @@ namespace TheArtifacts.Core.Tests.Combat
         static void WaitUntilAt(CombatSim sim, float distance) => RunUntil(sim, s => s.DistanceToGuardian <= distance, 5f);
 
         [Test]
-        public void HeavyStrike_WithinDashRange_DashesInAndStrikesOnArrival()
+        public void DoubleStrike_WithinDashRange_DashesInAndStrikesOnArrival()
         {
             var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
             WaitUntilAt(sim, 6.5f);
             Assert.That(sim.InMeleeRange, Is.False);
 
-            Use(sim, Ability.HeavyStrike);
+            Use(sim, Ability.DoubleStrike);
             Assert.That(sim.IsDashing, Is.True);
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.Zero, "it lands on arrival, not at once");
-            Assert.That(sim.CooldownRemaining(Ability.HeavyStrike), Is.Zero);
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "double_strike"), Is.Zero, "it lands on arrival, not at once");
+            Assert.That(sim.CooldownRemaining(Ability.DoubleStrike), Is.Zero);
             RunUntil(sim, s => !s.IsDashing, PlayerRules.DashMaxTime);
 
             Assert.That(sim.InMeleeRange, Is.True);
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.GreaterThan(0f));
-            Assert.That(sim.CooldownRemaining(Ability.HeavyStrike), Is.GreaterThan(0f));
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "double_strike"), Is.GreaterThan(0f));
+            Assert.That(sim.CooldownRemaining(Ability.DoubleStrike), Is.GreaterThan(0f));
         }
 
         [Test]
@@ -454,12 +504,12 @@ namespace TheArtifacts.Core.Tests.Combat
         {
             var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
             WaitUntilAt(sim, 6.5f);
-            Use(sim, Ability.HeavyStrike);
+            Use(sim, Ability.DoubleStrike);
             var away = (sim.PlayerPosition - sim.GuardianPosition).Normalized();
 
             RunUntil(sim, s => !s.IsDashing, PlayerRules.DashMaxTime, _ => new PlayerInput(away));
 
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.GreaterThan(0f));
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "double_strike"), Is.GreaterThan(0f));
         }
 
         [Test]
@@ -498,9 +548,9 @@ namespace TheArtifacts.Core.Tests.Combat
             Engage(sim);
             Assert.That(sim.Phase, Is.EqualTo(GuardianPhase.Idle));
 
-            Use(sim, Ability.HeavyStrike);
+            Use(sim, Ability.DoubleStrike);
             Assert.That(sim.IsStaggered, Is.True);
-            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.GuardianStaggered).Amount, Is.EqualTo(PlayerRules.HeavyStrikeStagger));
+            Assert.That(sim.Events.Last(e => e.Type == CombatEventType.GuardianStaggered).Amount, Is.EqualTo(PlayerRules.DoubleStrikeStagger));
             var at = sim.GuardianPosition;
             var hp = sim.PlayerHp;
 
@@ -520,9 +570,9 @@ namespace TheArtifacts.Core.Tests.Combat
             RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 10f);
             var skill = sim.CurrentSkill;
 
-            Use(sim, Ability.HeavyStrike);
+            Use(sim, Ability.DoubleStrike);
 
-            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "heavy_strike"), Is.GreaterThan(0f));
+            Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "double_strike"), Is.GreaterThan(0f));
             Assert.That(sim.IsStaggered, Is.False);
             Assert.That(sim.Phase, Is.EqualTo(GuardianPhase.Tell));
             Assert.That(sim.CurrentSkill, Is.SameAs(skill));
@@ -534,10 +584,11 @@ namespace TheArtifacts.Core.Tests.Combat
             var sim = Sim(PrototypeContent.StarterBuild, "T3", "steady", "cleave", "slam", "charge");
             Engage(sim);
             // Strike just before its first skill is due (the steady strategy's first skill comes at 8 s).
-            RunUntil(sim, s => s.Time >= 7.8f, 8f);
+            RunUntil(sim, s => s.Time >= 7.5f, 8f);
             Assert.That(sim.Phase, Is.EqualTo(GuardianPhase.Idle));
-            Use(sim, Ability.Overpower);
+            Finish(sim, Ability.Overpower);
             Assert.That(sim.IsStaggered, Is.True);
+            Assert.That(sim.Time, Is.LessThan(8f));
 
             RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 3f);
 
@@ -610,9 +661,10 @@ namespace TheArtifacts.Core.Tests.Combat
             Engage(sim);
 
             Use(sim, Ability.Overpower);   // outside an opening, so no crit for a starter
+            Assert.That(sim.CooldownRemaining(Ability.Overpower), Is.EqualTo(PlayerRules.OverpowerCooldown).Within(Dt));
+            RunUntil(sim, s => !s.IsCommitted, 1f);
 
             Assert.That(DamageTo(sim, CombatEventType.GuardianDamaged, "overpower"), Is.EqualTo(AtT3(320f)).Within(1e-3));
-            Assert.That(sim.CooldownRemaining(Ability.Overpower), Is.EqualTo(PlayerRules.OverpowerCooldown).Within(Dt));
         }
 
         [Test]
@@ -625,7 +677,7 @@ namespace TheArtifacts.Core.Tests.Combat
                 var sim = new CombatSim(PrototypeContent.StarterBuild, PrototypeContent.DefaultSetup, seed);
                 Engage(sim);
                 RunUntil(sim, s => s.Phase == GuardianPhase.Recovery, 15f);
-                Use(sim, Ability.Overpower);
+                Finish(sim, Ability.Overpower);
                 if (sim.Events.Any(e => e.Type == CombatEventType.CriticalHit && e.Id == "overpower")) crits++;
             }
             Assert.That(crits / (double)fights, Is.EqualTo(PlayerRules.OpeningCritBonus).Within(0.1));

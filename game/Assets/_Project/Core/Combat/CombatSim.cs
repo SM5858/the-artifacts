@@ -5,7 +5,7 @@ using TheArtifacts.Core.Guardian;
 
 namespace TheArtifacts.Core.Combat
 {
-    public enum Ability { None, HeavyStrike, Guard, Lunge, Overpower, LightningBolt, FireBolt }
+    public enum Ability { None, DoubleStrike, Guard, Lunge, Overpower, LightningBolt, FireBolt }
 
     /// <summary>
     /// The six artifact skill bar slots, on keys 1, 2, 3, 4, C, V (Combat Spec 3.2). The player chooses which
@@ -165,8 +165,12 @@ namespace TheArtifacts.Core.Combat
         /// <summary>A hit has the Guardian reeling: it does not chase, auto-attack, or start a skill.</summary>
         public float StaggerRemaining { get; private set; }
         public bool IsStaggered => StaggerRemaining > 0f;
-        /// <summary>The player is dashing in for a melee attack (movement input is ignored meanwhile).</summary>
+        /// <summary>The player is dashing in for a melee attack or leaping (movement input is ignored meanwhile).</summary>
         public bool IsDashing => _dash.HasValue;
+        /// <summary>Through a Lunge leap, 0 at take-off to 1 on landing; -1 when not leaping.</summary>
+        public float LeapProgress => _dash == Ability.Lunge ? Math.Min(1f, _dashTime / PlayerRules.LungeLeapTime) : -1f;
+        /// <summary>The player is committed to an attack (dashing, leaping, or with a blow still to land): she cannot move.</summary>
+        public bool IsCommitted => _dash.HasValue || _strikes.Count > 0;
 
         public IReadOnlyList<Telegraph> ActiveTelegraphs => _telegraphs;
         public IReadOnlyList<CombatEvent> Events => _events;
@@ -174,7 +178,7 @@ namespace TheArtifacts.Core.Combat
         // ---- Private state ----
         readonly Dictionary<Ability, float> _cooldowns = new Dictionary<Ability, float>
         {
-            { Ability.HeavyStrike, 0f }, { Ability.Guard, 0f }, { Ability.Lunge, 0f }, { Ability.Overpower, 0f }, { Ability.LightningBolt, 0f },
+            { Ability.DoubleStrike, 0f }, { Ability.Guard, 0f }, { Ability.Lunge, 0f }, { Ability.Overpower, 0f }, { Ability.LightningBolt, 0f },
             { Ability.FireBolt, 0f },
         };
         float _playerAutoTimer;
@@ -188,7 +192,9 @@ namespace TheArtifacts.Core.Combat
         WeakPoint _aimedWeakPoint;
         /// <summary>The melee attack the player is dashing in to make (<see cref="Ability.None"/> for an auto-attack swing).</summary>
         Ability? _dash;
-        float _dashTime;
+        float _dashTime, _leapTravelled;
+        /// <summary>Blows still to land: Double Strike's second hit, Overpower after its wind-up; each keeps its aim.</summary>
+        readonly List<(float Time, Ability Ability, WeakPoint Aim)> _strikes = new List<(float, Ability, WeakPoint)>();
 
         readonly GuardianStrategy _strategy;
         readonly Random _rng;
@@ -279,7 +285,9 @@ namespace TheArtifacts.Core.Combat
             TickPlayerTimers(dt);
             _aimedWeakPoint = input.Target != null ? FindWeakPoint(input.Target) : null;
             if (_dash.HasValue) Dash(dt);
-            else MovePlayer(input.Move, dt);
+            else if (_strikes.Count == 0) MovePlayer(input.Move, dt);
+            LandStrikes();
+            if (CheckEnd()) return;
             if (input.ToggleAutoAttack)
             {
                 AutoAttacking = !AutoAttacking;
@@ -445,18 +453,23 @@ namespace TheArtifacts.Core.Combat
             Perform(ability, target);
         }
 
-        static bool IsDashMelee(Ability ability) => ability == Ability.HeavyStrike || ability == Ability.Overpower;
+        static bool IsDashMelee(Ability ability) => ability == Ability.DoubleStrike || ability == Ability.Overpower;
 
         void StartDash(Ability ability)
         {
             _dash = ability;
-            _dashTime = 0f;
-            Emit(CombatEventType.DashStarted, ability == Ability.None ? "auto" : ability.ToString(), 0f);
+            _dashTime = _leapTravelled = 0f;
+            if (ability != Ability.Lunge) Emit(CombatEventType.DashStarted, ability == Ability.None ? "auto" : ability.ToString(), 0f);
         }
 
         /// <summary>Runs the player at the Guardian; on arrival the attack lands, and a dash too long is called off.</summary>
         void Dash(float dt)
         {
+            if (_dash == Ability.Lunge)
+            {
+                Leap(dt);
+                return;
+            }
             _dashTime += dt;
             var toGuardian = GuardianPosition - PlayerPosition;
             var gap = DistanceToGuardian - PlayerRules.DashStopDistance;
@@ -476,15 +489,77 @@ namespace TheArtifacts.Core.Combat
             }
         }
 
+        /// <summary>
+        /// Lunge's leap: toward the Guardian's body (re-aimed each tick, as it may move) at a pace that lands on time, at
+        /// most <see cref="PlayerRules.LungeDistance"/> in all; in place when she is already there. It strikes on landing.
+        /// </summary>
+        void Leap(float dt)
+        {
+            var left = Math.Max(dt, PlayerRules.LungeLeapTime - _dashTime);
+            _dashTime += dt;
+            var gap = Math.Min(DistanceToGuardian - PlayerRules.DashStopDistance, PlayerRules.LungeDistance - _leapTravelled);
+            var toGuardian = GuardianPosition - PlayerPosition;
+            if (gap > 0f && toGuardian.LengthSquared > 1e-8f)
+            {
+                var step = gap * Math.Min(1f, dt / left);
+                PlayerPosition = KeepOutOfBody(ClampToArena(PlayerPosition + toGuardian.Normalized() * step));
+                _leapTravelled += step;
+            }
+            if (_dashTime < PlayerRules.LungeLeapTime - 1e-4f) return;
+            _dash = null;
+            Land(Ability.Lunge, _aimedWeakPoint);
+        }
+
+        /// <summary>Lands the blows that are due.</summary>
+        void LandStrikes()
+        {
+            for (var i = 0; i < _strikes.Count;)
+            {
+                if (_strikes[i].Time > Time + 1e-4f) { i++; continue; }
+                var (_, ability, aim) = _strikes[i];
+                _strikes.RemoveAt(i);
+                Land(ability, aim);
+            }
+        }
+
+        /// <summary>A melee blow: it hits if the Guardian is in reach, keeping the aim it was made with; otherwise it whiffs.</summary>
+        void Land(Ability ability, WeakPoint aim)
+        {
+            if (!InMeleeRange)
+            {
+                Emit(CombatEventType.AbilityRejected, $"{ability}:range", 0f);
+                return;
+            }
+            var aimed = _aimedWeakPoint;
+            _aimedWeakPoint = aim;
+            switch (ability)
+            {
+                case Ability.DoubleStrike:
+                    DamageGuardian(PlayerRules.DoubleStrikeCoefficient * Build.Strength, "double_strike", DamageType.Physical, canCrit: true,
+                        stagger: PlayerRules.DoubleStrikeStagger);
+                    break;
+                case Ability.Lunge:
+                    DamageGuardian(PlayerRules.LungeCoefficient * Build.Strength, "lunge", DamageType.Physical, canCrit: true,
+                        stagger: PlayerRules.LungeStagger);
+                    break;
+                case Ability.Overpower:
+                    DamageGuardian(PlayerRules.OverpowerCoefficient * Build.Strength, "overpower", DamageType.Physical, canCrit: true,
+                        stagger: PlayerRules.OverpowerStagger);
+                    break;
+            }
+            _aimedWeakPoint = aimed;
+        }
+
         void Perform(Ability ability, string target)
         {
             var inRecovery = Phase == GuardianPhase.Recovery;
             switch (ability)
             {
-                case Ability.HeavyStrike:
-                    DamageGuardian(PlayerRules.HeavyStrikeCoefficient * Build.Strength, "heavy_strike", DamageType.Physical, canCrit: true,
-                        stagger: PlayerRules.HeavyStrikeStagger);
-                    _cooldowns[ability] = Cooldown(ability, PlayerRules.HeavyStrikeCooldown);
+                case Ability.DoubleStrike:
+                    // The first hit now, the second a moment later; she holds her ground between them.
+                    Land(ability, _aimedWeakPoint);
+                    _strikes.Add((Time + PlayerRules.DoubleStrikeInterval, ability, _aimedWeakPoint));
+                    _cooldowns[ability] = Cooldown(ability, PlayerRules.DoubleStrikeCooldown);
                     break;
 
                 case Ability.Guard:
@@ -493,19 +568,14 @@ namespace TheArtifacts.Core.Combat
                     break;
 
                 case Ability.Lunge:
-                {
-                    var toGuardian = GuardianPosition - PlayerPosition;
-                    var travel = Math.Max(0f, Math.Min(PlayerRules.LungeDistance, DistanceToGuardian - 2f));
-                    PlayerPosition = ClampToArena(PlayerPosition + toGuardian.Normalized() * travel);
-                    if (InMeleeRange) DamageGuardian(PlayerRules.LungeCoefficient * Build.Strength, "lunge", DamageType.Physical, canCrit: true,
-                        stagger: PlayerRules.LungeStagger);
+                    // Leaps up and toward the Guardian, cutting down as she lands (Leap).
+                    StartDash(ability);
                     _cooldowns[ability] = Cooldown(ability, PlayerRules.LungeCooldown);
                     break;
-                }
 
                 case Ability.Overpower:
-                    DamageGuardian(PlayerRules.OverpowerCoefficient * Build.Strength, "overpower", DamageType.Physical, canCrit: true,
-                        stagger: PlayerRules.OverpowerStagger);
+                    // Gathers itself, then the blow lands.
+                    _strikes.Add((Time + PlayerRules.OverpowerWindup, ability, _aimedWeakPoint));
                     _cooldowns[ability] = Cooldown(ability, PlayerRules.OverpowerCooldown);
                     break;
 
@@ -554,7 +624,7 @@ namespace TheArtifacts.Core.Combat
         /// (dodging) or the Guardian is telegraphing a skill, auto-attack never pulls her in.</param>
         void PlayerAutoAttack(bool standing)
         {
-            if (!AutoAttacking || _playerAutoTimer > 0f || _dash.HasValue) return;
+            if (!AutoAttacking || _playerAutoTimer > 0f || IsCommitted) return;
             if (!InMeleeRange)
             {
                 if (standing && Phase != GuardianPhase.Tell && DistanceToGuardian <= PlayerRules.DashInRange) StartDash(Ability.None);

@@ -32,6 +32,13 @@ namespace TheArtifacts.Core.Tests.Combat
 
         public static void Use(CombatSim sim, Ability ability) => sim.Step(Dt, new PlayerInput(Vec2.Zero, ability));
 
+        /// <summary>Uses the ability and stands until every blow of it has landed (Double Strike's second, Overpower's wind-up, Lunge's leap).</summary>
+        public static void Finish(CombatSim sim, Ability ability)
+        {
+            Use(sim, ability);
+            RunUntil(sim, s => !s.IsCommitted, 2f);
+        }
+
         public static float DamageTo(CombatSim sim, CombatEventType type, string id) =>
             sim.Events.Where(e => e.Type == type && e.Id == id).Sum(e => e.Amount);
     }
@@ -121,7 +128,7 @@ namespace TheArtifacts.Core.Tests.Combat
             {
                 // Save Overpower for an opening, where its crit chance is highest.
                 if (sim.IsOpening && sim.BlockReason(Ability.Overpower) == null) act = Ability.Overpower;
-                else if (sim.BlockReason(Ability.HeavyStrike) == null) act = Ability.HeavyStrike;
+                else if (sim.BlockReason(Ability.DoubleStrike) == null) act = Ability.DoubleStrike;
             }
             else if (sim.DistanceToGuardian > 6f && !threats.Any() && sim.BlockReason(Ability.Lunge) == null)
             {

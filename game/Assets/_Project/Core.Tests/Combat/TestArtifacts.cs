@@ -11,7 +11,7 @@ namespace TheArtifacts.Core.Tests.Combat
         public static readonly ArtifactDef KeenEdge = new ArtifactDef
         {
             Id = "keen_edge", Name = "Keen Edge", Slot = ArtifactSlot.RightHand, Rarity = Rarity.Treasure, Strength = 20f,
-            Trait = new[] { new TraitPart { Mode = TraitMode.Passive, Effects = new[] { new TraitEffect { Kind = TraitEffectKind.SetCooldown, Ability = Ability.HeavyStrike, Value = 4.5f } } } },
+            Trait = new[] { new TraitPart { Mode = TraitMode.Passive, Effects = new[] { new TraitEffect { Kind = TraitEffectKind.SetCooldown, Ability = Ability.DoubleStrike, Value = 4.5f } } } },
         };
 
         public static readonly ArtifactDef WardensPlate = new ArtifactDef

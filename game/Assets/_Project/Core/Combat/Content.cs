@@ -25,7 +25,7 @@ namespace TheArtifacts.Core.Combat
         public const float AutoCoefficient = 1.0f;
 
         /// <summary>
-        /// Dash-in: a melee attack (Heavy Strike, Overpower, or an auto-attack swing) used out of melee range but within
+        /// Dash-in: a melee attack (Double Strike, Overpower, or an auto-attack swing) used out of melee range but within
         /// this distance of the Guardian's body dashes the player in at <see cref="DashSpeed"/> and strikes on arrival.
         /// </summary>
         public const float DashInRange = 8f;
@@ -40,13 +40,16 @@ namespace TheArtifacts.Core.Combat
         /// interrupt a tell (the Guardian is committed to a telegraphed skill) and does not stack; a longer one replaces it.
         /// </summary>
         public const float AutoStagger = 0.4f;
-        public const float HeavyStrikeStagger = 0.7f;
-        public const float LungeStagger = 0.5f;
+        public const float DoubleStrikeStagger = 0.4f;  // each of its two hits
+        public const float LungeStagger = 0.7f;
         public const float OverpowerStagger = 1.0f;
         public const float SpellStagger = 0.4f;
 
-        public const float HeavyStrikeCooldown = 6f;
-        public const float HeavyStrikeCoefficient = 2.5f;
+        /// <summary>Double Strike (Q): two quick hits, the second <see cref="DoubleStrikeInterval"/> after the first.</summary>
+        public const float DoubleStrikeCooldown = 6f;
+        /// <summary>Each hit's coefficient; the pair deals 2.5 × Strength, as Heavy Strike did.</summary>
+        public const float DoubleStrikeCoefficient = 1.25f;
+        public const float DoubleStrikeInterval = 0.25f;
 
         public const float GuardCooldown = 12f;
         public const float GuardDuration = 2f;
@@ -55,10 +58,14 @@ namespace TheArtifacts.Core.Combat
         public const float LungeCooldown = 10f;
         public const float LungeDistance = 8f;
         public const float LungeCoefficient = 1.0f;
+        /// <summary>Lunge is a leap: up to <see cref="LungeDistance"/> toward the Guardian over this long, striking on landing.</summary>
+        public const float LungeLeapTime = 0.45f;
 
         /// <summary>Overpower, the ultimate on key 4: a big melee hit on a long cooldown.</summary>
         public const float OverpowerCooldown = 45f;
         public const float OverpowerCoefficient = 8.0f;
+        /// <summary>Overpower gathers itself (an aura) this long before the blow lands; she holds her ground meanwhile.</summary>
+        public const float OverpowerWindup = 0.3f;
 
         /// <summary>Opening: while the Guardian recovers from a skill, player attacks gain this much crit chance.</summary>
         public const float OpeningCritBonus = 0.5f;
