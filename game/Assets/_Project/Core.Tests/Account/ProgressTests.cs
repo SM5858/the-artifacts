@@ -44,7 +44,7 @@ namespace TheArtifacts.Core.Tests.Account
             var p = Unlocked(Bookstore);
 
             Assert.Throws<InvalidOperationException>(() => Progress.RecordLoss(p, Lion));
-            Assert.Throws<InvalidOperationException>(() => Progress.RecordWin(p, Lion, new Random(1)));
+            Assert.Throws<InvalidOperationException>(() => Progress.RecordWin(p, Lion, new Random(1), Now));
         }
 
         [Test]
@@ -55,7 +55,7 @@ namespace TheArtifacts.Core.Tests.Account
             Progress.RecordLoss(p, Lion);
             Assert.That(Progress.FailedAttempts(p, Lion), Is.EqualTo(2));
 
-            var artifact = Progress.RecordWin(p, Lion, new Random(1));
+            var artifact = Progress.RecordWin(p, Lion, new Random(1), Now);
 
             Assert.That(PrototypeContent.GuardianById(Lion).LootPool, Does.Contain(artifact.Id));
             Assert.That(Progress.Owns(p, artifact.Id), Is.True);
@@ -68,17 +68,55 @@ namespace TheArtifacts.Core.Tests.Account
         {
             // Combat Spec 5.1: a first win gives Heirloom or better when the pool has one (the bookstore's is the Robe).
             for (var seed = 0; seed < 20; seed++)
-                Assert.That(Progress.RecordWin(Unlocked(Bookstore), Bookstore, new Random(seed)).Id, Is.EqualTo("columbia_blue_robe"));
+                Assert.That(Progress.RecordWin(Unlocked(Bookstore), Bookstore, new Random(seed), Now).Id, Is.EqualTo("columbia_blue_robe"));
         }
 
         [Test]
         public void RepeatDrops_StackInsteadOfDuplicating()
         {
             var p = Unlocked(Bookstore);
-            for (var i = 0; i < 30; i++) Progress.RecordWin(p, Bookstore, new Random(i));
+            for (var i = 0; i < 30; i++)
+            {
+                var week = Now.AddDays(7 * i);
+                Progress.CheckIn(p, Bookstore, "simulated", week);
+                Progress.RecordWin(p, Bookstore, new Random(i), week);
+            }
 
             Assert.That(p.Artifacts.Select(a => a.Id), Is.Unique);
             Assert.That(p.Artifacts.Sum(a => a.Count), Is.EqualTo(30));
+        }
+
+        [Test]
+        public void AWin_ClosesTheDungeon_ForAWeek_ThenAVisitReopensIt()
+        {
+            var p = Unlocked(Lion);
+            Progress.RecordLoss(p, Lion);
+            Assert.That(Progress.State(p, Lion, Now), Is.EqualTo(DungeonState.Open), "a loss leaves it open");
+
+            Progress.RecordWin(p, Lion, new Random(1), Now);
+            Assert.That(Progress.State(p, Lion, Now.AddDays(6)), Is.EqualTo(DungeonState.Resting));
+            Assert.Throws<InvalidOperationException>(() => Progress.RecordWin(p, Lion, new Random(2), Now.AddDays(1)), "no rematch");
+
+            Assert.That(Progress.CheckIn(p, Lion, "gps", Now.AddDays(6.9)), Is.EqualTo(CheckInResult.TooSoon));
+            Assert.That(Progress.State(p, Lion, Now.AddDays(6.9)), Is.EqualTo(DungeonState.Resting), "a visit too soon does not open it");
+
+            Assert.That(Progress.State(p, Lion, Now.AddDays(7)), Is.EqualTo(DungeonState.Revisit), "the week alone does not reopen it");
+            Assert.That(Progress.CheckIn(p, Lion, "gps", Now.AddDays(7)), Is.EqualTo(CheckInResult.Unlocked));
+            Assert.That(Progress.State(p, Lion, Now.AddDays(7)), Is.EqualTo(DungeonState.Open));
+            Assert.That(Progress.RecordWin(p, Lion, new Random(3), Now.AddDays(8)), Is.Not.Null);
+            Assert.That(p.Visits.Count, Is.EqualTo(3), "every visit is kept, the early one too");
+        }
+
+        [Test]
+        public void LastWin_SurvivesASaveAndLoad()
+        {
+            var p = Unlocked(Lion);
+            Progress.RecordWin(p, Lion, new Random(1), Now);
+            var copy = new PlayerProfile();
+            copy.Guardians.Add(new GuardianRecord { GuardianId = Lion, Wins = 1, LastWinUtc = Progress.Record(p, Lion).LastWinUtc });
+
+            Assert.That(Progress.LastWin(copy, Lion), Is.EqualTo(Now));
+            Assert.That(Progress.State(copy, Lion, Now.AddDays(3)), Is.EqualTo(DungeonState.Resting));
         }
 
         [Test]

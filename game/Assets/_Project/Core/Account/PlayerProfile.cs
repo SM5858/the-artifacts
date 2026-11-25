@@ -14,7 +14,10 @@ namespace TheArtifacts.Core.Account
         public const int CurrentVersion = 1;
 
         public int Version = CurrentVersion;
-        /// <summary>Guardian ids whose dungeon a verified visit has unlocked; each appears once.</summary>
+        /// <summary>
+        /// Guardian ids whose dungeon is open now; each appears once. A visit opens it, a win closes it again, and a visit
+        /// a week or more after that win reopens it (<see cref="Progress.RevisitAfter"/>).
+        /// </summary>
         public List<string> UnlockedGuardians = new List<string>();
         /// <summary>Every check-in, including repeats, so a lost unlock can be traced (GDD 7, handoff failure).</summary>
         public List<VisitRecord> Visits = new List<VisitRecord>();
@@ -47,6 +50,8 @@ namespace TheArtifacts.Core.Account
     {
         public string GuardianId;
         public int Wins;
+        /// <summary>UTC, ISO 8601, of the last win (null before the first); the dungeon rests for a week after it.</summary>
+        public string LastWinUtc;
         /// <summary>Failed attempts since the last win; sets the easing step (GDD 6.4).</summary>
         public int FailedSinceWin;
     }

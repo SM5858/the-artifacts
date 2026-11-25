@@ -232,13 +232,15 @@ namespace TheArtifacts.PC.Combat
                     _outcomeRecorded = true;
                     RecordOutcome();
                 }
-                if (kb.rKey.wasPressedThisFrame) Restart();
-                if (accountLoop && (kb.enterKey.wasPressedThisFrame || kb.escapeKey.wasPressedThisFrame))
+                // A won dungeon closes for a week (GDD 6.6), so on the account a win goes back to the quest list.
+                var closed = accountLoop && !Progress.IsUnlocked(Profile, guardianId);
+                if (accountLoop && (closed && kb.rKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame || kb.escapeKey.wasPressedThisFrame))
                 {
                     BackToQuests();
                     return;
                 }
-                if (kb.mKey.wasPressedThisFrame)
+                if (kb.rKey.wasPressedThisFrame) Restart();
+                if (!closed && kb.mKey.wasPressedThisFrame)
                 {
                     guardianMode = (GuardianMode)(((int)guardianMode + 1) % 3);
                     Restart();
@@ -305,8 +307,11 @@ namespace TheArtifacts.PC.Combat
             var profile = Profile;
             if (_sim.Outcome == CombatOutcome.Win)
             {
-                var artifact = Progress.RecordWin(profile, guardianId, new System.Random(seed + Progress.Record(profile, guardianId).Wins));
+                var now = System.DateTime.UtcNow;
+                var artifact = Progress.RecordWin(profile, guardianId, new System.Random(seed + Progress.Record(profile, guardianId).Wins), now);
                 _reward = $"{artifact.Name} ({artifact.Rarity})  -  {artifact.Description}";
+                // The test profile stands in for a visit a week on, so the sandbox can keep fighting the same Guardian.
+                if (!accountLoop) Progress.CheckIn(profile, guardianId, "sandbox", now + Progress.RevisitAfter);
             }
             else Progress.RecordLoss(profile, guardianId);
             if (accountLoop) _ = GameSession.SaveAsync();
@@ -947,8 +952,10 @@ namespace TheArtifacts.PC.Combat
                 GUI.Label(new Rect(0f, h * 0.35f, w, 90f), _sim.Outcome == CombatOutcome.Win ? "VICTORY" : "DEFEAT", _big);
                 GUI.Label(new Rect(0f, h * 0.35f + 90f, w, 40f),
                     (_reward != null ? $"Reward: {_reward}\n" : "") +
-                    $"{_sim.Time:0.0}s    R retry    " +
-                    (accountLoop ? "Enter quest list" : $"B switch build (now {build})") + $"    M Guardian mode (now {guardianMode})" +
+                    (accountLoop && !Progress.IsUnlocked(Profile, guardianId)
+                        ? $"{_sim.Time:0.0}s    The dungeon rests for {Progress.RevisitAfter.TotalDays:0} days; then visit the landmark again.    Enter quest list"
+                        : $"{_sim.Time:0.0}s    R retry    " +
+                          (accountLoop ? "Enter quest list" : $"B switch build (now {build})") + $"    M Guardian mode (now {guardianMode})") +
                     (accountLoop && GameSession.SaveError != null ? $"\nNot saved: {GameSession.SaveError}" : ""), _center);
             }
         }

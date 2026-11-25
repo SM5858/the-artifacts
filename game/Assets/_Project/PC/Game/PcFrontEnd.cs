@@ -108,7 +108,7 @@ namespace TheArtifacts.PC.Game
             GUI.Label(new Rect(panel.x, panel.y, 500f, 36f), "Quests", _title);
             GUI.Label(new Rect(panel.x, panel.y + 36f, 600f, 22f),
                 $"{GameSession.Account.Username} ({(GameSession.Account.IsOnline ? "online" : "offline")})   gear score {build.GearScore}   " +
-                $"{profile.UnlockedGuardians.Count}/{PrototypeContent.Guardians.Count} dungeons unlocked", _small);
+                $"{profile.UnlockedGuardians.Count}/{PrototypeContent.Guardians.Count} dungeons open", _small);
             if (GUI.Button(new Rect(panel.xMax - 250f, panel.y + 4f, 120f, 30f), "Equipment")) _page = Page.Equipment;
             if (GUI.Button(new Rect(panel.xMax - 120f, panel.y + 4f, 120f, 30f), "Sign out"))
             {
@@ -121,7 +121,8 @@ namespace TheArtifacts.PC.Game
             foreach (var g in PrototypeContent.Guardians)
             {
                 var box = new Rect(panel.x, y, panel.width, 150f);
-                var unlocked = Progress.IsUnlocked(profile, g.Id);
+                var state = Progress.State(profile, g.Id, DateTime.UtcNow);
+                var unlocked = state == DungeonState.Open;
                 Fill(box, unlocked ? new Color(0.14f, 0.12f, 0.08f, 0.95f) : new Color(0.08f, 0.08f, 0.09f, 0.95f));
                 GUI.Label(new Rect(box.x + 14f, box.y + 8f, 600f, 28f), $"{g.Landmark}: {g.Name}", _title);
                 if (unlocked)
@@ -133,10 +134,18 @@ namespace TheArtifacts.PC.Game
                     GUI.Label(new Rect(box.x + 14f, box.y + 62f, box.width - 180f, 80f), g.StoryCard, _wrap);
                     if (GUI.Button(new Rect(box.xMax - 140f, box.y + 60f, 120f, 44f), "Fight")) _startFight(g.Id);
                 }
+                else if (state == DungeonState.Resting)
+                {
+                    var wait = Progress.ReopensAt(profile, g.Id).Value - DateTime.UtcNow;
+                    GUI.Label(new Rect(box.x + 14f, box.y + 44f, box.width - 200f, 40f),
+                        $"Beaten. The Guardian rests; visit the {g.Landmark} again in {wait.Days} d {wait.Hours} h to challenge it again.", _label);
+                }
                 else
                 {
                     GUI.Label(new Rect(box.x + 14f, box.y + 44f, box.width - 200f, 40f),
-                        $"Locked. Visit the {g.Landmark} in the mobile game to open this dungeon.", _label);
+                        state == DungeonState.Revisit
+                            ? $"The Guardian has returned. Visit the {g.Landmark} in the mobile game to challenge it again."
+                            : $"Locked. Visit the {g.Landmark} in the mobile game to open this dungeon.", _label);
                     // Stands in for the mobile game's check-in until it exists (GDD 6.1 first cut).
                     if (GUI.Button(new Rect(box.xMax - 180f, box.y + 60f, 160f, 44f), "Simulate visit (dev)")) SimulateVisit(g.Id);
                 }
