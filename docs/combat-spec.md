@@ -189,6 +189,8 @@ From the balance report in CI (`Report_BotFightsAcrossGuardiansTiersAndBuilds`) 
 
 Measured after Punish was replaced by the opening and Overpower (fights run about 5–15% longer than with Punish).
 
+**After the artifact budgets were raised (2026-11-28, GDD 6.6):** the geared build changed little, so the tuning ranges (4.6) stay. Averaged over all three Guardians (physical skills, no lore), with 30% of telegraphs missed it wins T3 5/5 (40% HP left), T4 3/5, and T5 0/5; with none missed T3 5/5 (64% HP left), T4 5/5 (48%), T5 1/5. A starter is unchanged (no artifacts).
+
 Reading: the scripted default (T3) is hard for a starter and comfortable for the geared build, the gap the hypothesis targets. T5 is out of reach for a 0.6 s reaction even with no misses (its shortest tells leave about 0.35 s to move), so it is for fast players; the playtest decides whether to keep it. The Book Keeper plays the same for a starter and about 15–20% slower for the geared build (no Lion's Fang bonus); Alma Mater runs about 25–50% longer (Lightning Bolt barely hurts it). With the mixed skill set (Slam, Shock Rings, Embers) a starter loses from T3 even without misses, because Embers lands on the player three times in a row.
 
 ### 4.8 Arena and movement [DECIDED 2026-11-20]
@@ -233,18 +235,18 @@ Every artifact has a **trait**, which general items never have (GDD Section 6.6)
 | Treasure | stat bonus | one minor effect (tunes an ability) |
 | Mythic | stat bonus | one signature effect (changes how an ability is used) |
 
-### 5.3 Prototype artifacts: Columbia landmark pools [DECIDED 2026-11-19]
+### 5.3 Prototype artifacts: Columbia landmark pools [DECIDED 2026-11-19; stats raised 2026-11-28]
 
 | Landmark (Guardian) | Artifact | Slot | Grade | Stats | Trait (tooltip) |
 |---|---|---|---|---|---|
-| Alma Mater statue (Alma Mater) | Wreath of Alma Mater | helm | Relic | +50 HP, +5 Res | Max MP +30% |
-| | Staff of Alma Mater | right hand | Relic | +10 Intelligence | Intelligence +30% |
-| Columbia Lion statue (Columbia Lion) | Columbia Lion's Fang | right hand (dagger) | Heirloom | +15 Strength, +10 Precision | 20% more damage to Beasts |
-| | Columbia Lion's Pelt | helm | Mythic | +150 HP, +12 Def, +10 Speed | Once per fight, survive a killing blow at 1 HP |
-| Columbia bookstore (Book Keeper) | Columbia Blue Mortarboard | helm | Relic | +20 Precision | 20% more damage to Undead |
-| | Columbia Blue Robe | armor | Treasure | +150 HP, +6 Def, +12 Res | Skill: take 30% less damage for 4 s (25 s cooldown) |
+| Alma Mater statue (Alma Mater) | Wreath of Alma Mater | helm | Relic | +150 HP, +10 Res | Max MP +30% |
+| | Staff of Alma Mater | right hand | Relic | +25 Intelligence | Intelligence +30% |
+| Columbia Lion statue (Columbia Lion) | Columbia Lion's Fang | right hand (dagger) | Heirloom | +20 Strength, +12 Precision | 20% more damage to Beasts |
+| | Columbia Lion's Pelt | helm | Mythic | +200 HP, +15 Def, +10 Speed | Once per fight, survive a killing blow at 1 HP |
+| Columbia bookstore (Book Keeper) | Columbia Blue Mortarboard | helm | Relic | +25 Precision | 20% more damage to Undead |
+| | Columbia Blue Robe | armor | Treasure | +200 HP, +8 Def, +12 Res | Skill: take 30% less damage for 4 s (25 s cooldown) |
 
-With the per-landmark roll (5.1), a win gives: Alma Mater, always a Relic (either artifact); Columbia Lion, Fang 86% / Pelt 14%; Book Keeper, Mortarboard 77% / Robe 23%. A first win gives the Fang or Pelt at the Lion (unchanged), the Robe at the bookstore, and a Relic at Alma Mater. Since Alma Mater became Undead (2026-11-20), the Mortarboard's Undead bonus pays off at Alma Mater, not at the bookstore where it drops.
+Stats meet the grade budgets of GDD 6.6 (Relic 25, Heirloom 32, Treasure 40, Mythic 55 points), raised for the monthly balance rule. With the per-landmark roll (5.1), a win gives: Alma Mater, always a Relic (either artifact); Columbia Lion, Fang 86% / Pelt 14%; Book Keeper, Mortarboard 77% / Robe 23%. A first win gives the Fang or Pelt at the Lion (unchanged), the Robe at the bookstore, and a Relic at Alma Mater. Since Alma Mater became Undead (2026-11-20), the Mortarboard's Undead bonus pays off at Alma Mater, not at the bookstore where it drops.
 
 The geared test build wears one artifact from each landmark: **Wreath of Alma Mater, Columbia Lion's Fang, Columbia Blue Robe.** The eight earlier placeholder artifacts were removed; the trait mechanics they used stay covered by test-only fixtures.
 

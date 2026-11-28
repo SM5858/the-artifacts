@@ -130,6 +130,31 @@ namespace TheArtifacts.Core.Combat
         public static float StrongestHit(float strength) =>
             PlayerRules.OverpowerCoefficient * PlayerRules.CritMultiplier * strength;
 
+        /// <summary>
+        /// Least flat-stat points an artifact of each grade carries [DECIDED 2026-11-28], every grade above the best
+        /// Masterpiece, so one trip's artifacts outweigh a month of heavy play (GDD 6.6, monthly balance rule).
+        /// </summary>
+        public static int ArtifactMinPoints(Rarity grade) => grade switch
+        {
+            Rarity.Relic => 25,
+            Rarity.Heirloom => 32,
+            Rarity.Treasure => 40,
+            _ => 55,
+        };
+
+        /// <summary>What a trait is counted as when comparing builds in points (GDD 6.6, proposed).</summary>
+        public const float TraitPoints = 10f;
+
+        /// <summary>
+        /// Proposed general power curve (levels and general items together) for the monthly balance rule (GDD 6.6):
+        /// a month at 2 hours a day (60 h) and at 10 hours a day (300 h). Levels and drop rates are designed to it (Q19).
+        /// </summary>
+        public const float LightMonthPoints = 120f;
+        public const float HeavyMonthPoints = 170f;
+
+        /// <summary>One trip: three landmark check-ins, each dungeon won once (the weekly rest allows no more).</summary>
+        public const int LandmarksPerTrip = 3;
+
         /// <summary>An artifact's flat stats in budget points, for comparing grades (traits not counted).</summary>
         public static float Points(ArtifactDef a) =>
             a.Strength + a.Intelligence + a.Agility + a.Def + a.Res + a.Precision
@@ -336,18 +361,18 @@ namespace TheArtifacts.Core.Combat
         {
             // Alma Mater statue
             new ArtifactDef { Id = "wreath_of_alma_mater", Name = "Wreath of Alma Mater", Description = "Max MP +30%",
-                Slot = ArtifactSlot.Helm, Rarity = Rarity.Relic, Hp = 50f, Res = 5f,
+                Slot = ArtifactSlot.Helm, Rarity = Rarity.Relic, Hp = 150f, Res = 10f,
                 Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Mp, Value = 1.3f }) } },
             new ArtifactDef { Id = "staff_of_alma_mater", Name = "Staff of Alma Mater", Description = "Intelligence +30%",
-                Slot = ArtifactSlot.RightHand, Rarity = Rarity.Relic, Intelligence = 10f,
+                Slot = ArtifactSlot.RightHand, Rarity = Rarity.Relic, Intelligence = 25f,
                 Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.MultiplyStat, Stat = StatKind.Intelligence, Value = 1.3f }) } },
 
             // Columbia Lion statue
             new ArtifactDef { Id = "columbia_lions_fang", Name = "Columbia Lion's Fang", Description = "20% more damage to Beasts",
-                Slot = ArtifactSlot.RightHand, Rarity = Rarity.Heirloom, Strength = 15f, Precision = 10f,
+                Slot = ArtifactSlot.RightHand, Rarity = Rarity.Heirloom, Strength = 20f, Precision = 12f,
                 Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.DamageDealtVsType, Creature = CreatureType.Beast, Value = 0.2f }) } },
             new ArtifactDef { Id = "columbia_lions_pelt", Name = "Columbia Lion's Pelt", Description = "Once per fight, survive a killing blow at 1 HP",
-                Slot = ArtifactSlot.Helm, Rarity = Rarity.Mythic, Hp = 150f, Def = 12f, Speed = 10f,
+                Slot = ArtifactSlot.Helm, Rarity = Rarity.Mythic, Hp = 200f, Def = 15f, Speed = 10f,
                 Trait = new[]
                 {
                     new TraitPart { Mode = TraitMode.Triggered, Trigger = TraitTrigger.LethalDamage, OncePerFight = true,
@@ -356,10 +381,10 @@ namespace TheArtifacts.Core.Combat
 
             // Columbia bookstore
             new ArtifactDef { Id = "columbia_blue_mortarboard", Name = "Columbia Blue Mortarboard", Description = "20% more damage to Undead",
-                Slot = ArtifactSlot.Helm, Rarity = Rarity.Relic, Precision = 20f,
+                Slot = ArtifactSlot.Helm, Rarity = Rarity.Relic, Precision = 25f,
                 Trait = new[] { Passive(new TraitEffect { Kind = TraitEffectKind.DamageDealtVsType, Creature = CreatureType.Undead, Value = 0.2f }) } },
             new ArtifactDef { Id = "columbia_blue_robe", Name = "Columbia Blue Robe", Description = "Skill: take 30% less damage for 4 s (25 s cooldown)",
-                Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 150f, Def = 6f, Res = 12f,
+                Slot = ArtifactSlot.Armor, Rarity = Rarity.Treasure, Hp = 200f, Def = 8f, Res = 12f,
                 Trait = new[]
                 {
                     new TraitPart { Mode = TraitMode.EquipmentSkill, Cooldown = 25f,

@@ -23,9 +23,9 @@ namespace TheArtifacts.Core.Tests.Combat
             Assert.That((starter.MaxHp, starter.MaxMp, starter.Strength, starter.Intelligence, starter.GearScore), Is.EqualTo((1000f, 100f, 40f, 40f, 0)));
             Assert.That((starter.PhysicalReduction, starter.CooldownReduction, starter.CritChance), Is.EqualTo((0f, 0f, 0f)));
             // Wreath of Alma Mater + Columbia Lion's Fang + Columbia Blue Robe.
-            Assert.That((geared.MaxHp, geared.Strength, geared.Intelligence), Is.EqualTo((1200f, 55f, 40f)));
+            Assert.That((geared.MaxHp, geared.Strength, geared.Intelligence), Is.EqualTo((1350f, 60f, 40f)));
             Assert.That(geared.MaxMp, Is.EqualTo(130f).Within(1e-3));
-            Assert.That((geared[StatKind.Def], geared[StatKind.Res], geared[StatKind.Precision]), Is.EqualTo((6f, 17f, 10f)));
+            Assert.That((geared[StatKind.Def], geared[StatKind.Res], geared[StatKind.Precision]), Is.EqualTo((8f, 22f, 12f)));
             Assert.That(geared.GearScore, Is.EqualTo(6));
         }
 
@@ -41,7 +41,7 @@ namespace TheArtifacts.Core.Tests.Combat
         [Test]
         public void RelicMultipliers_ApplyAfterFlatBonuses()
         {
-            Assert.That(PrototypeContent.Build("staff_of_alma_mater").Intelligence, Is.EqualTo(50f * 1.3f).Within(1e-3));
+            Assert.That(PrototypeContent.Build("staff_of_alma_mater").Intelligence, Is.EqualTo(65f * 1.3f).Within(1e-3));
             Assert.That(PrototypeContent.Build("wreath_of_alma_mater").MaxMp, Is.EqualTo(100f * 1.3f).Within(1e-3));
         }
 
@@ -764,7 +764,7 @@ namespace TheArtifacts.Core.Tests.Combat
         [Test]
         public void BlueRobe_ArtifactSkill_CutsDamageTaken()
         {
-            // Slam 250 at T3; Robe Def 6 → 6/106 less; the S skill takes 30% off for 4 s.
+            // Slam 250 at T3; Robe Def 8 → 8/108 less; the S skill takes 30% off for 4 s.
             var sim = Sim(PrototypeContent.Build("columbia_blue_robe"), "T3", "steady", "slam", "cleave", "charge");
             Engage(sim);
             RunUntil(sim, s => s.Phase == GuardianPhase.Tell, 15f);
@@ -772,7 +772,7 @@ namespace TheArtifacts.Core.Tests.Combat
             sim.Step(Dt, new PlayerInput(Vec2.Zero, Ability.None, SkillBarSlot.Slot1));
             RunUntil(sim, s => s.Phase == GuardianPhase.Recovery, 3f);
 
-            Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "slam"), Is.EqualTo(250f * (1f - 6f / 106f) * 0.7f).Within(1e-2));
+            Assert.That(DamageTo(sim, CombatEventType.PlayerDamaged, "slam"), Is.EqualTo(250f * (1f - 8f / 108f) * 0.7f).Within(1e-2));
             Assert.That(sim.ArtifactSkillCooldownRemaining(SkillBarSlot.Slot1), Is.GreaterThan(20f));
             Assert.That(sim.GcdRemaining, Is.Zero);
         }
